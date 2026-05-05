@@ -181,6 +181,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 /* 출산 기록 삭제 버튼 */
 .litter-del-btn{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;transition:background .2s;white-space:nowrap;}
 .litter-del-btn:hover{background:rgba(231,76,60,.55);}
+.litter-edit-btn{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;transition:background .2s;white-space:nowrap;}
+.litter-edit-btn:hover{background:rgba(200,134,10,.7);}
 
 /* 분양 상태 뱃지 */
 .p-status{font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:99px;display:inline-block;}
@@ -420,6 +422,30 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
       <button class="btn" onclick="saveLitter()">✅ 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 출산 기록 수정 모달 -->
+<div class="modal-overlay" id="litter-edit-modal" onclick="handleLitterEditOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="litter-edit-title">출산 기록 수정</h2>
+      <button class="modal-close" onclick="closeLitterEditModal()">✕</button>
+    </div>
+    <div class="form-group"><label>모견</label><select id="lem-female"></select></div>
+    <div class="form-group"><label>부견</label><select id="lem-male"></select></div>
+    <div class="form-group">
+      <label>출산일 A</label>
+      <input type="date" id="lem-birth-a" oninput="autoSetLitterEditBirthB()">
+    </div>
+    <div class="form-group">
+      <label>출산일 B <span style="font-weight:400;color:#bbb;">(직접 수정 가능)</span></label>
+      <input type="date" id="lem-birth-b">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeLitterEditModal()">취소</button>
+      <button class="btn" id="lem-save-btn" onclick="saveLitterEdit()">✅ 저장</button>
     </div>
   </div>
 </div>
@@ -823,6 +849,7 @@ function renderPuppies(){
       <div class="litter-header">
         <h3 style="cursor:pointer;flex:1;" onclick="toggleLitterBody(this.closest('.litter-header').nextElementSibling, this.closest('.litter-header').querySelector('.litter-toggle'))">🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; ${fmtDate(lt.birthA)}</h3>
         <span style="color:#fff;font-size:.72rem;margin-right:6px;">♀${fCount} ♂${mCount}</span>
+        <button class="litter-edit-btn" onclick="openLitterEdit('${lt._key}')">✏️ 수정</button>
         <button class="litter-del-btn" onclick="deleteLitter('${lt._key}','${lt.femaleCode}')">🗑️ 삭제</button>
         <span class="litter-toggle" style="margin-left:8px;cursor:pointer;" onclick="toggleLitterBody(this.closest('.litter-header').nextElementSibling,this)">▼</span>
       </div>
@@ -852,6 +879,49 @@ window.toggleLitterBody=function(body,toggleEl){
   const isOpen=body.style.display!=='none'&&body.style.display!=='';
   body.style.display=isOpen?'none':'block';
   if(toggleEl)toggleEl.textContent=isOpen?'▶':'▼';
+};
+
+// 출산 기록 수정 모달
+let litterEditKey=null;
+window.openLitterEdit=function(litterKey){
+  const lt=litters.find(l=>l._key===litterKey);if(!lt)return;
+  litterEditKey=litterKey;
+  document.getElementById('litter-edit-title').textContent=`${lt.femaleCode} × ${lt.maleCode} 수정`;
+  // 모견/부견 셀렉트 채우기
+  document.getElementById('lem-female').innerHTML=females.map(f=>`<option value="${f._key}"${f.code===lt.femaleCode?' selected':''}>${f.code}</option>`).join('');
+  document.getElementById('lem-male').innerHTML=males.map(m=>`<option value="${m._key}"${m.code===lt.maleCode?' selected':''}>${m.code}</option>`).join('');
+  document.getElementById('lem-birth-a').value=lt.birthA||'';
+  document.getElementById('lem-birth-b').value=lt.birthB||'';
+  document.getElementById('litter-edit-modal').classList.add('open');
+};
+window.handleLitterEditOverlay=function(e){if(e.target===document.getElementById('litter-edit-modal'))closeLitterEditModal();};
+window.closeLitterEditModal=function(){document.getElementById('litter-edit-modal').classList.remove('open');litterEditKey=null;};
+window.autoSetLitterEditBirthB=function(){
+  const a=document.getElementById('lem-birth-a').value;
+  if(a) document.getElementById('lem-birth-b').value=subDays(a,15);
+};
+window.saveLitterEdit=async function(){
+  if(!litterEditKey)return;
+  const fKey=document.getElementById('lem-female').value;
+  const mKey=document.getElementById('lem-male').value;
+  const birthA=document.getElementById('lem-birth-a').value;
+  const birthB=document.getElementById('lem-birth-b').value||null;
+  if(!birthA){showToast('출산일 A를 입력해주세요');return;}
+  const fDog=females.find(f=>f._key===fKey);
+  const mDog=males.find(m=>m._key===mKey);
+  if(!fDog||!mDog){showToast('모견/부견을 선택해주세요');return;}
+  const btn=document.getElementById('lem-save-btn');
+  btn.textContent='저장 중...';btn.disabled=true;
+  try{
+    await fbUpdate(`litters/${litterEditKey}`,{
+      femaleCode:fDog.code, maleCode:mDog.code,
+      birthA, birthB,
+      vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
+      deworm1:addDays(birthA,14), deworm2:addDays(birthA,28),
+    });
+    closeLitterEditModal();
+    showToast('✅ 출산 기록 수정 완료!');
+  } finally{btn.textContent='✅ 저장';btn.disabled=false;}
 };
 
 // 출산 기록 전체 삭제
