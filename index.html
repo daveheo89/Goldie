@@ -19,7 +19,6 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(--text);min-height:100vh;}
 
-/* loading */
 #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--brown),var(--gold));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
 #loading-screen .ls-icon{font-size:4rem;animation:bounce .8s infinite alternate;}
 #loading-screen .ls-text{color:#fff;font-size:1.1rem;font-weight:700;}
@@ -30,7 +29,6 @@ header{background:linear-gradient(135deg,var(--brown),var(--gold));padding:18px 
 header h1{color:#fff;font-size:1.4rem;font-weight:900;}
 header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
-/* sync indicator */
 .sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-left:8px;vertical-align:middle;}
 .sync-dot.syncing{background:#FFC107;animation:pulse .6s infinite alternate;}
 .sync-dot.error{background:#f44336;}
@@ -44,6 +42,18 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .content{padding:18px 14px 70px;max-width:700px;margin:0 auto;}
 .sec-title{font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--gold);color:#fff;}
+
+/* 견사 그룹 */
+.kennel-group{margin-bottom:20px;}
+.kennel-group-title{font-size:.78rem;font-weight:900;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;padding:4px 8px;background:var(--cream);border-radius:6px;display:inline-block;}
+.kennel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+.kennel-box{background:var(--kennel-bg);border-radius:13px;padding:12px;border:2px solid var(--border);min-height:76px;cursor:pointer;transition:border-color .2s;}
+.kennel-box:hover{border-color:var(--gold);}
+.kennel-box .kname{font-size:.9rem;font-weight:900;color:var(--brown);margin-bottom:6px;}
+.kennel-dog{font-size:.68rem;font-weight:700;padding:2px 5px;border-radius:5px;display:inline-block;margin:1px;}
+.kennel-dog.f{background:var(--female-bg);color:var(--female);}
+.kennel-dog.m{background:var(--male-bg);color:var(--male);}
+.kennel-empty{font-size:.72rem;color:#bbb;}
 
 .add-dog-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:16px;border:2.5px dashed var(--border);border-radius:var(--radius);background:var(--gold-pale);color:var(--text-muted);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
 .add-dog-btn:hover{border-color:var(--gold);color:var(--gold);}
@@ -73,15 +83,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .info-item{background:var(--gold-pale);border-radius:9px;padding:7px 11px;flex:1;min-width:110px;}
 .info-item .label{font-size:.65rem;color:var(--text-muted);margin-bottom:1px;}
 .info-item .value{font-size:.9rem;font-weight:700;}
-
-.kennel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:16px;}
-.kennel-box{background:var(--kennel-bg);border-radius:13px;padding:12px;border:2px solid var(--border);min-height:80px;cursor:pointer;transition:border-color .2s;}
-.kennel-box:hover{border-color:var(--gold);}
-.kennel-box .kname{font-size:.9rem;font-weight:900;color:var(--brown);margin-bottom:6px;}
-.kennel-dog{font-size:.68rem;font-weight:700;padding:2px 5px;border-radius:5px;display:inline-block;margin:1px;}
-.kennel-dog.f{background:var(--female-bg);color:var(--female);}
-.kennel-dog.m{background:var(--male-bg);color:var(--male);}
-.kennel-empty{font-size:.72rem;color:#bbb;}
 
 .breeding-list{display:flex;flex-direction:column;gap:10px;}
 .breeding-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border-left:5px solid #8BC34A;cursor:pointer;transition:transform .15s;}
@@ -128,6 +129,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .bd-memo textarea{width:100%;border:2px solid var(--border);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:.83rem;background:var(--gold-pale);color:var(--text);resize:none;outline:none;transition:border-color .2s;min-height:56px;}
 .bd-memo textarea:focus{border-color:var(--gold);}
 
+/* 새끼 */
 .litter-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;border-left:5px solid var(--puppy);}
 .litter-header{background:linear-gradient(135deg,#5B3E8A,var(--puppy));padding:12px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
 .litter-header h3{color:#fff;font-size:.9rem;font-weight:900;}
@@ -143,14 +145,24 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .vax-chip.overdue .vc-date{color:#FF6B35;}
 .vax-chip.today-due{background:#FFF3CD;border-color:#FFC107;}
 .vax-chip.today-due .vc-date{color:#B8860B;}
-.litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
-.puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
-.puppy-card:hover{border-color:var(--puppy);}
-.puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:5px;}
-.puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:5px;}
-.puppy-card .p-name{font-size:.7rem;font-weight:700;color:var(--puppy);}
-.puppy-card .p-sex{font-size:.6rem;color:var(--text-muted);}
 
+/* 새끼 카드 그리드 */
+.litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:10px;}
+.puppy-card{background:var(--puppy-bg);border-radius:12px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:all .2s;position:relative;}
+.puppy-card:hover{border-color:var(--puppy);}
+.puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block;margin-bottom:4px;}
+.puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:8px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:4px;}
+.puppy-card .p-name{font-size:.72rem;font-weight:700;color:var(--puppy);margin-bottom:2px;}
+.puppy-card .p-sex{font-size:.62rem;color:var(--text-muted);margin-bottom:4px;}
+
+/* 분양 상태 뱃지 */
+.p-status{font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:99px;display:inline-block;}
+.p-status.available{background:#EEF7E0;color:#5A9E1A;}
+.p-status.reserved{background:#FFF3CD;color:#B8860B;}
+.p-status.sold{background:#EEF5FF;color:#3A7AC8;}
+.p-status.dead{background:#F5F5F5;color:#999;}
+
+/* 폼 */
 .form-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px;}
 .form-card h3{font-size:.95rem;font-weight:900;color:var(--brown);margin-bottom:14px;}
 .form-group{margin-bottom:12px;}
@@ -161,6 +173,13 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .sex-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:9px;background:var(--gold-pale);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;color:var(--text-muted);}
 .sex-btn.female.active{background:var(--female-bg);border-color:var(--female);color:var(--female);}
 .sex-btn.male.active{background:var(--male-bg);border-color:var(--male);color:var(--male);}
+
+/* 강아지 수컷/암컷 카운터 */
+.puppy-sex-counter{display:flex;gap:8px;align-items:center;margin-top:6px;}
+.psc-item{display:flex;align-items:center;gap:6px;flex:1;background:var(--gold-pale);border-radius:9px;padding:8px 12px;border:2px solid var(--border);}
+.psc-item label{font-size:.8rem;font-weight:700;flex:1;}
+.psc-item input{width:52px;padding:4px 8px;border:2px solid var(--border);border-radius:7px;font-family:inherit;font-size:.9rem;font-weight:700;text-align:center;background:#fff;outline:none;}
+
 .btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--gold),var(--brown-light));color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;transition:opacity .2s;}
 .btn:hover{opacity:.88;}
 .btn-sm{padding:8px 16px;font-size:.82rem;border-radius:8px;width:auto;}
@@ -193,13 +212,21 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;}
 .modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.22);transform:translateY(20px);transition:transform .22s;max-height:90vh;overflow-y:auto;}
+.modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:400px;box-shadow:0 16px 48px rgba(0,0,0,.22);transform:translateY(20px);transition:transform .22s;max-height:92vh;overflow-y:auto;}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
 .modal-header h2{font-size:1rem;font-weight:900;color:var(--brown);}
 .modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);}
 .modal-actions{display:flex;gap:8px;margin-top:16px;}
 .modal-actions .btn{flex:1;}
+
+/* 새끼 편집 모달 - 상태 버튼 */
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.status-opt{padding:10px;border:2px solid var(--border);border-radius:9px;background:var(--gold-pale);font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;color:var(--text-muted);text-align:center;}
+.status-opt.active-available{background:#EEF7E0;border-color:#8BC34A;color:#5A9E1A;}
+.status-opt.active-reserved{background:#FFF3CD;border-color:#FFC107;color:#B8860B;}
+.status-opt.active-sold{background:#EEF5FF;border-color:#3A7AC8;color:#3A7AC8;}
+.status-opt.active-dead{background:#F5F5F5;border-color:#999;color:#666;}
 
 .vax-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;}
 .vax-popup{background:#fff;border-radius:20px;padding:24px;max-width:360px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.25);max-height:80vh;overflow-y:auto;}
@@ -220,18 +247,15 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 </style>
 </head>
 <body>
-
-<!-- 로딩 화면 -->
 <div id="loading-screen">
   <div class="ls-icon">🐕</div>
   <div class="ls-text">골디 셸터 불러오는 중...</div>
   <div class="ls-sub">Firebase에 연결하고 있어요</div>
 </div>
-
 <div class="paw-bg">🐾</div>
 
 <header>
-  <h1>🐕 골디 셸터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
+  <h1>🐕 골디 셸터 농장 관리 <span class="sync-dot" id="sync-dot"></span></h1>
   <p>골든리트리버 번식·견사 통합 관리</p>
 </header>
 
@@ -244,6 +268,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 </div>
 
 <div class="content">
+
   <!-- 개체 탭 -->
   <div id="tab-dogs">
     <div class="sec-title">🐕‍🦺 모견 <span class="badge" id="female-count">0</span></div>
@@ -258,7 +283,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   <!-- 견사 탭 -->
   <div id="tab-kennels" class="hidden">
     <div class="sec-title">🏠 견사 현황</div>
-    <div class="kennel-grid" id="kennel-grid"></div>
+    <div id="kennel-all"></div>
   </div>
 
   <!-- 번식 탭 -->
@@ -323,8 +348,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
     <div class="form-group"><label>번호 / 코드</label><input type="text" id="dm-code" placeholder="예: F21, M06"></div>
     <div class="form-group"><label>견사</label><select id="dm-kennel"></select></div>
-    <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
-    <div class="modal-actions">
+    <div class="form-group">
+      <label>생년월일 <span style="font-weight:400;color:#bbb;">(선택)</span></label>
+      <input type="date" id="dm-birth">
+    </div>
+    <div class="modal-actions" id="dm-actions">
       <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
       <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
     </div>
@@ -340,12 +368,67 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
     <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
     <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
-    <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
-    <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
-    <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
+    <div class="form-group">
+      <label>출산일 A (실제 출산일)</label>
+      <input type="date" id="lm-birth-a" oninput="autoSetBirthB()">
+    </div>
+    <div class="form-group">
+      <label>출산일 B <span style="font-weight:400;color:#bbb;">(출산일A 기준 자동 -15일)</span></label>
+      <input type="date" id="lm-birth-b">
+    </div>
+    <div class="form-group">
+      <label>강아지 수</label>
+      <div class="puppy-sex-counter">
+        <div class="psc-item">
+          <label>♀ 암컷</label>
+          <input type="number" id="lm-female-count" min="0" max="20" value="0" oninput="updateTotalCount()">
+        </div>
+        <div class="psc-item">
+          <label>♂ 수컷</label>
+          <input type="number" id="lm-male-count" min="0" max="20" value="0" oninput="updateTotalCount()">
+        </div>
+      </div>
+      <div style="font-size:.78rem;color:var(--text-muted);margin-top:6px;padding-left:4px;">합계: <strong id="lm-total">0</strong>마리</div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
       <button class="btn" onclick="saveLitter()">✅ 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 새끼 편집 모달 -->
+<div class="modal-overlay" id="puppy-modal" onclick="handlePuppyModalOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="puppy-modal-title">새끼 정보 수정</h2>
+      <button class="modal-close" onclick="closePuppyModal()">✕</button>
+    </div>
+    <div class="photo-upload-wrap" id="pm-photo-wrap">
+      <input type="file" accept="image/*" id="pm-photo-input" onchange="handlePuppyPhoto(event)">
+      <div class="pu-hint" id="pm-hint"><div class="ph-icon">📷</div><div>사진 추가 (선택)</div></div>
+      <div class="pu-overlay" id="pm-overlay">📷 사진 변경</div>
+    </div>
+    <div class="form-group"><label>이름</label><input type="text" id="pm-name" placeholder="예: 새끼1"></div>
+    <div class="form-group">
+      <label>성별</label>
+      <div class="sex-toggle">
+        <button class="sex-btn female" id="pm-sex-f" onclick="selectPuppySex('female')">♀ 암컷</button>
+        <button class="sex-btn male"   id="pm-sex-m" onclick="selectPuppySex('male')">♂ 수컷</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>분양 상태</label>
+      <div class="status-grid">
+        <button class="status-opt" id="ps-available" onclick="selectPuppyStatus('available')">🟢 분양 전</button>
+        <button class="status-opt" id="ps-reserved"  onclick="selectPuppyStatus('reserved')">🟡 예약</button>
+        <button class="status-opt" id="ps-sold"      onclick="selectPuppyStatus('sold')">🔵 분양 완료</button>
+        <button class="status-opt" id="ps-dead"      onclick="selectPuppyStatus('dead')">⚫ 폐사</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closePuppyModal()">취소</button>
+      <button class="btn" onclick="savePuppy()">✅ 저장</button>
     </div>
   </div>
 </div>
@@ -362,13 +445,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 <div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, onValue, update }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ── Firebase 설정 ──
 const firebaseConfig = {
   apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
   authDomain: "goldie-shelter-d6c81.firebaseapp.com",
@@ -378,109 +459,48 @@ const firebaseConfig = {
   messagingSenderId: "305277425020",
   appId: "1:305277425020:web:1f841f61d733c3a3aec0f9"
 };
-
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// ── 상수 ──
-const KENNELS=['1번','2번','3번','4번','5번','6번','7번','8번','9번','10번','11번','12번','A1','A2','A3','B1','B2','B3'];
+// 견사 그룹 정의
+const KENNEL_GROUPS = [
+  { label:'🏠 1~12번 견사', kennels:['1번','2번','3번','4번','5번','6번','7번','8번','9번','10번','11번','12번'] },
+  { label:'🅰️ A 견사',     kennels:['A1','A2','A3'] },
+  { label:'🅱️ B 견사',     kennels:['B1','B2','B3'] },
+  { label:'🌿 운동장',      kennels:['운동장'] },
+];
+const KENNELS = KENNEL_GROUPS.flatMap(g=>g.kennels);
 const GESTATION=63;
 
-// ── 로컬 상태 (Firebase에서 동기화) ──
-let females=[];
-let males=[];
-let breedingRecords=[];
-let litters=[];
-let moveLog=[];
-let selectedDog=null;
-let openBreedingIdx=null;
-let dogModalMode='add';
-let dogEditCode=null;
-let dogPendingPhoto=null;
-let dogSelectedSex='female';
+let females=[]; let males=[]; let breedingRecords=[]; let litters=[]; let moveLog=[];
+let selectedDog=null; let openBreedingIdx=null;
+let dogModalMode='add'; let dogEditCode=null; let dogPendingPhoto=null; let dogSelectedSex='female';
+let puppyEditInfo=null; let puppyPendingPhoto=null; let puppySelectedSex='unknown'; let puppySelectedStatus='available';
 
-// ── 유틸 ──
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().slice(0,10);}
+function subDays(d,n){return addDays(d,-n);}
 function daysFrom(d){return Math.ceil((new Date(d)-new Date())/86400000);}
 function fmtDate(d){return d?d.replace(/-/g,'.'):'−';}
 function today(){return new Date().toISOString().slice(0,10);}
-function setSyncing(state){
-  const dot=document.getElementById('sync-dot');
-  dot.className='sync-dot'+(state==='syncing'?' syncing':state==='error'?' error':'');
-}
+function setSyncing(s){const dot=document.getElementById('sync-dot');dot.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');}
 
-// ═══════════════════════════════════════
-//  Firebase 읽기/쓰기 헬퍼
-// ═══════════════════════════════════════
-async function fbSet(path,data){
-  setSyncing('syncing');
-  try{ await set(ref(db,path),data); setSyncing('ok'); }
-  catch(e){ setSyncing('error'); showToast('⚠️ 저장 실패: '+e.message); throw e; }
-}
-async function fbPush(path,data){
-  setSyncing('syncing');
-  try{ const r=await push(ref(db,path),data); setSyncing('ok'); return r.key; }
-  catch(e){ setSyncing('error'); showToast('⚠️ 저장 실패: '+e.message); throw e; }
-}
-async function fbRemove(path){
-  setSyncing('syncing');
-  try{ await remove(ref(db,path)); setSyncing('ok'); }
-  catch(e){ setSyncing('error'); showToast('⚠️ 삭제 실패: '+e.message); throw e; }
-}
-async function fbUpdate(path,data){
-  setSyncing('syncing');
-  try{ await update(ref(db,path),data); setSyncing('ok'); }
-  catch(e){ setSyncing('error'); showToast('⚠️ 수정 실패: '+e.message); throw e; }
-}
+async function fbSet(p,d){setSyncing('syncing');try{await set(ref(db,p),d);setSyncing('ok');}catch(e){setSyncing('error');showToast('⚠️ 저장 실패');throw e;}}
+async function fbPush(p,d){setSyncing('syncing');try{const r=await push(ref(db,p),d);setSyncing('ok');return r.key;}catch(e){setSyncing('error');showToast('⚠️ 저장 실패');throw e;}}
+async function fbRemove(p){setSyncing('syncing');try{await remove(ref(db,p));setSyncing('ok');}catch(e){setSyncing('error');showToast('⚠️ 삭제 실패');throw e;}}
+async function fbUpdate(p,d){setSyncing('syncing');try{await update(ref(db,p),d);setSyncing('ok');}catch(e){setSyncing('error');showToast('⚠️ 수정 실패');throw e;}}
 
-// ═══════════════════════════════════════
-//  실시간 동기화 리스너
-// ═══════════════════════════════════════
 function startListeners(){
-  // 모견
-  onValue(ref(db,'females'), snap=>{
-    females=[];
-    snap.forEach(child=>{females.push({_key:child.key,...child.val()});});
-    renderDogs();
-    if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
-  });
-  // 부견
-  onValue(ref(db,'males'), snap=>{
-    males=[];
-    snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
-    renderDogs();
-  });
-  // 교배
-  onValue(ref(db,'breeding'), snap=>{
-    breedingRecords=[];
-    snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
-    if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
-  });
-  // 출산
-  onValue(ref(db,'litters'), snap=>{
-    litters=[];
-    snap.forEach(child=>{litters.push({_key:child.key,...child.val()});});
-    if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
-    checkVaxAlerts();
-  });
-  // 이동
-  onValue(ref(db,'moveLog'), snap=>{
-    moveLog=[];
-    snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
-    if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
-  });
+  onValue(ref(db,'females'),snap=>{females=[];snap.forEach(c=>{females.push({_key:c.key,...c.val()});});renderDogs();});
+  onValue(ref(db,'males'),snap=>{males=[];snap.forEach(c=>{males.push({_key:c.key,...c.val()});});renderDogs();});
+  onValue(ref(db,'breeding'),snap=>{breedingRecords=[];snap.forEach(c=>{breedingRecords.push({_key:c.key,...c.val()});});if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();});
+  onValue(ref(db,'litters'),snap=>{litters=[];snap.forEach(c=>{litters.push({_key:c.key,...c.val()});});if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();checkVaxAlerts();});
+  onValue(ref(db,'moveLog'),snap=>{moveLog=[];snap.forEach(c=>{moveLog.unshift({_key:c.key,...c.val()});});if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();});
 }
 
-// ═══════════════════════════════════════
-//  초기 로드
-// ═══════════════════════════════════════
 async function init(){
   try{
     startListeners();
-    // 첫 로드 완료 대기 (females 기준)
-    await new Promise(resolve=>{
-      const unsub=onValue(ref(db,'females'),()=>{ resolve(); },{ onlyOnce:true });
-    });
+    await new Promise(resolve=>{onValue(ref(db,'females'),()=>resolve(),{onlyOnce:true});});
     document.getElementById('loading-screen').style.display='none';
     renderDogs();
   }catch(e){
@@ -489,23 +509,17 @@ async function init(){
   }
 }
 
-// ═══════════════════════════════════════
-//  탭
-// ═══════════════════════════════════════
+// ── 탭 ──
 window.showTab=function(tab){
-  ['dogs','kennels','breeding','puppies','move'].forEach(t=>
-    document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
-  document.querySelectorAll('.tab').forEach((el,i)=>
-    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move'][i]===tab));
+  ['dogs','kennels','breeding','puppies','move'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['dogs','kennels','breeding','puppies','move'][i]===tab));
   if(tab==='kennels')renderKennels();
   if(tab==='breeding')renderBreeding();
   if(tab==='puppies')renderPuppies();
   if(tab==='move')renderMove();
 };
 
-// ═══════════════════════════════════════
-//  개체 탭
-// ═══════════════════════════════════════
+// ── 개체 탭 ──
 function allDogs(){return[...females,...males];}
 
 function renderDogs(){
@@ -520,17 +534,10 @@ function renderDogs(){
     const soon=dl!==null&&dl<=14&&dl>=0;
     const card=document.createElement('div');
     card.className=`dog-card ${dog.sex}${selectedDog?._key===dog._key?' selected':''}`;
-    const photoEl=dog.photo
-      ?`<img class="dog-photo" src="${dog.photo}" alt="${dog.code}">`
-      :`<div class="dog-photo-placeholder">${dog.sex==='female'?'🐕‍🦺':'🐕'}</div>`;
-    card.innerHTML=`${photoEl}
-      <button class="edit-btn">✏️</button>
-      ${soon?`<div class="due-badge">D-${dl}</div>`:
-        (dog.dueDate&&dl>=0?`<div class="pregnant-badge">임신중</div>`:'')}
-      <div class="dog-card-body">
-        <div class="code">${dog.code}</div>
-        <div class="kennel-tag">${dog.kennel}</div>
-      </div>`;
+    const photoEl=dog.photo?`<img class="dog-photo" src="${dog.photo}" alt="${dog.code}">`:`<div class="dog-photo-placeholder">${dog.sex==='female'?'🐕‍🦺':'🐕'}</div>`;
+    card.innerHTML=`${photoEl}<button class="edit-btn">✏️</button>
+      ${soon?`<div class="due-badge">D-${dl}</div>`:(dog.dueDate&&dl>=0?`<div class="pregnant-badge">임신중</div>`:'')}
+      <div class="dog-card-body"><div class="code">${dog.code}</div><div class="kennel-tag">${dog.kennel}</div></div>`;
     card.querySelector('.edit-btn').addEventListener('click',e=>{e.stopPropagation();openEditDog(dog._key);});
     card.addEventListener('click',()=>selectDog(dog._key));
     grid.appendChild(card);
@@ -538,19 +545,13 @@ function renderDogs(){
 }
 
 function selectDog(key){
-  const dog=allDogs().find(d=>d._key===key);
-  if(!dog)return;
-  selectedDog=dog;
-  renderDogs();
-  const panel=document.getElementById('dog-detail');
-  panel.classList.add('show');
-  const age=Math.floor((new Date()-new Date(dog.birth))/86400000/365.25);
+  const dog=allDogs().find(d=>d._key===key);if(!dog)return;
+  selectedDog=dog; renderDogs();
+  const panel=document.getElementById('dog-detail');panel.classList.add('show');
+  const age=dog.birth?Math.floor((new Date()-new Date(dog.birth))/86400000/365.25):null;
   const dl=dog.dueDate?daysFrom(dog.dueDate):null;
-  const dueTxt=dog.dueDate?(dl<0?`출산완료 (${fmtDate(dog.dueDate)})`:
-    `${fmtDate(dog.dueDate)} (D-${dl})`):'-';
-  const photoEl=dog.photo
-    ?`<img src="${dog.photo}" style="width:70px;height:70px;object-fit:cover;border-radius:10px;">`
-    :`<div style="font-size:2.6rem;">${dog.sex==='female'?'🐕‍🦺':'🐕'}</div>`;
+  const dueTxt=dog.dueDate?(dl<0?`출산완료 (${fmtDate(dog.dueDate)})`:` ${fmtDate(dog.dueDate)} (D-${dl})`):'-';
+  const photoEl=dog.photo?`<img src="${dog.photo}" style="width:70px;height:70px;object-fit:cover;border-radius:10px;">`:`<div style="font-size:2.6rem;">${dog.sex==='female'?'🐕‍🦺':'🐕'}</div>`;
   panel.innerHTML=`
     <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;">
       <div>${photoEl}</div>
@@ -559,8 +560,8 @@ function selectDog(key){
     </div>
     <div class="info-row">
       <div class="info-item"><div class="label">현재 견사</div><div class="value">${dog.kennel}</div></div>
-      <div class="info-item"><div class="label">생년월일</div><div class="value">${fmtDate(dog.birth)}</div></div>
-      <div class="info-item"><div class="label">나이</div><div class="value">약 ${age}세</div></div>
+      ${dog.birth?`<div class="info-item"><div class="label">생년월일</div><div class="value">${fmtDate(dog.birth)}</div></div>`:''}
+      ${age!==null?`<div class="info-item"><div class="label">나이</div><div class="value">약 ${age}세</div></div>`:''}
       ${dog.sex==='female'?`
       <div class="info-item"><div class="label">교배일</div><div class="value">${fmtDate(dog.breeding)||'-'}</div></div>
       <div class="info-item"><div class="label">교배 상대</div><div class="value">${dog.mateCode||'-'}</div></div>
@@ -569,30 +570,41 @@ function selectDog(key){
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-// ═══════════════════════════════════════
-//  개체 추가/편집 모달
-// ═══════════════════════════════════════
+// ── 개체 추가/편집 모달 ──
 window.openAddDog=function(sex){
   dogModalMode='add'; dogEditCode=null; dogPendingPhoto=null; dogSelectedSex=sex;
   document.getElementById('dog-modal-title').textContent=sex==='female'?'🐕‍🦺 모견 추가':'🐕 부견 추가';
   document.getElementById('dm-code').value='';
-  document.getElementById('dm-birth').value=today();
+  document.getElementById('dm-birth').value='';
   document.getElementById('dm-kennel').innerHTML=KENNELS.map(k=>`<option>${k}</option>`).join('');
-  resetPhotoWrap(null);
-  selectSex(sex);
+  // 삭제 버튼 숨김 (추가 모드)
+  const delBtn=document.getElementById('dm-delete-btn');if(delBtn)delBtn.remove();
+  resetPhotoWrap(null); selectSex(sex);
   document.getElementById('dog-modal').classList.add('open');
 };
 
 window.openEditDog=function(key){
-  const dog=allDogs().find(d=>d._key===key);
-  if(!dog)return;
+  const dog=allDogs().find(d=>d._key===key);if(!dog)return;
   dogModalMode='edit'; dogEditCode=key; dogPendingPhoto=null; dogSelectedSex=dog.sex;
   document.getElementById('dog-modal-title').textContent=`${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code} 수정`;
   document.getElementById('dm-code').value=dog.code;
-  document.getElementById('dm-birth').value=dog.birth;
+  document.getElementById('dm-birth').value=dog.birth||'';
   document.getElementById('dm-kennel').innerHTML=KENNELS.map(k=>`<option${k===dog.kennel?' selected':''}>${k}</option>`).join('');
-  resetPhotoWrap(dog.photo||null);
-  selectSex(dog.sex);
+  resetPhotoWrap(dog.photo||null); selectSex(dog.sex);
+  // 삭제 버튼 추가
+  const actions=document.getElementById('dm-actions');
+  let delBtn=document.getElementById('dm-delete-btn');
+  if(!delBtn){
+    delBtn=document.createElement('button');
+    delBtn.id='dm-delete-btn';
+    delBtn.className='btn btn-danger btn-sm';
+    delBtn.textContent='🗑️ 삭제';
+    delBtn.style.cssText='flex:none;padding:12px 16px;';
+    delBtn.onclick=()=>deleteDog(key,dog.sex,dog.code);
+    actions.insertBefore(delBtn,actions.firstChild);
+  } else {
+    delBtn.onclick=()=>deleteDog(key,dog.sex,dog.code);
+  }
   document.getElementById('dog-modal').classList.add('open');
 };
 
@@ -604,70 +616,72 @@ window.selectSex=function(sex){
 
 window.handleDogModalOverlay=function(e){if(e.target===document.getElementById('dog-modal'))closeDogModal();};
 window.closeDogModal=function(){document.getElementById('dog-modal').classList.remove('open');};
-
 window.handleDogPhoto=function(e){
   const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=ev=>{dogPendingPhoto=ev.target.result;setPhotoPreview(dogPendingPhoto);};
-  r.readAsDataURL(file);
+  const r=new FileReader();r.onload=ev=>{dogPendingPhoto=ev.target.result;setPhotoPreview('dm-photo-wrap','dm-hint','dm-overlay',dogPendingPhoto);};r.readAsDataURL(file);
 };
 
 window.saveDog=async function(){
   const code=document.getElementById('dm-code').value.trim();
   const kennel=document.getElementById('dm-kennel').value;
-  const birth=document.getElementById('dm-birth').value;
+  const birth=document.getElementById('dm-birth').value||null;
   if(!code){showToast('번호를 입력해주세요');return;}
-  if(!birth){showToast('생년월일을 입력해주세요');return;}
   const saveBtn=document.getElementById('dm-save-btn');
-  saveBtn.textContent='저장 중...'; saveBtn.disabled=true;
+  saveBtn.textContent='저장 중...';saveBtn.disabled=true;
   try{
     if(dogModalMode==='add'){
       if(allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-      const newDog={code,sex:dogSelectedSex,kennel,birth,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null};
-      const path=dogSelectedSex==='female'?'females':'males';
-      await fbPush(path,newDog);
+      await fbPush(dogSelectedSex==='female'?'females':'males',{code,sex:dogSelectedSex,kennel,birth,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null});
       showToast(`✅ ${code} 추가 완료!`);
     } else {
-      const dog=allDogs().find(d=>d._key===dogEditCode);
-      if(!dog)return;
+      const dog=allDogs().find(d=>d._key===dogEditCode);if(!dog)return;
       if(code!==dog.code&&allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-      const path=dog.sex==='female'?'females':'males';
       const updates={code,kennel,birth};
       if(dogPendingPhoto!==null)updates.photo=dogPendingPhoto;
-      await fbUpdate(`${path}/${dogEditCode}`,updates);
+      await fbUpdate(`${dog.sex==='female'?'females':'males'}/${dogEditCode}`,updates);
       showToast(`✅ ${dog.code} 수정 완료!`);
     }
     closeDogModal();
-  } finally {saveBtn.textContent='✅ 저장'; saveBtn.disabled=false;}
+  } finally{saveBtn.textContent='✅ 저장';saveBtn.disabled=false;}
 };
 
-// ═══════════════════════════════════════
-//  견사 탭
-// ═══════════════════════════════════════
+async function deleteDog(key,sex,code){
+  if(!confirm(`${code}를 정말 삭제할까요?\n교배 기록은 남아있게 됩니다.`))return;
+  await fbRemove(`${sex==='female'?'females':'males'}/${key}`);
+  if(selectedDog?._key===key){selectedDog=null;document.getElementById('dog-detail').classList.remove('show');}
+  closeDogModal();
+  showToast(`🗑️ ${code} 삭제됐어요`);
+}
+
+// ── 견사 탭 ──
 function renderKennels(){
-  const grid=document.getElementById('kennel-grid');grid.innerHTML='';
-  KENNELS.forEach(k=>{
-    const dogs=allDogs().filter(d=>d.kennel===k);
-    const box=document.createElement('div');box.className='kennel-box';
-    box.innerHTML=`<div class="kname">🏠 ${k}</div>
-      ${dogs.length===0?'<div class="kennel-empty">비어있음</div>':
-        dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${d.code}</span>`).join('')}`;
-    box.onclick=()=>{if(dogs.length){selectDog(dogs[0]._key);showTab('dogs');}};
-    grid.appendChild(box);
+  const container=document.getElementById('kennel-all');container.innerHTML='';
+  const allD=allDogs();
+  KENNEL_GROUPS.forEach(group=>{
+    const wrap=document.createElement('div');wrap.className='kennel-group';
+    wrap.innerHTML=`<div class="kennel-group-title">${group.label}</div>`;
+    const grid=document.createElement('div');grid.className='kennel-grid';
+    group.kennels.forEach(k=>{
+      const dogs=allD.filter(d=>d.kennel===k);
+      const box=document.createElement('div');box.className='kennel-box';
+      box.innerHTML=`<div class="kname">${k}</div>
+        ${dogs.length===0?'<div class="kennel-empty">비어있음</div>':
+          dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${d.code}</span>`).join('')}`;
+      box.onclick=()=>{if(dogs.length){selectDog(dogs[0]._key);showTab('dogs');}};
+      grid.appendChild(box);
+    });
+    wrap.appendChild(grid);
+    container.appendChild(wrap);
   });
 }
 
-// ═══════════════════════════════════════
-//  번식 탭
-// ═══════════════════════════════════════
+// ── 번식 탭 ──
 function renderBreeding(){
   const list=document.getElementById('breeding-list');list.innerHTML='';
   document.getElementById('b-female').innerHTML=females.map(f=>`<option value="${f._key}">${f.code} (${f.kennel})</option>`).join('');
   document.getElementById('b-male').innerHTML=males.map(m=>`<option value="${m._key}">${m.code} (${m.kennel})</option>`).join('');
   document.getElementById('b-date').value=today();
-  if(!breedingRecords.length){
-    list.innerHTML='<div style="color:#bbb;text-align:center;padding:20px;">등록된 교배 기록이 없습니다</div>';return;
-  }
+  if(!breedingRecords.length){list.innerHTML='<div style="color:#bbb;text-align:center;padding:20px;">등록된 교배 기록이 없습니다</div>';return;}
   const sorted=[...breedingRecords].sort((a,z)=>new Date(a.dueDate)-new Date(z.dueDate));
   sorted.forEach(b=>{
     const dl=daysFrom(b.dueDate);
@@ -676,34 +690,20 @@ function renderBreeding(){
     const photos=b.photos?Object.values(b.photos):[];
     const card=document.createElement('div');
     card.className=`breeding-card ${soon?'due-soon':''}${isOpen?' bc-open':''}`;
-    const thumbHtml=photos.slice(0,4).map(p=>`<img class="bc-thumb" src="${p.src}">`).join('')+
-      (photos.length>4?`<div class="bc-thumb-more">+${photos.length-4}</div>`:'');
+    const thumbHtml=photos.slice(0,4).map(p=>`<img class="bc-thumb" src="${p.src}">`).join('')+(photos.length>4?`<div class="bc-thumb-more">+${photos.length-4}</div>`:'');
     card.innerHTML=`<div class="bc-body">
-        <div class="bc-top">
-          <div class="bc-title">🐕‍🦺 ${b.femaleCode} × 🐕 ${b.maleCode}</div>
-          <div class="bc-days">${dl<0?'출산완료':`D-${dl}`}</div>
-        </div>
-        <div class="bc-info">교배일: ${fmtDate(b.matingDate)} &nbsp;|&nbsp; 출산 예정: ${fmtDate(b.dueDate)}</div>
-        ${photos.length?`<div class="bc-thumb-row">${thumbHtml}</div>`:''}
-      </div>`;
+      <div class="bc-top"><div class="bc-title">🐕‍🦺 ${b.femaleCode} × 🐕 ${b.maleCode}</div><div class="bc-days">${dl<0?'출산완료':`D-${dl}`}</div></div>
+      <div class="bc-info">교배일: ${fmtDate(b.matingDate)} &nbsp;|&nbsp; 출산 예정: ${fmtDate(b.dueDate)}</div>
+      ${photos.length?`<div class="bc-thumb-row">${thumbHtml}</div>`:''}
+    </div>`;
     card.addEventListener('click',()=>toggleBreedingDetail(b._key));
     list.appendChild(card);
     if(isOpen){
-      const detail=document.createElement('div');
-      detail.className='breeding-detail show';
+      const detail=document.createElement('div');detail.className='breeding-detail show';
       const photoKeys=b.photos?Object.keys(b.photos):[];
-      const photoGrid=photoKeys.map(pk=>{
-        const p=b.photos[pk];
-        return`<div class="bd-photo-cell">
-          <img src="${p.src}" onclick="openLightbox('${p.src}','${p.label||''}')">
-          <div class="bd-photo-label">${p.label||''}</div>
-          <button class="bd-photo-del" onclick="deleteBreedingPhoto('${b._key}','${pk}')">✕</button>
-        </div>`;}).join('');
+      const photoGrid=photoKeys.map(pk=>{const p=b.photos[pk];return`<div class="bd-photo-cell"><img src="${p.src}" onclick="openLightbox('${p.src}','${p.label||''}')"><div class="bd-photo-label">${p.label||''}</div><button class="bd-photo-del" onclick="deleteBreedingPhoto('${b._key}','${pk}')">✕</button></div>`;}).join('');
       detail.innerHTML=`
-        <div class="bd-header">
-          <h3>🌸 ${b.femaleCode} × ${b.maleCode} 상세</h3>
-          <button class="bd-close" onclick="toggleBreedingDetail('${b._key}')">✕</button>
-        </div>
+        <div class="bd-header"><h3>🌸 ${b.femaleCode} × ${b.maleCode} 상세</h3><button class="bd-close" onclick="toggleBreedingDetail('${b._key}')">✕</button></div>
         <div class="bd-info-strip">
           <div class="bd-info-cell"><div class="lbl">교배일</div><div class="val">${fmtDate(b.matingDate)}</div></div>
           <div class="bd-info-cell"><div class="lbl">출산 예정일</div><div class="val">${fmtDate(b.dueDate)}</div></div>
@@ -711,16 +711,13 @@ function renderBreeding(){
         </div>
         <div class="bd-photos-section">
           <div class="bd-photos-title">📷 사진 기록 <span class="bd-photo-count">${photos.length}장</span></div>
-          <div class="bd-photo-grid">
-            ${photoGrid}
-            <div class="bd-photo-add-cell">
-              <div class="ai">📷</div><div class="at">사진 추가</div>
+          <div class="bd-photo-grid">${photoGrid}
+            <div class="bd-photo-add-cell"><div class="ai">📷</div><div class="at">사진 추가</div>
               <input type="file" accept="image/*" multiple onchange="addBreedingPhotos(event,'${b._key}','${b.matingDate}')">
             </div>
           </div>
         </div>
-        <div class="bd-memo">
-          <div class="bd-memo-lbl">📝 메모</div>
+        <div class="bd-memo"><div class="bd-memo-lbl">📝 메모</div>
           <textarea placeholder="교배 관련 메모" onchange="saveBreedingMemo('${b._key}',this.value)">${b.memo||''}</textarea>
         </div>`;
       list.appendChild(detail);
@@ -728,45 +725,20 @@ function renderBreeding(){
   });
 }
 
-window.toggleBreedingDetail=function(key){
-  openBreedingIdx=openBreedingIdx===key?null:key;
-  renderBreeding();
-  setTimeout(()=>{const p=document.querySelector('.breeding-detail.show');if(p)p.scrollIntoView({behavior:'smooth',block:'nearest'});},50);
-};
-
+window.toggleBreedingDetail=function(key){openBreedingIdx=openBreedingIdx===key?null:key;renderBreeding();setTimeout(()=>{const p=document.querySelector('.breeding-detail.show');if(p)p.scrollIntoView({behavior:'smooth',block:'nearest'});},50);};
 window.addBreedingPhotos=async function(e,bKey,matingDate){
   const files=Array.from(e.target.files);if(!files.length)return;
-  let loaded=0;
-  for(const file of files){
-    await new Promise(resolve=>{
-      const r=new FileReader();
-      r.onload=async ev=>{
-        const elapsed=Math.abs(daysFrom(matingDate));
-        await fbPush(`breeding/${bKey}/photos`,{src:ev.target.result,label:`D+${elapsed}`});
-        loaded++;resolve();
-      };r.readAsDataURL(file);
-    });
-  }
+  for(const file of files){await new Promise(resolve=>{const r=new FileReader();r.onload=async ev=>{const elapsed=Math.abs(daysFrom(matingDate));await fbPush(`breeding/${bKey}/photos`,{src:ev.target.result,label:`D+${elapsed}`});resolve();};r.readAsDataURL(file);});}
   showToast(`📷 사진 ${files.length}장 추가됐어요!`);
 };
-
-window.deleteBreedingPhoto=async function(bKey,photoKey){
-  if(!confirm('사진을 삭제할까요?'))return;
-  await fbRemove(`breeding/${bKey}/photos/${photoKey}`);
-  showToast('사진을 삭제했어요');
-};
-
-window.saveBreedingMemo=async function(bKey,val){
-  await fbUpdate(`breeding/${bKey}`,{memo:val});
-};
-
+window.deleteBreedingPhoto=async function(bKey,photoKey){if(!confirm('사진을 삭제할까요?'))return;await fbRemove(`breeding/${bKey}/photos/${photoKey}`);showToast('삭제됐어요');};
+window.saveBreedingMemo=async function(bKey,val){await fbUpdate(`breeding/${bKey}`,{memo:val});};
 window.registerBreeding=async function(){
   const fKey=document.getElementById('b-female').value;
   const mKey=document.getElementById('b-male').value;
   const mDate=document.getElementById('b-date').value;
   if(!mDate){showToast('교배일을 입력해주세요');return;}
-  const fDog=females.find(f=>f._key===fKey);
-  const mDog=males.find(m=>m._key===mKey);
+  const fDog=females.find(f=>f._key===fKey);const mDog=males.find(m=>m._key===mKey);
   if(!fDog||!mDog)return;
   const due=addDays(mDate,GESTATION);
   await fbPush('breeding',{femaleCode:fDog.code,maleCode:mDog.code,matingDate:mDate,dueDate:due,memo:''});
@@ -774,27 +746,40 @@ window.registerBreeding=async function(){
   showToast(`✅ ${fDog.code} 출산 예정일: ${fmtDate(due)}`);
 };
 
-// ═══════════════════════════════════════
-//  새끼 탭
-// ═══════════════════════════════════════
+// ── 출산일 B 자동 계산 ──
+window.autoSetBirthB=function(){
+  const a=document.getElementById('lm-birth-a').value;
+  if(a) document.getElementById('lm-birth-b').value=subDays(a,15);
+};
+window.updateTotalCount=function(){
+  const f=parseInt(document.getElementById('lm-female-count').value)||0;
+  const m=parseInt(document.getElementById('lm-male-count').value)||0;
+  document.getElementById('lm-total').textContent=f+m;
+};
+
+// ── 새끼 탭 ──
+const STATUS_LABEL={available:'🟢 분양 전',reserved:'🟡 예약',sold:'🔵 분양 완료',dead:'⚫ 폐사'};
+
 function renderPuppies(){
   const list=document.getElementById('litter-list');list.innerHTML='';
   document.getElementById('lm-female').innerHTML=females.map(f=>`<option value="${f._key}">${f.code}</option>`).join('');
   document.getElementById('lm-male').innerHTML=males.map(m=>`<option value="${m._key}">${m.code}</option>`).join('');
-  if(!litters.length){
-    list.innerHTML='<div style="color:#bbb;text-align:center;padding:30px;">출산 기록이 없어요<br><small>위 버튼을 눌러 추가하세요</small></div>';return;
-  }
+  if(!litters.length){list.innerHTML='<div style="color:#bbb;text-align:center;padding:30px;">출산 기록이 없어요<br><small>위 버튼을 눌러 추가하세요</small></div>';return;}
   litters.forEach(lt=>{
     const card=document.createElement('div');card.className='litter-card';
     function vc(d){if(!d)return'';const n=daysFrom(d);if(n<-1)return'done';if(n===0||n===-1)return'today-due';if(n<0)return'overdue';return'';}
     function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
-    const puppies=lt.puppies?Object.values(lt.puppies):[];
-    const puppyCards=puppies.map((p,pi)=>`
-      <div class="puppy-card">
+    const puppyKeys=lt.puppies?Object.keys(lt.puppies):[];
+    const puppyCards=puppyKeys.map(pk=>{
+      const p=lt.puppies[pk];
+      const st=p.status||'available';
+      const sexLabel=p.sex==='female'?'♀ 암':p.sex==='male'?'♂ 수':'미정';
+      return`<div class="puppy-card" onclick="openPuppyEdit('${lt._key}','${pk}')">
         ${p.photo?`<img class="p-photo" src="${p.photo}">`:`<div class="p-placeholder">🐶</div>`}
-        <div class="p-name">${p.name||`새끼${pi+1}`}</div>
-        <div class="p-sex">${p.sex==='female'?'♀ 암':p.sex==='male'?'♂ 수':'미정'}</div>
-      </div>`).join('');
+        <div class="p-name">${p.name||pk}</div>
+        <div class="p-sex">${sexLabel}</div>
+        <div class="p-status ${st}">${STATUS_LABEL[st]||'분양 전'}</div>
+      </div>`;}).join('');
     card.innerHTML=`
       <div class="litter-header" onclick="toggleLitter(this)">
         <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; ${fmtDate(lt.birthA)}</h3>
@@ -828,8 +813,10 @@ window.toggleLitter=function(header){
 
 window.openAddLitter=function(){
   document.getElementById('lm-birth-a').value=today();
-  document.getElementById('lm-birth-b').value='';
-  document.getElementById('lm-count').value=1;
+  document.getElementById('lm-birth-b').value=subDays(today(),15);
+  document.getElementById('lm-female-count').value=0;
+  document.getElementById('lm-male-count').value=0;
+  document.getElementById('lm-total').textContent=0;
   document.getElementById('litter-modal').classList.add('open');
 };
 window.handleLitterModalOverlay=function(e){if(e.target===document.getElementById('litter-modal'))closeLitterModal();};
@@ -840,56 +827,93 @@ window.saveLitter=async function(){
   const mKey=document.getElementById('lm-male').value;
   const birthA=document.getElementById('lm-birth-a').value;
   const birthB=document.getElementById('lm-birth-b').value||null;
-  const count=parseInt(document.getElementById('lm-count').value)||1;
+  const femaleCount=parseInt(document.getElementById('lm-female-count').value)||0;
+  const maleCount=parseInt(document.getElementById('lm-male-count').value)||0;
+  const count=femaleCount+maleCount;
   if(!birthA){showToast('출산일 A를 입력해주세요');return;}
-  const fDog=females.find(f=>f._key===fKey);
-  const mDog=males.find(m=>m._key===mKey);
+  if(count===0){showToast('강아지 수를 입력해주세요');return;}
+  const fDog=females.find(f=>f._key===fKey);const mDog=males.find(m=>m._key===mKey);
   if(!fDog||!mDog){showToast('모견/부견을 선택해주세요');return;}
-  const litter={
-    femaleCode:fDog.code, maleCode:mDog.code,
-    birthA, birthB, count,
-    vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
-    deworm1:addDays(birthA,14), deworm2:addDays(birthA,28),
-    puppies:Object.fromEntries(Array.from({length:count},(_,i)=>[`p${i+1}`,{name:`새끼${i+1}`,sex:'unknown',photo:null}]))
-  };
+  // 암수에 맞게 새끼 생성
+  const puppies={};
+  let idx=1;
+  for(let i=0;i<femaleCount;i++){puppies[`p${idx}`]={name:`새끼${idx}`,sex:'female',photo:null,status:'available'};idx++;}
+  for(let i=0;i<maleCount;i++){puppies[`p${idx}`]={name:`새끼${idx}`,sex:'male',photo:null,status:'available'};idx++;}
+  const litter={femaleCode:fDog.code,maleCode:mDog.code,birthA,birthB,count,
+    vax1:addDays(birthA,25),vax2:addDays(birthA,35),vax3:addDays(birthA,45),
+    deworm1:addDays(birthA,14),deworm2:addDays(birthA,28),puppies};
   await fbPush('litters',litter);
   closeLitterModal();
-  showToast(`✅ ${fDog.code} 출산 기록 등록됐어요!`);
+  showToast(`✅ ${fDog.code} 출산 기록 등록됐어요! (암${femaleCount} 수${maleCount})`);
 };
 
-// ═══════════════════════════════════════
-//  백신 알림
-// ═══════════════════════════════════════
+// ── 새끼 편집 모달 ──
+window.openPuppyEdit=function(litterKey,puppyKey){
+  const lt=litters.find(l=>l._key===litterKey);if(!lt||!lt.puppies)return;
+  const p=lt.puppies[puppyKey];if(!p)return;
+  puppyEditInfo={litterKey,puppyKey};puppyPendingPhoto=null;
+  puppySelectedSex=p.sex||'unknown';
+  puppySelectedStatus=p.status||'available';
+  document.getElementById('puppy-modal-title').textContent=`${p.name||puppyKey} 수정`;
+  document.getElementById('pm-name').value=p.name||'';
+  resetPhotoWrap2(p.photo||null);
+  selectPuppySex(puppySelectedSex);
+  selectPuppyStatus(puppySelectedStatus);
+  document.getElementById('puppy-modal').classList.add('open');
+};
+window.handlePuppyModalOverlay=function(e){if(e.target===document.getElementById('puppy-modal'))closePuppyModal();};
+window.closePuppyModal=function(){document.getElementById('puppy-modal').classList.remove('open');};
+window.handlePuppyPhoto=function(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();r.onload=ev=>{puppyPendingPhoto=ev.target.result;setPhotoPreview('pm-photo-wrap','pm-hint','pm-overlay',puppyPendingPhoto);};r.readAsDataURL(file);
+};
+window.selectPuppySex=function(sex){
+  puppySelectedSex=sex;
+  document.getElementById('pm-sex-f').classList.toggle('active',sex==='female');
+  document.getElementById('pm-sex-m').classList.toggle('active',sex==='male');
+};
+window.selectPuppyStatus=function(st){
+  puppySelectedStatus=st;
+  ['available','reserved','sold','dead'].forEach(s=>{
+    const btn=document.getElementById('ps-'+s);
+    btn.className='status-opt'+(st===s?` active-${s}`:'');
+  });
+};
+window.savePuppy=async function(){
+  if(!puppyEditInfo)return;
+  const {litterKey,puppyKey}=puppyEditInfo;
+  const name=document.getElementById('pm-name').value.trim();
+  const updates={name:name||puppyKey,sex:puppySelectedSex,status:puppySelectedStatus};
+  if(puppyPendingPhoto!==null)updates.photo=puppyPendingPhoto;
+  await fbUpdate(`litters/${litterKey}/puppies/${puppyKey}`,updates);
+  closePuppyModal();showToast('✅ 새끼 정보 저장됐어요!');
+};
+
+// ── 백신 알림 ──
 function checkVaxAlerts(){
   const alerts=[];
   litters.forEach(lt=>{
-    [{date:lt.vax1,label:`${lt.femaleCode}×${lt.maleCode} 💉1차 백신`},
-     {date:lt.vax2,label:`${lt.femaleCode}×${lt.maleCode} 💉2차 백신`},
-     {date:lt.vax3,label:`${lt.femaleCode}×${lt.maleCode} 💉3차 백신`},
+    [{date:lt.vax1,label:`${lt.femaleCode}×${lt.maleCode} 💉1차`},
+     {date:lt.vax2,label:`${lt.femaleCode}×${lt.maleCode} 💉2차`},
+     {date:lt.vax3,label:`${lt.femaleCode}×${lt.maleCode} 💉3차`},
      {date:lt.deworm1,label:`${lt.femaleCode}×${lt.maleCode} 🪱1차 구충`},
      {date:lt.deworm2,label:`${lt.femaleCode}×${lt.maleCode} 🪱2차 구충`},
     ].forEach(c=>{
-      if(!c.date)return;
-      const d=daysFrom(c.date);
+      if(!c.date)return;const d=daysFrom(c.date);
       if(d===0)alerts.push({...c,type:'today',msg:'오늘이에요!'});
       else if(d===-1)alerts.push({...c,type:'overdue',msg:'어제였어요!'});
       else if(d<0&&d>=-3)alerts.push({...c,type:'overdue',msg:`${Math.abs(d)}일 지났어요`});
     });
   });
   if(!alerts.length)return;
-  const plist=document.getElementById('vax-popup-list');
-  plist.innerHTML=alerts.map(a=>`
-    <div class="vax-item ${a.type}">
-      <div class="vi-icon">${a.label.includes('백신')?'💉':'🪱'}</div>
-      <div class="vi-info"><div class="vi-title">${a.label}</div><div class="vi-date">${fmtDate(a.date)} · ${a.msg}</div></div>
-    </div>`).join('');
+  document.getElementById('vax-popup-list').innerHTML=alerts.map(a=>`
+    <div class="vax-item ${a.type}"><div class="vi-icon">${a.label.includes('백신')||a.label.includes('차')?'💉':'🪱'}</div>
+    <div class="vi-info"><div class="vi-title">${a.label}</div><div class="vi-date">${fmtDate(a.date)} · ${a.msg}</div></div></div>`).join('');
   document.getElementById('vax-popup-overlay').classList.remove('hidden');
 }
 window.closeVaxPopup=function(){document.getElementById('vax-popup-overlay').classList.add('hidden');};
 
-// ═══════════════════════════════════════
-//  이동 탭
-// ═══════════════════════════════════════
+// ── 이동 탭 ──
 function renderMove(){
   document.getElementById('m-dog').innerHTML=allDogs().map(d=>`<option value="${d._key}|${d.sex}">${d.code} (현재: ${d.kennel})</option>`).join('');
   document.getElementById('m-kennel').innerHTML=KENNELS.map(k=>`<option>${k}</option>`).join('');
@@ -897,14 +921,10 @@ function renderMove(){
   renderMoveLog();
 }
 window.moveKennel=async function(){
-  const val=document.getElementById('m-dog').value;
-  const [key,sex]=val.split('|');
-  const to=document.getElementById('m-kennel').value;
-  const date=document.getElementById('m-date').value;
-  const dog=allDogs().find(d=>d._key===key);
-  if(!dog)return;
-  const from=dog.kennel;
-  if(from===to){showToast('같은 견사입니다');return;}
+  const val=document.getElementById('m-dog').value;const [key,sex]=val.split('|');
+  const to=document.getElementById('m-kennel').value;const date=document.getElementById('m-date').value;
+  const dog=allDogs().find(d=>d._key===key);if(!dog)return;
+  const from=dog.kennel;if(from===to){showToast('같은 견사입니다');return;}
   await fbPush('moveLog',{code:dog.code,sex:dog.sex,from,to,date});
   await fbUpdate(`${sex==='female'?'females':'males'}/${key}`,{kennel:to});
   showToast(`✅ ${dog.code}: ${from} → ${to} 이동 완료`);
@@ -913,56 +933,38 @@ function renderMoveLog(){
   const log=document.getElementById('move-log');
   if(!moveLog.length){log.innerHTML='<div style="color:#bbb;text-align:center;padding:14px;">이동 기록이 없습니다</div>';return;}
   log.innerHTML=moveLog.slice(0,30).map(m=>`
-    <div class="move-item">
-      <div class="mi-code ${m.sex==='female'?'f':'m'}">${m.code}</div>
-      <div class="mi-route">${m.from} → ${m.to}</div>
-      <div class="mi-date">${fmtDate(m.date)}</div>
-    </div>`).join('');
+    <div class="move-item"><div class="mi-code ${m.sex==='female'?'f':'m'}">${m.code}</div>
+    <div class="mi-route">${m.from} → ${m.to}</div><div class="mi-date">${fmtDate(m.date)}</div></div>`).join('');
 }
 
-// ═══════════════════════════════════════
-//  라이트박스
-// ═══════════════════════════════════════
-window.openLightbox=function(src,lbl=''){
-  document.getElementById('lightbox-img').src=src;
-  document.getElementById('lightbox-lbl').textContent=lbl;
-  document.getElementById('lightbox').classList.add('open');
-};
+// ── 라이트박스 ──
+window.openLightbox=function(src,lbl=''){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox-lbl').textContent=lbl;document.getElementById('lightbox').classList.add('open');};
 window.closeLightbox=function(){document.getElementById('lightbox').classList.remove('open');};
 
-// ═══════════════════════════════════════
-//  사진 헬퍼
-// ═══════════════════════════════════════
+// ── 사진 헬퍼 ──
 function resetPhotoWrap(existingSrc){
   document.getElementById('dm-photo-input').value='';
   const wrap=document.getElementById('dm-photo-wrap');
   let prev=wrap.querySelector('.pu-preview');if(prev)prev.remove();
-  const hint=document.getElementById('dm-hint');
-  const overlay=document.getElementById('dm-overlay');
-  if(existingSrc){
-    const img=document.createElement('img');img.className='pu-preview';img.src=existingSrc;
-    wrap.appendChild(img);hint.style.display='none';overlay.style.display='block';
-  }else{hint.style.display='flex';overlay.style.display='none';}
+  if(existingSrc){const img=document.createElement('img');img.className='pu-preview';img.src=existingSrc;wrap.appendChild(img);document.getElementById('dm-hint').style.display='none';document.getElementById('dm-overlay').style.display='block';}
+  else{document.getElementById('dm-hint').style.display='flex';document.getElementById('dm-overlay').style.display='none';}
 }
-function setPhotoPreview(src){
-  const wrap=document.getElementById('dm-photo-wrap');
-  let img=wrap.querySelector('.pu-preview');
+function resetPhotoWrap2(existingSrc){
+  document.getElementById('pm-photo-input').value='';
+  const wrap=document.getElementById('pm-photo-wrap');
+  let prev=wrap.querySelector('.pu-preview');if(prev)prev.remove();
+  if(existingSrc){const img=document.createElement('img');img.className='pu-preview';img.src=existingSrc;wrap.appendChild(img);document.getElementById('pm-hint').style.display='none';document.getElementById('pm-overlay').style.display='block';}
+  else{document.getElementById('pm-hint').style.display='flex';document.getElementById('pm-overlay').style.display='none';}
+}
+function setPhotoPreview(wrapId,hintId,overlayId,src){
+  const wrap=document.getElementById(wrapId);let img=wrap.querySelector('.pu-preview');
   if(!img){img=document.createElement('img');img.className='pu-preview';wrap.appendChild(img);}
-  img.src=src;
-  document.getElementById('dm-hint').style.display='none';
-  document.getElementById('dm-overlay').style.display='block';
+  img.src=src;document.getElementById(hintId).style.display='none';document.getElementById(overlayId).style.display='block';
 }
 
-// ═══════════════════════════════════════
-//  토스트
-// ═══════════════════════════════════════
-window.showToast=function(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2800);
-};
+// ── 토스트 ──
+window.showToast=function(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);};
 
-// ── 시작 ──
 init();
 </script>
 </body>
