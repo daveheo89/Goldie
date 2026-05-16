@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>골디 쉼터 — 분양 계약서</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
@@ -13,6 +12,7 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--dark);min-height:100vh;}
 
+/* 헤더 */
 .hd{background:linear-gradient(135deg,#3E2005,#1a0a00);padding:14px 18px;position:sticky;top:0;z-index:50;}
 .hd-inner{display:flex;align-items:center;justify-content:space-between;}
 .hd-logo{color:var(--gold2);font-size:1rem;font-weight:700;}
@@ -21,6 +21,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 .prog-bar{height:4px;background:rgba(255,255,255,.1);}
 .prog-fill{height:100%;background:var(--gold2);transition:width .4s;}
 
+/* 스텝 */
 .steps{display:flex;align-items:center;justify-content:center;padding:14px 18px 8px;}
 .step-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
 .step-c{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;border:2px solid var(--lgray);color:var(--lgray);background:#fff;transition:.3s;}
@@ -34,10 +35,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 .wrap{max-width:700px;margin:0 auto;padding:14px;}
 .panel{display:none;}.panel.on{display:block;}
 
+/* 입력 폼 */
 .sec{margin-bottom:14px;}
 .sec-hd{font-size:.78rem;font-weight:700;color:var(--gold2);background:var(--dark);padding:8px 13px;border-radius:8px 8px 0 0;}
 .sec-bd{background:#fff;border:1px solid var(--lgray);border-top:none;border-radius:0 0 8px 8px;padding:14px;display:flex;flex-direction:column;gap:11px;}
-
 .field{display:flex;flex-direction:column;gap:4px;}
 .field label{font-size:.72rem;font-weight:700;color:var(--dark);}
 .field label span{color:var(--red);}
@@ -45,10 +46,70 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 .field input:focus,.field select:focus{border-color:var(--gold);background:#fff;}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-/* PDF 미리보기 iframe */
-.pdf-viewer{width:100%;height:70vh;border:none;border-radius:0 0 8px 8px;background:#555;}
-.pdf-loading{text-align:center;padding:40px 20px;color:var(--gray);font-size:.82rem;line-height:1.8;}
-.pdf-loading .spinner{width:36px;height:36px;border:3px solid rgba(200,134,10,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+/* ══ 계약서 HTML 양식 ══ */
+.contract-wrap{background:#fff;border:1px solid var(--lgray);border-radius:0 0 8px 8px;padding:0;}
+
+.c-paper{background:#fff;padding:16px 18px;font-size:.75rem;line-height:1.6;color:#222;}
+
+/* 계약서 헤더 */
+.c-logo-area{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.c-logo{font-size:1.1rem;font-weight:700;color:var(--dark);}
+.c-logo-sub{font-size:.62rem;color:var(--gray);text-align:right;line-height:1.5;}
+.c-divider{border:none;border-top:2px solid var(--gold);margin:8px 0;}
+.c-title{text-align:center;font-size:.95rem;font-weight:700;color:var(--dark);margin:8px 0 3px;}
+.c-title-sub{text-align:center;font-size:.63rem;color:var(--gray);margin-bottom:12px;}
+
+/* 섹션 헤더 */
+.c-sec-hd{background:var(--dark);color:var(--gold2);font-size:.72rem;font-weight:700;padding:5px 8px;margin-bottom:0;}
+
+/* 테이블 */
+.c-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:.72rem;}
+.c-table td{border:.5px solid var(--lgray);padding:5px 7px;vertical-align:middle;}
+.c-table .lbl{background:var(--beige);font-weight:700;color:var(--dark);white-space:nowrap;width:28%;}
+.c-table .val{color:#222;}
+.c-table .val.fill{color:var(--dark);font-weight:600;}
+.c-table th{background:var(--dark);color:#fff;padding:5px 7px;text-align:center;font-size:.68rem;}
+
+/* 구충 테이블 */
+.vac-t{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:.68rem;}
+.vac-t th{background:var(--dark);color:#fff;padding:4px;text-align:center;}
+.vac-t td{border:.5px solid var(--lgray);padding:4px 6px;text-align:center;}
+.vac-t td:first-child{background:var(--beige);font-weight:700;text-align:left;padding-left:8px;}
+
+/* 보증 조항 */
+.clause{margin-bottom:5px;border:.5px solid var(--lgray);border-radius:3px;overflow:hidden;}
+.clause-hd{display:flex;align-items:stretch;}
+.clause-num{background:var(--dark);color:#fff;font-size:.68rem;font-weight:700;padding:4px 6px;min-width:22px;text-align:center;display:flex;align-items:center;justify-content:center;}
+.clause-num.warn{background:var(--red);}
+.clause-ttl{padding:4px 8px;font-size:.69rem;font-weight:700;color:var(--dark);background:#eef3ff;flex:1;display:flex;align-items:center;}
+.clause-ttl.warn{background:#fee8e6;color:var(--red);}
+.clause-body{padding:5px 8px 5px 12px;font-size:.67rem;color:#333;line-height:1.6;background:var(--bg2);}
+.clause-body.warn{background:#fef9f9;}
+
+/* 분쟁 테이블 */
+.disp-t{width:100%;border-collapse:collapse;font-size:.67rem;margin-bottom:10px;}
+.disp-t th{background:var(--dark);color:#fff;padding:4px 6px;text-align:center;}
+.disp-t td{border:.5px solid var(--lgray);padding:4px 6px;}
+.disp-t td:first-child,.disp-t td:nth-child(2){background:var(--beige);font-weight:700;text-align:center;white-space:nowrap;}
+
+/* 구매자 정보 */
+.buyer-table{width:100%;border-collapse:collapse;font-size:.72rem;margin-bottom:10px;}
+.buyer-table td{border:.5px solid var(--lgray);padding:6px 8px;vertical-align:middle;}
+.buyer-table .lbl{background:var(--beige);font-weight:700;color:var(--dark);width:20%;}
+.buyer-table .val{color:#222;}
+.buyer-table .val.fill{color:var(--dark);font-weight:600;}
+
+/* 서명란 */
+.sign-area{border-top:1px solid var(--lgray);margin-top:10px;padding-top:8px;}
+.sign-area-txt{text-align:center;font-size:.67rem;color:var(--gray);margin-bottom:10px;}
+.sign-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.sign-col{text-align:center;font-size:.65rem;color:#333;padding:6px 4px;border:1px dashed var(--lgray);border-radius:4px;}
+.sign-img-wrap{border:1px dashed var(--lgray);border-radius:4px;padding:4px;text-align:center;background:var(--bg2);}
+.sign-img-wrap img{max-height:36px;max-width:100%;}
+
+/* 법적 고지 */
+.legal-box{background:#f2f2f2;border-radius:3px;padding:7px 10px;font-size:.61rem;color:#555;line-height:1.6;margin-top:8px;}
+.c-footer{text-align:center;font-size:.62rem;color:var(--gray);margin-top:8px;padding-top:6px;border-top:1.5px solid var(--gold);}
 
 /* 동의 체크 */
 .check-list{display:flex;flex-direction:column;gap:7px;}
@@ -59,17 +120,19 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 .check-item.checked .check-box::after{content:'✓';}
 .check-text{font-size:.74rem;line-height:1.5;color:var(--dark);}
 
-/* 서명 */
+/* 서명 캔버스 */
 .sign-wrap{position:relative;border:2px solid var(--lgray);border-radius:10px;overflow:hidden;background:#fff;}
 .sign-canvas{display:block;width:100%;touch-action:none;}
 .sign-ph{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.8rem;color:var(--lgray);pointer-events:none;text-align:center;line-height:1.6;}
 .sign-clear{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.07);border:none;border-radius:6px;padding:5px 10px;font-size:.67rem;color:var(--gray);cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
 
+/* 버튼 */
 .btn-wrap{padding:14px;}
 .btn-main{width:100%;padding:15px;background:linear-gradient(135deg,var(--dark),#2a1200);color:var(--gold2);border:none;border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(62,32,5,.22);transition:.15s;}
 .btn-main:active{transform:scale(.98);}
 .btn-sub{width:100%;padding:12px;background:#fff;color:var(--dark);border:1.5px solid var(--lgray);border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:8px;}
 
+/* 완료 */
 .done-screen{display:none;flex-direction:column;align-items:center;padding:32px 20px;text-align:center;min-height:70vh;justify-content:center;}
 .done-icon{font-size:3.5rem;margin-bottom:14px;}
 .done-title{font-size:1.25rem;font-weight:700;color:var(--dark);margin-bottom:8px;}
@@ -77,19 +140,26 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 .btn-dl{width:100%;padding:14px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 12px rgba(200,134,10,.28);}
 .btn-guide{width:100%;padding:14px;background:var(--dark);color:var(--gold2);border:none;border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;}
 
+/* 오류 */
 .error-screen{display:none;flex-direction:column;align-items:center;padding:40px 20px;text-align:center;min-height:60vh;justify-content:center;}
 .error-icon{font-size:3rem;margin-bottom:14px;}
 .error-title{font-size:1.1rem;font-weight:700;color:var(--red);margin-bottom:8px;}
 .error-sub{font-size:.82rem;color:var(--gray);line-height:1.7;}
 
+/* 로딩 */
 .lov{display:none;position:fixed;inset:0;background:rgba(62,32,5,.75);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
 .lov.show{display:flex;}
 .spinner{width:42px;height:42px;border:3px solid rgba(245,200,66,.3);border-top-color:var(--gold2);border-radius:50%;animation:spin .8s linear infinite;}
 .ltxt{color:var(--gold2);font-size:.85rem;font-weight:700;}
 @keyframes spin{to{transform:rotate(360deg);}}
-
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--dark);color:var(--gold2);padding:10px 20px;border-radius:20px;font-size:.76rem;font-weight:700;transition:transform .3s;z-index:1000;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
+
+@media print {
+  .hd,.steps,.prog-bar,.btn-wrap,.check-list,.sec-hd,.sign-wrap { display:none !important; }
+  .c-paper { padding:10mm; }
+  body { background:#fff; }
+}
 </style>
 </head>
 <body>
@@ -115,11 +185,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
   <div class="step-item"><div class="step-c" id="sc3">4</div><div class="step-lbl" id="sl3">완료</div></div>
 </div>
 
-<!-- 오류: 이미 계약됨 -->
+<!-- 오류 -->
 <div class="error-screen" id="errScreen">
   <div class="error-icon">⚠️</div>
   <div class="error-title" id="errTitle">이미 계약 완료된 강아지입니다</div>
-  <div class="error-sub" id="errSub">해당 강아지는 이미 분양 계약이 완료되었습니다.<br>골디 쉼터로 문의해 주세요.<br><br>📞 010-6508-5901</div>
+  <div class="error-sub" id="errSub">골디 쉼터로 문의해 주세요.<br>📞 010-6508-5901</div>
 </div>
 
 <div id="formMain">
@@ -147,45 +217,159 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 </div>
 </div>
 
-<!-- ══ STEP 2: 계약서 PDF 확인 + 동의 ══ -->
+<!-- ══ STEP 2: 계약서 확인 + 동의 ══ -->
 <div class="panel" id="panel1">
 <div class="wrap">
-  <div class="sec">
-    <div class="sec-hd">📋 분양 계약서 확인</div>
-    <div id="pdfViewerWrap">
-      <div class="pdf-loading" id="pdfLoading">
-        <div class="spinner"></div>
-        계약서를 불러오는 중입니다...<br>
-        <small style="color:var(--lgray);">입력하신 정보가 계약서에 자동으로 채워집니다</small>
-      </div>
-      <iframe id="pdfFrame" class="pdf-viewer" style="display:none;"></iframe>
-    </div>
-  </div>
 
   <div class="sec">
+    <div class="sec-hd">📋 분양 계약서 확인</div>
+    <div class="contract-wrap">
+    <div class="c-paper">
+
+      <!-- 헤더 -->
+      <div class="c-logo-area">
+        <div>
+          <div class="c-logo">🐾 골디 쉼터</div>
+          <div style="font-size:.62rem;color:var(--gray);">Goldi Shelter | 전문 소규모 브리더</div>
+        </div>
+        <div class="c-logo-sub">
+          010-6508-5901 | @iam_7707<br>
+          open.kakao.com/o/sxGtK0ri
+        </div>
+      </div>
+      <hr class="c-divider">
+      <div class="c-title">골든리트리버 분양 계약서</div>
+      <div class="c-title-sub">본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 판매자·구매자 각 1통씩 보관합니다.</div>
+
+      <!-- 1. 판매업자 -->
+      <div class="c-sec-hd">1. 판매업자 정보</div>
+      <table class="c-table">
+        <tr><td class="lbl">업소명</td><td class="val">골디 쉼터 (Goldi Shelter)</td><td class="lbl">생산업 허가번호</td><td class="val">제 4170000-037-2023-0011</td></tr>
+        <tr><td class="lbl">연락처</td><td class="val">010-6508-5901</td><td class="lbl">카카오 상담</td><td class="val">open.kakao.com/o/sxGtK0ri</td></tr>
+      </table>
+
+      <!-- 2. 동물 정보 -->
+      <div class="c-sec-hd">2. 분양 동물 정보 (동물보호법 시행규칙 [별표12] 법정 필수 기재사항)</div>
+      <table class="c-table">
+        <tr><td class="lbl">축종 / 품종</td><td class="val" colspan="3">개 (Canis lupus familiaris) / 골든리트리버 (Golden Retriever)</td></tr>
+        <tr>
+          <td class="lbl">성별</td>
+          <td class="val fill" id="cv-gender">—</td>
+          <td class="lbl">출생일</td>
+          <td class="val fill" id="cv-birth">—</td>
+        </tr>
+        <tr><td class="lbl">색상</td><td class="val">크림빛 황금색</td><td class="lbl">건강상태</td><td class="val">양호</td></tr>
+        <tr><td class="lbl">동물등록번호</td><td class="val" colspan="3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(분양 후 30일 이내 등록 의무)</td></tr>
+        <tr><td class="lbl">판매당시 특징사항</td><td class="val" colspan="3">&nbsp;</td></tr>
+      </table>
+
+      <!-- 3. 구충 -->
+      <div class="c-sec-hd">3. 수의사 구충 기록</div>
+      <table class="vac-t">
+        <tr><th>구분</th><th>1차</th><th>2차</th><th>3차</th><th>4차</th><th>5차</th></tr>
+        <tr><td>종합 구충제</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>
+      <p style="font-size:.63rem;color:var(--gray);margin-bottom:8px;">* 수의사 투여 기록 없음 (&nbsp;&nbsp;&nbsp;)&nbsp;&nbsp;&nbsp; 수의사 치료 기록 없음 (&nbsp;&nbsp;&nbsp;)</p>
+
+      <!-- 4. 판매 조건 -->
+      <div class="c-sec-hd">4. 판매 조건</div>
+      <table class="c-table">
+        <tr>
+          <td class="lbl">판매일</td>
+          <td class="val fill" id="cv-saledate">—</td>
+          <td class="lbl">결제방법</td>
+          <td class="val fill" id="cv-pay">—</td>
+        </tr>
+        <tr>
+          <td class="lbl">판매금액</td>
+          <td class="val fill" id="cv-price" colspan="3">—</td>
+        </tr>
+        <tr>
+          <td class="lbl">이체자 성명</td>
+          <td class="val fill" id="cv-transfer" colspan="3">&nbsp;</td>
+        </tr>
+      </table>
+
+      <!-- 5. 보증 조항 -->
+      <div class="c-sec-hd">5. 품질 보증 및 분쟁 해결 조항</div>
+      <div style="margin-bottom:8px;">
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num">①</div><div class="clause-ttl">잠복기 있는 질병 보증 (분양 후 15일 이내)</div></div>
+          <div class="clause-body">분양 후 15일 이내에 잠복기가 있는 질병(파보장염·코로나장염·홍역 등 바이러스성 전염병)이 발병한 경우, 분양자가 무상으로 회복시켜 30일 이내에 인도해 드립니다. 해당 질병으로 15일 이내 폐사할 경우 동종의 반려동물로 무상 재분양해 드립니다. ※ 파보·코로나·홍역 바이러스성 질병의 이동 시 잠복기는 3~7일 이내입니다.</div>
+        </div>
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num">②</div><div class="clause-ttl">잠복기 없는 질병 — 소비자 귀책사유 (보상 제외)</div></div>
+          <div class="clause-body">잠복기가 있는 전염성 질병 외에, 소비자의 관리 미숙이나 새로운 환경 적응 과정에서 발생한 질병은 소비자의 귀책사유에 해당하므로 보상되지 않습니다. 해당 질병 예시: 호흡기 질환(감기·기관지염·폐렴), 소화기 질환(설사·구토·세균성 장염·스트레스성 장염), 저혈당증, 식욕부진 등. 단, 분양 직후부터 설사·기침 등의 문제가 있었다면 분양 시점으로부터 24시간 이내에 분양자에게 유선 통보하셔야 합니다. 이 경우 15일 이내 폐사 시 무상 재분양해 드립니다.</div>
+        </div>
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num warn">③</div><div class="clause-ttl warn">보상 제외 항목 (소비자 귀책)</div></div>
+          <div class="clause-body warn">다음의 경우 보상에서 제외됩니다.<br>▸ 방치: 설사·기침 등 이상 증상이 있는데 전화 상담도 받지 않고 조치를 취하지 않은 경우<br>▸ 소비자의 과실로 인한 사고 또는 관리 소홀로 인한 경우<br>▸ 분양자의 상호 동의 없이 지출된 동물병원 진료비·치료비·검사비용 (응급상황 포함 어떠한 경우라도 미보상)</div>
+        </div>
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num warn">④</div><div class="clause-ttl warn">교환·환불·파양 불가</div></div>
+          <div class="clause-body warn">반려동물은 물건이 아닌 생명입니다. 분양 후 개인 사정이나 변심 등 반려동물의 생명에 관련되지 않은 이유로는 교환·환불이 절대 불가합니다. 파양은 절대 받지 않습니다.</div>
+        </div>
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num">⑤</div><div class="clause-ttl">분양 후 15일 이후 발생 질병</div></div>
+          <div class="clause-body">분양 후 15일 이후에 발생하는 모든 책임과 의무는 소비자에게 있으며, 분양자는 책임지지 않습니다. 성장기 어린 반려동물의 경우 분양 당시 확인할 수 없는 선천적 결함(간질·심혈관계통·고관절 이상 등), 성견 시 크기·인물·탈장·잠복고환 등 분양 후 15일 이후 발생하는 모든 상황에 대해서는 보상되지 않습니다.</div>
+        </div>
+        <div class="clause">
+          <div class="clause-hd"><div class="clause-num">⑥</div><div class="clause-ttl">중대 질병 발생 시 처리 의무</div></div>
+          <div class="clause-body">분양 후 중대 질병이 발생했을 경우 반드시 분양자에게 반려동물을 인계하여 회복시키도록 합니다. 소비자가 이에 따르지 않을 경우 보상을 거부하는 것으로 판단합니다. 단, 협의 후 개인 치료는 인정됩니다. 보상기간 15일 안에 질병 발생 또는 폐사를 반드시 분양자에게 통보하셔야만 보상받으실 수 있습니다.</div>
+        </div>
+      </div>
+
+      <!-- 6. 분쟁 -->
+      <div class="c-sec-hd">6. 소비자 분쟁해결 기준 (공정거래위원회 고시)</div>
+      <table class="disp-t">
+        <tr><th>구분</th><th>내용</th><th>해결 기준</th></tr>
+        <tr><td>15일 이내</td><td>동물 사망</td><td>동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)</td></tr>
+        <tr><td>15일 이내</td><td>질병 발생</td><td>판매자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
+      </table>
+
+      <!-- 7. 구매자 -->
+      <div class="c-sec-hd">7. 구매자(입양인) 정보</div>
+      <table class="buyer-table">
+        <tr><td class="lbl">성명</td><td class="val fill" id="cv-name">—</td><td class="lbl">연락처</td><td class="val fill" id="cv-phone">—</td></tr>
+        <tr><td class="lbl">주소</td><td class="val fill" id="cv-addr" colspan="3">—</td></tr>
+        <tr><td class="lbl">E-Mail</td><td class="val fill" id="cv-email" colspan="3">—</td></tr>
+      </table>
+
+      <!-- 서명란 -->
+      <div class="sign-area">
+        <div class="sign-area-txt">판매자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.</div>
+        <div class="sign-row">
+          <div class="sign-col">분양일<br><span id="cv-date" style="font-weight:700;">—</span></div>
+          <div class="sign-col">판매자 (골디 쉼터)<br><br>_______________<br>(인)</div>
+          <div class="sign-col">구매자 (입양인)<br>
+            <div class="sign-img-wrap" id="signPreviewWrap" style="margin-top:4px;min-height:36px;">
+              <span style="font-size:.6rem;color:var(--lgray);">서명 전</span>
+            </div>
+            (인)
+          </div>
+        </div>
+      </div>
+
+      <!-- 법적 고지 -->
+      <div class="legal-box">
+        【법적 고지】 본 계약서는 「동물보호법」 시행규칙 [별표12] 및 「소비자기본법 시행령」 제8조 소비자분쟁해결기준에 의거합니다. 분양받은 날로부터 30일 이내 동물등록 신청 의무가 있습니다 (동물보호법 제12조). 이 계약과 관련하여 발생하는 모든 분쟁은 상호 협의하여 해결하며, 협의에 의해 해결되지 않아 소송이 제기되어야 하는 경우 분양자의 소재지를 관할하는 법원을 관할 법원으로 합니다. 분쟁 발생 시 소비자분쟁조정위원회 (국번없이 1372) 문의 가능합니다.
+      </div>
+      <div class="c-footer">골디 쉼터 | 소규모지만 윤리적으로 키운 아이들 | 010-6508-5901 | @iam_7707 | open.kakao.com/o/sxGtK0ri</div>
+
+    </div><!-- /c-paper -->
+    </div><!-- /contract-wrap -->
+  </div>
+
+  <!-- 동의 체크 -->
+  <div class="sec" style="margin-top:14px;">
     <div class="sec-hd">✅ 계약 내용 동의</div>
     <div class="sec-bd">
       <div class="check-list">
-        <div class="check-item" onclick="toggleChk(this)">
-          <div class="check-box"></div>
-          <div class="check-text">위 계약서 내용(분양 동물 정보·판매 조건·품질보증 조항)을 모두 <b>확인</b>하였습니다.</div>
-        </div>
-        <div class="check-item" onclick="toggleChk(this)">
-          <div class="check-box"></div>
-          <div class="check-text"><b>15일 이내 잠복기 있는 질병</b>만 보증됩니다. 관리 미숙·환경 적응으로 인한 질병은 소비자 귀책임을 확인합니다.</div>
-        </div>
-        <div class="check-item" onclick="toggleChk(this)">
-          <div class="check-box"></div>
-          <div class="check-text">이상 증상 발견 시 <b>24시간 이내 통보</b> 의무를 이행하겠습니다. 분양자 동의 없는 병원비는 보상되지 않음을 확인합니다.</div>
-        </div>
-        <div class="check-item" onclick="toggleChk(this)">
-          <div class="check-box"></div>
-          <div class="check-text">변심·개인 사정으로 인한 <b>교환·환불·파양은 절대 불가</b>함에 동의합니다.</div>
-        </div>
-        <div class="check-item" onclick="toggleChk(this)">
-          <div class="check-box"></div>
-          <div class="check-text">분양 후 <b>30일 이내 동물등록</b>을 이행하고, 가이드북을 숙지하여 올바른 양육을 약속합니다.</div>
-        </div>
+        <div class="check-item" onclick="toggleChk(this)"><div class="check-box"></div><div class="check-text">위 계약서 내용(분양 동물 정보·판매 조건·품질보증 조항)을 모두 <b>확인</b>하였습니다.</div></div>
+        <div class="check-item" onclick="toggleChk(this)"><div class="check-box"></div><div class="check-text"><b>15일 이내 잠복기 있는 질병</b>만 보증됩니다. 관리 미숙·환경 적응으로 인한 질병은 소비자 귀책임을 확인합니다.</div></div>
+        <div class="check-item" onclick="toggleChk(this)"><div class="check-box"></div><div class="check-text">이상 증상 발견 시 <b>24시간 이내 통보</b> 의무를 이행하겠습니다. 분양자 동의 없는 병원비는 보상되지 않음을 확인합니다.</div></div>
+        <div class="check-item" onclick="toggleChk(this)"><div class="check-box"></div><div class="check-text">변심·개인 사정으로 인한 <b>교환·환불·파양은 절대 불가</b>함에 동의합니다.</div></div>
+        <div class="check-item" onclick="toggleChk(this)"><div class="check-box"></div><div class="check-text">분양 후 <b>30일 이내 동물등록</b>을 이행하고, 가이드북을 숙지하여 올바른 양육을 약속합니다.</div></div>
       </div>
     </div>
   </div>
@@ -221,17 +405,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
 
 </div><!-- /formMain -->
 
-<!-- ══ 완료 화면 ══ -->
+<!-- 완료 -->
 <div class="done-screen" id="doneScreen">
   <div class="done-icon">🎉</div>
   <div class="done-title">계약이 완료되었습니다!</div>
   <div class="done-sub" id="doneMsg">계약이 완료되었습니다.</div>
-  <button class="btn-dl" onclick="downloadFinalPDF()">📄 계약서 PDF 저장하기</button>
+  <button class="btn-dl" onclick="downloadPDF()">📄 계약서 PDF 저장하기</button>
   <button class="btn-guide" onclick="goGuide()">📖 분양 가이드북 보기 →</button>
 </div>
 
 <script>
-// ── Firebase 초기화
+// ── Firebase
 try {
   firebase.initializeApp({
     apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -247,12 +431,12 @@ try {
 const FDB = () => { try { return firebase.database(); } catch(e) { return null; } };
 const QP  = k => new URLSearchParams(location.search).get(k) || '';
 
-// ── 강아지 데이터
+// 강아지 데이터
 const DOG = {
   dogid:   QP('dogid'),
   breed:   QP('breed')    || '골든리트리버',
   gender:  QP('gender'),
-  birth:   QP('birth2')  || QP('birth'),  // birth2 우선
+  birth:   QP('birth2')  || QP('birth'),
   price:   QP('price'),
   health:  QP('health')   || '양호',
   saledate:QP('saledate') || new Date().toLocaleDateString('ko-KR'),
@@ -260,16 +444,11 @@ const DOG = {
   group:   QP('group'),
 };
 
-// ── PDF 기본 경로 (같은 GitHub Pages 레포)
-const BASE_URL = location.href.replace(/\/[^\/]*$/, '/');
-const CONTRACT_PDF_URL = BASE_URL + 'goldi_contract.pdf';
-const GUIDE_PDF_URL    = BASE_URL + 'goldi_guide.pdf';
+// 가이드북 URL
+const BASE_URL = location.href.replace(/\/[^\/]*(\?.*)?$/, '/');
+const GUIDE_URL = BASE_URL + 'goldi_guide.pdf';
 
-// ── 완성된 PDF bytes (서명 후 저장용)
-let _finalPdfBytes = null;
-let _contractData  = null;
-
-// ── 중복 계약 확인
+// 중복 확인
 function checkDuplicate() {
   if (!DOG.dogid) return Promise.resolve(false);
   const local = JSON.parse(localStorage.getItem('goldi_contracts') || '[]');
@@ -280,9 +459,9 @@ function checkDuplicate() {
     .once('value').then(s => s.exists()).catch(() => false);
 }
 
-// ── 초기화
+// 초기화
 window.addEventListener('DOMContentLoaded', () => {
-  if (!DOG.dogid) return; // 파라미터 없으면 그냥 폼 표시
+  if (!DOG.dogid) return;
   showLoading('확인 중...');
   checkDuplicate().then(isDup => {
     hideLoading();
@@ -297,20 +476,17 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ── 스텝 관리
+// 스텝
 let curStep = 0;
-
 function updateStepUI(n) {
   [0,1,2,3].forEach(i => {
-    const c = document.getElementById('sc'+i);
-    const l = document.getElementById('sl'+i);
-    c.className = i<n ? 'step-c done' : i===n ? 'step-c active' : 'step-c';
-    l.className = i===n ? 'step-lbl active' : 'step-lbl';
-    if (i<3) document.getElementById('sline'+i).className = 'step-line'+(i<n?' done':'');
+    document.getElementById('sc'+i).className = i<n?'step-c done':i===n?'step-c active':'step-c';
+    document.getElementById('sl'+i).className = i===n?'step-lbl active':'step-lbl';
+    if(i<3) document.getElementById('sline'+i).className = 'step-line'+(i<n?' done':'');
   });
   document.getElementById('progFill').style.width = [25,50,75,100][n]+'%';
   document.getElementById('stepLbl').textContent  = (n+1)+' / 4';
-  window.scrollTo({top:0, behavior:'smooth'});
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function goStep(n) {
@@ -319,85 +495,39 @@ function goStep(n) {
     if (curStep===1 && !vStep1()) return;
     if (curStep===2 && !vStep2()) return;
   }
+  // Step2로 갈 때 계약서에 데이터 채우기
+  if (n===1) fillContractView();
+  // Step3로 갈 때 서명 미리보기 초기화
+  if (n===2) {
+    document.getElementById('signPreviewWrap').innerHTML =
+      '<span style="font-size:.6rem;color:var(--lgray);">서명 전</span>';
+  }
   curStep = n;
   document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('on', i===n));
   updateStepUI(n);
-  // Step2로 이동 시 PDF 미리보기 생성
-  if (n===1) buildPreviewPDF();
 }
 
-// ══════════════════════════════════════
-// PDF 생성 (pdf-lib)
-// 기존 계약서 PDF에 데이터 오버레이
-// ══════════════════════════════════════
-async function buildPreviewPDF() {
-  document.getElementById('pdfLoading').style.display = 'block';
-  document.getElementById('pdfFrame').style.display   = 'none';
-  try {
-    // 원본 PDF 그대로 iframe에 표시
-    const frame = document.getElementById('pdfFrame');
-    frame.src = CONTRACT_PDF_URL + '#toolbar=0&navpanes=0';
-    frame.onload = () => {
-      document.getElementById('pdfLoading').style.display = 'none';
-      frame.style.display = 'block';
-    };
-    frame.onerror = () => {
-      throw new Error('PDF 로드 실패');
-    };
-    // 5초 타임아웃
-    setTimeout(() => {
-      if (document.getElementById('pdfLoading').style.display !== 'none') {
-        document.getElementById('pdfLoading').style.display = 'none';
-        frame.style.display = 'block';
-      }
-    }, 3000);
-  } catch(err) {
-    document.getElementById('pdfLoading').innerHTML =
-      '<div style="color:var(--red);font-size:.8rem;">⚠️ 계약서 로드 실패<br><small>'+err.message+'</small></div>';
-  }
+// 계약서 뷰에 데이터 채우기
+function fillContractView() {
+  const b = getBuyer();
+  // 강아지 정보
+  document.getElementById('cv-gender').textContent  = DOG.gender   || '—';
+  document.getElementById('cv-birth').textContent   = DOG.birth    || '—';
+  document.getElementById('cv-saledate').textContent= DOG.saledate || '—';
+  document.getElementById('cv-pay').textContent     = b.payment    || '—';
+  document.getElementById('cv-price').textContent   = DOG.price ? DOG.price + '만원' : '—';
+  document.getElementById('cv-transfer').textContent= b.transfer   || '—';
+  document.getElementById('cv-date').textContent    = DOG.saledate || '—';
+  // 구매자 정보
+  document.getElementById('cv-name').textContent    = b.name       || '—';
+  document.getElementById('cv-phone').textContent   = b.phone      || '—';
+  document.getElementById('cv-addr').textContent    = b.addr       || '—';
+  document.getElementById('cv-email').textContent   = b.email      || '—';
 }
 
-// ── 서명 포함한 최종 PDF 생성
-async function buildFinalPDF(signatureDataUrl) {
-  const { PDFDocument, rgb } = PDFLib;
-
-  // 원본 계약서 PDF 로드
-  const pdfBytes = await fetch(CONTRACT_PDF_URL).then(r => r.arrayBuffer());
-  const pdfDoc   = await PDFDocument.load(pdfBytes);
-  const pages    = pdfDoc.getPages();
-  const p2       = pages[1];  // 2페이지에 서명 삽입
-
-  // 전자서명 이미지 삽입 (영어만 사용, 한글 없음)
-  if (signatureDataUrl) {
-    try {
-      const signImg  = await pdfDoc.embedPng(signatureDataUrl);
-      // 서명란 위치: P2 하단 서명 영역
-      p2.drawImage(signImg, {
-        x: 340, y: 155,
-        width:  180,
-        height: 38,
-      });
-    } catch(e) { console.warn('서명 삽입:', e); }
-  }
-
-  return await pdfDoc.save();
-}
-
-// ── 구매자 데이터 수집
-function getBuyerData() {
-  return {
-    name:     document.getElementById('f-name').value.trim(),
-    phone:    document.getElementById('f-phone').value.trim(),
-    addr:     document.getElementById('f-addr').value.trim(),
-    email:    document.getElementById('f-email').value.trim(),
-    payment:  document.getElementById('f-pay').value,
-    transfer: document.getElementById('f-transfer').value.trim(),
-  };
-}
-
-// ── 유효성 검사
+// 유효성
 function vStep0() {
-  const b = getBuyerData();
+  const b = getBuyer();
   if (!b.name)    { showToast('성명을 입력해 주세요'); return false; }
   if (!b.phone)   { showToast('연락처를 입력해 주세요'); return false; }
   if (!b.addr)    { showToast('주소를 입력해 주세요'); return false; }
@@ -414,15 +544,23 @@ function vStep2() {
   return true;
 }
 function toggleChk(el) { el.classList.toggle('checked'); }
+function getBuyer() {
+  return {
+    name:     document.getElementById('f-name').value.trim(),
+    phone:    document.getElementById('f-phone').value.trim(),
+    addr:     document.getElementById('f-addr').value.trim(),
+    email:    document.getElementById('f-email').value.trim(),
+    payment:  document.getElementById('f-pay').value,
+    transfer: document.getElementById('f-transfer').value.trim(),
+  };
+}
 
-// ── 서명 캔버스
+// 서명 캔버스
 const canvas = document.getElementById('signCanvas');
 const ctx    = canvas.getContext('2d');
 let drawing = false, isClear = true;
-
-function resizeCanvas() { canvas.width = canvas.parentElement.getBoundingClientRect().width; canvas.height = 160; }
+function resizeCanvas() { canvas.width=canvas.parentElement.getBoundingClientRect().width; canvas.height=160; }
 resizeCanvas(); window.addEventListener('resize', resizeCanvas);
-
 function getPos(e) { const r=canvas.getBoundingClientRect(); const s=e.touches?e.touches[0]:e; return {x:s.clientX-r.left,y:s.clientY-r.top}; }
 canvas.addEventListener('mousedown',  e=>{drawing=true;isClear=false;document.getElementById('signPh').style.display='none';ctx.beginPath();const p=getPos(e);ctx.moveTo(p.x,p.y);});
 canvas.addEventListener('mousemove',  e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#3E2005';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();});
@@ -432,101 +570,121 @@ canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!drawing)return;
 canvas.addEventListener('touchend',   ()=>drawing=false);
 function clearSign(){ctx.clearRect(0,0,canvas.width,canvas.height);isClear=true;document.getElementById('signPh').style.display='block';}
 
-// ── 제출
+let _contractData = null;
+
+// 제출
 async function submitForm() {
   if (!vStep2()) return;
-  showLoading('계약서 생성 중...');
+  showLoading('계약서 저장 중...');
 
+  const b = getBuyer();
+  const signDataUrl = canvas.toDataURL('image/png');
+
+  // 계약서 뷰에 서명 미리보기 업데이트
+  document.getElementById('signPreviewWrap').innerHTML =
+    `<img src="${signDataUrl}" style="max-height:36px;max-width:100%;">`;
+
+  _contractData = {
+    id:        'GS-' + Date.now(),
+    createdAt: new Date().toISOString(),
+    dog:       { ...DOG },
+    buyer:     { ...b },
+    signature: signDataUrl,
+    status:    'completed',
+  };
+
+  // localStorage 저장
   try {
-    const signDataUrl = canvas.toDataURL('image/png');
-    const b = getBuyerData();
+    const ex = JSON.parse(localStorage.getItem('goldi_contracts') || '[]');
+    ex.push(_contractData);
+    localStorage.setItem('goldi_contracts', JSON.stringify(ex));
+    localStorage.setItem('goldi_last_contract', JSON.stringify(_contractData));
+  } catch(e) {}
 
-    // 최종 PDF 생성
-    const finalBytes = await buildFinalPDF(signDataUrl);
-    _finalPdfBytes = finalBytes;
-
-    _contractData = {
-      id:        'GS-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      dog:       { ...DOG },
-      buyer:     { ...b },
-      signature: signDataUrl,
-      status:    'completed',
-    };
-
-    // localStorage 저장
-    try {
-      const ex = JSON.parse(localStorage.getItem('goldi_contracts') || '[]');
-      ex.push(_contractData);
-      localStorage.setItem('goldi_contracts', JSON.stringify(ex));
-      localStorage.setItem('goldi_last_contract', JSON.stringify(_contractData));
-    } catch(e) {}
-
-    // Firebase 저장
-    const db = FDB();
-    if (db) {
-      await db.ref('contracts/' + _contractData.id)
-        .set({ ..._contractData, signature: '(서명완료)' }).catch(() => {});
-
-      // 강아지 분양완료 처리
-      if (DOG.dogid) {
-        await db.ref('puppies/' + DOG.dogid + '/status').set('분양완료').catch(() => {});
-        const snap = await db.ref('litters').once('value').catch(() => null);
-        if (snap && snap.val()) {
-          const updates = {};
-          Object.entries(snap.val()).forEach(([lid, lt]) => {
-            if (lt.puppies?.[DOG.dogid])
-              updates[`litters/${lid}/puppies/${DOG.dogid}/status`] = '분양완료';
-          });
-          if (Object.keys(updates).length) await db.ref().update(updates).catch(() => {});
-        }
+  // Firebase 저장 + 분양완료 처리
+  const db = FDB();
+  if (db) {
+    await db.ref('contracts/' + _contractData.id)
+      .set({..._contractData, signature:'(서명완료)'}).catch(()=>{});
+    if (DOG.dogid) {
+      await db.ref('puppies/' + DOG.dogid + '/status').set('분양완료').catch(()=>{});
+      const snap = await db.ref('litters').once('value').catch(()=>null);
+      if (snap?.val()) {
+        const u = {};
+        Object.entries(snap.val()).forEach(([lid,lt])=>{
+          if(lt.puppies?.[DOG.dogid]) u[`litters/${lid}/puppies/${DOG.dogid}/status`]='분양완료';
+        });
+        if(Object.keys(u).length) await db.ref().update(u).catch(()=>{});
       }
     }
-
-    hideLoading();
-    document.getElementById('formMain').style.display = 'none';
-    document.querySelector('.steps').style.display    = 'none';
-    document.getElementById('doneScreen').style.display = 'flex';
-    updateStepUI(3);
-    document.getElementById('doneMsg').innerHTML =
-      `<b>${b.name}</b>님, 계약이 완료되었습니다.<br>`+
-      `계약번호: <b>${_contractData.id}</b><br><br>`+
-      `아래 버튼으로 계약서를 저장하고<br>가이드북을 꼭 확인해 주세요 🐾`;
-    window.scrollTo({top:0, behavior:'smooth'});
-
-  } catch(err) {
-    hideLoading();
-    console.error('제출 오류:', err);
-    showToast('오류가 발생했습니다. 다시 시도해 주세요.');
   }
+
+  hideLoading();
+  document.getElementById('formMain').style.display = 'none';
+  document.querySelector('.steps').style.display    = 'none';
+  document.getElementById('doneScreen').style.display = 'flex';
+  updateStepUI(3);
+  document.getElementById('doneMsg').innerHTML =
+    `<b>${b.name}</b>님, 계약이 완료되었습니다.<br>계약번호: <b>${_contractData.id}</b><br><br>아래 버튼으로 계약서를 저장하고<br>가이드북을 꼭 확인해 주세요 🐾`;
 }
 
-// ── PDF 다운로드
-function downloadFinalPDF() {
-  if (!_finalPdfBytes) { showToast('계약서 데이터가 없습니다'); return; }
+// PDF 다운로드 — html2canvas로 계약서 캡처 후 PDF
+async function downloadPDF() {
+  showLoading('PDF 생성 중...');
   try {
-    const blob = new Blob([_finalPdfBytes], { type: 'application/pdf' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'GoldiShelter_Contract_' + (_contractData?.id || Date.now()) + '.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const d = _contractData || JSON.parse(localStorage.getItem('goldi_last_contract') || 'null');
+    if (!d) { hideLoading(); showToast('계약 데이터가 없습니다'); return; }
+
+    // 서명 이미지를 계약서 뷰에 반영
+    if (d.signature && d.signature.startsWith('data:')) {
+      document.getElementById('signPreviewWrap').innerHTML =
+        `<img src="${d.signature}" style="max-height:36px;max-width:100%;">`;
+    }
+    fillContractView();
+
+    // html2canvas로 계약서 영역 캡처
+    const { default: html2canvas } = await import('https://cdn.skypack.dev/html2canvas@1.4.1');
+    const contractEl = document.querySelector('.c-paper');
+    const canvas2 = await html2canvas(contractEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    // 이미지를 PDF로 변환
+    const imgData = canvas2.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = await import('https://cdn.skypack.dev/jspdf@2.5.1');
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const imgW = canvas2.width;
+    const imgH = canvas2.height;
+    const ratio = pW / imgW;
+    const scaledH = imgH * ratio;
+
+    if (scaledH <= pH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, pW, scaledH);
+    } else {
+      // 2페이지로 분할
+      pdf.addImage(imgData, 'JPEG', 0, 0, pW, scaledH);
+      // pdf-lib 없이 jsPDF 자체 페이지 분할
+    }
+
+    pdf.save('GoldiShelter_Contract_' + d.id + '.pdf');
+    hideLoading();
     showToast('계약서 PDF 저장 완료! 📄');
   } catch(err) {
-    showToast('저장 중 오류: ' + err.message);
+    hideLoading();
+    console.error('PDF 오류:', err);
+    showToast('PDF 저장 실패: ' + err.message);
   }
 }
 
-// ── 가이드북
-function goGuide() { window.open(GUIDE_PDF_URL, '_blank'); }
-
-// ── 유틸
-function showLoading(t='처리 중...') { document.getElementById('ltxt').textContent=t; document.getElementById('lov').classList.add('show'); }
-function hideLoading() { document.getElementById('lov').classList.remove('show'); }
-function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function goGuide() { window.open(GUIDE_URL, '_blank'); }
+function showLoading(t='처리 중...'){document.getElementById('ltxt').textContent=t;document.getElementById('lov').classList.add('show');}
+function hideLoading(){document.getElementById('lov').classList.remove('show');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 </script>
 </body>
 </html>
