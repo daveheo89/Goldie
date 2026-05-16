@@ -239,29 +239,40 @@ function initFB(){
 
 // Firebase에서 새끼 로드 (농장 앱 구조 자동 탐지)
 function loadFB(){
-  db.ref('puppies').once('value').then(s=>{
-    const d=s.val();
-    if(d){
-      PUPS=Object.entries(d).map(([id,p])=>({
-        id,name:p.code||p.name||id,gender:p.gender||'',birth:p.birthdate||p.birth||'',birth2:p.birth2||p.birthdate||p.birth||'',birth_b:p.birth_b||p.birth2||p.birthdate||p.birth||'',
-        mom:p.mom||'인절미',note:p.note||'',status:p.status||'available',group:p.group||''
-      }));
-      renderAll(); return;
-    }
-    return db.ref('litters').once('value');
-  }).then(s=>{
-    if(!s||!s.val()){loadLocal();return;}
+  // 농장 앱 구조: /litters/{litterId}/puppies/{puppyId}
+  db.ref('litters').once('value').then(s=>{
+    if(!s||!s.val()){ loadLocal(); return; }
+    const litters = s.val();
     let arr=[];
-    Object.entries(s.val()).forEach(([lid,lt])=>{
-      if(lt.puppies) Object.entries(lt.puppies).forEach(([pid,p])=>{
-        arr.push({id:pid,name:p.code||p.name||pid,gender:p.gender||p.sex||'',
-          birth:lt.birthdate||p.birth||'',birth2:p.birth2||lt.birthdate||p.birth||'',birth_b:p.birth_b||p.birth2||lt.birthdate||p.birth||'',mom:lt.mom||'인절미',note:p.note||'',
-          status:p.status||'available',group:lt.group||'',lid});
+    Object.entries(litters).forEach(([lid,lt])=>{
+      if(!lt.puppies) return;
+      Object.entries(lt.puppies).forEach(([pid,p])=>{
+        // 출산일: litter의 birthdate (A) 또는 birth_b (B)
+        const birthA = lt.birthdate || lt.birth || '';
+        const birthB = lt.birth_b   || birthA;
+        arr.push({
+          id:      pid,
+          name:    p.code || p.name || pid,
+          gender:  p.gender || p.sex || '',
+          birth:   birthA,       // 출산일 A
+          birth_b: birthB,       // 출산일 B (계약서용)
+          birth2:  birthB,
+          mom:     lt.mom || '인절미',
+          dad:     lt.dad || '',
+          note:    p.note || p.memo || '',
+          status:  p.status || '분양 전',
+          group:   lt.name || lt.group || '',
+          lid:     lid,
+        });
       });
     });
-    PUPS=arr.length?arr:getLocalPups();
-    renderAll();
-  }).catch(()=>loadLocal());
+    if(arr.length){
+      PUPS = arr;
+      renderAll();
+    } else {
+      loadLocal();
+    }
+  }).catch(e=>{ console.warn('Firebase litters 로드 실패:', e); loadLocal(); });
 }
 
 function loadLocal(){PUPS=getLocalPups();renderAll();}
@@ -287,7 +298,7 @@ function renderAll(){renderPList();renderPManage();}
 
 // ── P0: 새끼 목록
 function renderPList(){
-  const avail=PUPS.filter(p=>['available','분양전'].includes(p.status));
+  const avail=PUPS.filter(p=>['available','분양전','분양 전'].includes(p.status));
   const el=document.getElementById('pList');
   if(!avail.length){el.innerHTML='<p style="text-align:center;color:var(--gray);font-size:.78rem;padding:16px 0;">분양 가능한 새끼가 없습니다.</p>';return;}
   el.innerHTML='<div class="puppy-list">'+avail.map(p=>`
@@ -325,7 +336,7 @@ function genLink(){
 
   const base=location.href.replace('goldi_admin.html','goldi_contract_form.html');
   const q=new URLSearchParams({dogid:selPup.id,breed:'골든리트리버',gender:selPup.gender,
-    birth:selPup.birth,birth2:selPup.birth2||selPup.birth,birth_b:selPup.birth_b||selPup.birth2||selPup.birth,price,health:'양호',saledate:date,dogname:selPup.name,group:selPup.group||''});
+    birth:selPup.birth,birth2:selPup.birth_b||selPup.birth2||selPup.birth,birth_b:selPup.birth_b||selPup.birth,price,health:'양호',saledate:date,dogname:selPup.name,group:selPup.group||''});
   const url=base+'?'+q.toString();
   const qr='https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl='+encodeURIComponent(url)+'&choe=UTF-8';
 
@@ -400,9 +411,9 @@ function renderPManage(){
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
         <div class="ps ${sc[p.status]||'st-ok'}">${sl[p.status]||p.status}</div>
         <select onchange="chgSt('${p.id}',this.value)" style="font-size:.63rem;padding:2px 5px;border:1px solid var(--lgray);border-radius:5px;background:var(--bg2);">
-          <option value="available" ${['available','분양전'].includes(p.status)?'selected':''}>분양가능</option>
-          <option value="reserved"  ${['reserved','예약'].includes(p.status)?'selected':''}>예약중</option>
-          <option value="sold"      ${['sold','분양완료'].includes(p.status)?'selected':''}>분양완료</option>
+          <option value="분양 전" ${['available','분양전','분양 전'].includes(p.status)?'selected':''}>분양가능</option>
+          <option value="예약"  ${['reserved','예약'].includes(p.status)?'selected':''}>예약중</option>
+          <option value="분양 완료" ${['sold','분양완료','분양 완료'].includes(p.status)?'selected':''}>분양완료</option>
         </select>
       </div>
     </div>`).join('')+'</div>';
@@ -461,7 +472,7 @@ function renderStats(){
   const all=getContracts();
   const now=new Date();
   const tm=all.filter(c=>{if(!c.createdAt)return false;const d=new Date(c.createdAt);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}).length;
-  const av=PUPS.filter(p=>['available','분양전'].includes(p.status)).length;
+  const av=PUPS.filter(p=>['available','분양전','분양 전'].includes(p.status)).length;
   document.getElementById('statsRow').innerHTML=`
     <div class="stat"><div class="stat-n">${all.length}</div><div class="stat-l">총 계약</div></div>
     <div class="stat"><div class="stat-n" style="color:var(--green)">${tm}</div><div class="stat-l">이번 달</div></div>

@@ -636,12 +636,12 @@ async function submitForm() {
     await db.ref('contracts/' + _contractData.id)
       .set({..._contractData, signature:'(서명완료)'}).catch(()=>{});
     if (DOG.dogid) {
-      await db.ref('puppies/' + DOG.dogid + '/status').set('분양완료').catch(()=>{});
+      await db.ref('puppies/' + DOG.dogid + '/status').set('분양 완료').catch(()=>{});
       const snap = await db.ref('litters').once('value').catch(()=>null);
       if (snap?.val()) {
         const u = {};
         Object.entries(snap.val()).forEach(([lid,lt])=>{
-          if(lt.puppies?.[DOG.dogid]) u[`litters/${lid}/puppies/${DOG.dogid}/status`]='분양완료';
+          if(lt.puppies?.[DOG.dogid]) u[`litters/${lid}/puppies/${DOG.dogid}/status`]='분양 완료';
         });
         if(Object.keys(u).length) await db.ref().update(u).catch(()=>{});
       }
