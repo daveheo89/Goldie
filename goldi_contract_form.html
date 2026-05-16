@@ -333,119 +333,51 @@ function goStep(n) {
 async function buildPreviewPDF() {
   document.getElementById('pdfLoading').style.display = 'block';
   document.getElementById('pdfFrame').style.display   = 'none';
-
   try {
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
-
-    // 원본 계약서 PDF 로드
-    const pdfBytes = await fetch(CONTRACT_PDF_URL).then(r => {
-      if (!r.ok) throw new Error('PDF 로드 실패: ' + r.status);
-      return r.arrayBuffer();
-    });
-
-    const pdfDoc  = await PDFDocument.load(pdfBytes);
-    const font    = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const pages   = pdfDoc.getPages();
-    const p1      = pages[0];
-    const p2      = pages[1];
-    const { height } = p1.getSize();  // 841.89pt
-
-    const b = getBuyerData();
-    const TEXT_COLOR = rgb(0.1, 0.1, 0.1);
-    const fs = 8.5; // font size
-
-    // ── P1: 동물 정보 오버레이
-    // 행1 (성별): col2값 x=377pt, y=행중간
-    p1.drawText(DOG.gender || '', { x:377, y:638, size:fs, font, color:TEXT_COLOR });
-
-    // 행2 (출생일): col1값 x=130pt
-    p1.drawText(DOG.birth || '', { x:130, y:618, size:fs, font, color:TEXT_COLOR });
-
-    // 판매조건 행1 (판매일): x=119pt, y=454
-    p1.drawText(DOG.saledate || '', { x:119, y:454, size:fs, font, color:TEXT_COLOR });
-
-    // 판매조건 행1 (결제방법): x=360pt
-    p1.drawText(b.payment || '', { x:360, y:454, size:fs, font, color:TEXT_COLOR });
-
-    // 판매조건 행2 (금액): x=119pt, y=434
-    const priceText = DOG.price ? DOG.price + 'man won (W' + (parseInt(DOG.price)*10000) + ')' : '';
-    p1.drawText(priceText, { x:119, y:434, size:fs, font, color:TEXT_COLOR });
-
-    // 이체자 성명 (우측)
-    if (b.transfer) {
-      p1.drawText('Transferor: ' + b.transfer, { x:340, y:434, size:fs, font, color:TEXT_COLOR });
-    }
-
-    // ── P2: 구매자 정보 오버레이
-    // 섹션7 구매자 정보
-    // 성명 행: y 계산
-    // P2 topMargin=14mm, 섹션7은 분쟁해결 기준 아래
-    // 대략 y=260pt 근처
-    const buyerY = 262;
-    p2.drawText(b.name || '', { x:104, y:buyerY, size:fs, font, color:TEXT_COLOR });
-    p2.drawText(b.phone || '', { x:330, y:buyerY, size:fs, font, color:TEXT_COLOR });
-    p2.drawText(b.addr || '', { x:104, y:buyerY-7*2.83, size:fs, font, color:TEXT_COLOR });
-    p2.drawText(b.email || '', { x:330, y:buyerY-7*2.83, size:fs, font, color:TEXT_COLOR });
-
-    // 서명일 (하단 서명란)
-    p2.drawText(DOG.saledate || '', { x:56, y:182, size:fs, font, color:TEXT_COLOR });
-
-    // PDF를 bytes로 저장
-    _finalPdfBytes = await pdfDoc.save();
-
-    // iframe으로 미리보기
-    const blob = new Blob([_finalPdfBytes], { type: 'application/pdf' });
-    const url  = URL.createObjectURL(blob);
+    // 원본 PDF 그대로 iframe에 표시
     const frame = document.getElementById('pdfFrame');
-    frame.src = url + '#toolbar=0&navpanes=0';
-    frame.style.display = 'block';
-    document.getElementById('pdfLoading').style.display = 'none';
-
+    frame.src = CONTRACT_PDF_URL + '#toolbar=0&navpanes=0';
+    frame.onload = () => {
+      document.getElementById('pdfLoading').style.display = 'none';
+      frame.style.display = 'block';
+    };
+    frame.onerror = () => {
+      throw new Error('PDF 로드 실패');
+    };
+    // 5초 타임아웃
+    setTimeout(() => {
+      if (document.getElementById('pdfLoading').style.display !== 'none') {
+        document.getElementById('pdfLoading').style.display = 'none';
+        frame.style.display = 'block';
+      }
+    }, 3000);
   } catch(err) {
-    console.error('PDF 생성 오류:', err);
     document.getElementById('pdfLoading').innerHTML =
-      '<div style="color:var(--red);font-size:.8rem;">⚠️ 계약서 로드 실패<br><small>'+err.message+'</small><br><br>'+
-      '<small style="color:var(--gray);">계약 내용을 확인하고 다음 단계로 진행하세요.</small></div>';
+      '<div style="color:var(--red);font-size:.8rem;">⚠️ 계약서 로드 실패<br><small>'+err.message+'</small></div>';
   }
 }
 
 // ── 서명 포함한 최종 PDF 생성
 async function buildFinalPDF(signatureDataUrl) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb } = PDFLib;
 
-  // _finalPdfBytes가 없으면 다시 생성
-  let pdfDoc;
-  if (_finalPdfBytes) {
-    pdfDoc = await PDFDocument.load(_finalPdfBytes);
-  } else {
-    const pdfBytes = await fetch(CONTRACT_PDF_URL).then(r => r.arrayBuffer());
-    pdfDoc = await PDFDocument.load(pdfBytes);
-  }
+  // 원본 계약서 PDF 로드
+  const pdfBytes = await fetch(CONTRACT_PDF_URL).then(r => r.arrayBuffer());
+  const pdfDoc   = await PDFDocument.load(pdfBytes);
+  const pages    = pdfDoc.getPages();
+  const p2       = pages[1];  // 2페이지에 서명 삽입
 
-  const pages = pdfDoc.getPages();
-  const p2    = pages[1];
-  const font  = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const b     = getBuyerData();
-
-  // 구매자 정보 (미리보기에서 이미 p1 처리됨)
-  const buyerY = 262;
-  p2.drawText(b.name || '', { x:104, y:buyerY, size:8.5, font, color:rgb(0.1,0.1,0.1) });
-  p2.drawText(b.phone || '', { x:330, y:buyerY, size:8.5, font, color:rgb(0.1,0.1,0.1) });
-  p2.drawText(b.addr || '', { x:104, y:buyerY-7*2.83, size:8.5, font, color:rgb(0.1,0.1,0.1) });
-  p2.drawText(b.email || '', { x:330, y:buyerY-7*2.83, size:8.5, font, color:rgb(0.1,0.1,0.1) });
-  p2.drawText(DOG.saledate || '', { x:56, y:182, size:8.5, font, color:rgb(0.1,0.1,0.1) });
-
-  // 전자서명 이미지 삽입
+  // 전자서명 이미지 삽입 (영어만 사용, 한글 없음)
   if (signatureDataUrl) {
     try {
-      const signImg   = await pdfDoc.embedPng(signatureDataUrl);
-      const signDims  = signImg.scale(0.3);
+      const signImg  = await pdfDoc.embedPng(signatureDataUrl);
+      // 서명란 위치: P2 하단 서명 영역
       p2.drawImage(signImg, {
         x: 340, y: 155,
-        width:  Math.min(signDims.width, 180),
-        height: Math.min(signDims.height, 40),
+        width:  180,
+        height: 38,
       });
-    } catch(e) { console.warn('서명 삽입 오류:', e); }
+    } catch(e) { console.warn('서명 삽입:', e); }
   }
 
   return await pdfDoc.save();
