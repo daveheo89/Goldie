@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>골디 쉼터 — 분양 계약서</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// Firebase 초기화 (분양인 폼에서 계약 데이터 저장용)
+try {
+  firebase.initializeApp({
+    apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+    authDomain:"goldie-shelter-d6c81.firebaseapp.com",
+    databaseURL:"https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+    projectId:"goldie-shelter-d6c81",
+    storageBucket:"goldie-shelter-d6c81.firebasestorage.app",
+    messagingSenderId:"305277425020",
+    appId:"1:305277425020:web:1f841f61d733c3a3aec0f9"
+  });
+} catch(e) { console.warn('Firebase 초기화:', e); }
+</script>
 <style>
 :root {
   --gold: #C8860A;
@@ -424,7 +441,7 @@ body {
     아래 버튼으로 계약서를 확인하세요.
   </div>
   <button class="btn-download" onclick="downloadContract()">
-    📄 내 계약서 확인하기
+    📄 계약서 PDF 저장하기
   </button>
   <button class="btn-kakao" onclick="shareKakao()">
     💬 카카오톡으로 공유
@@ -536,12 +553,14 @@ function validate() {
 }
 
 // ── 계약 데이터 저장 (localStorage — 실제 배포 시 서버 DB 연동)
+// ── 계약 데이터 전역 저장
+let _contractData = null;
+
 function submitForm() {
   if (!validate()) return;
-
   document.getElementById('loading').classList.add('show');
 
-  const contractData = {
+  _contractData = {
     id: 'GS-' + Date.now(),
     createdAt: new Date().toISOString(),
     dog: dogData,
@@ -557,13 +576,21 @@ function submitForm() {
     status: 'completed',
   };
 
-  // DB 저장 (localStorage 기반 — 농장 관리 앱 연동 시 API 교체)
+  // localStorage 저장
   try {
     const existing = JSON.parse(localStorage.getItem('goldi_contracts') || '[]');
-    existing.push(contractData);
+    existing.push(_contractData);
     localStorage.setItem('goldi_contracts', JSON.stringify(existing));
-    localStorage.setItem('goldi_last_contract', JSON.stringify(contractData));
+    localStorage.setItem('goldi_last_contract', JSON.stringify(_contractData));
   } catch(e) { console.warn('저장 오류:', e); }
+
+  // Firebase 저장 (농장 앱과 동일 DB)
+  try {
+    if (typeof firebase !== 'undefined') {
+      const db = firebase.database();
+      db.ref('contracts/' + _contractData.id).set(_contractData).catch(()=>{});
+    }
+  } catch(e) {}
 
   setTimeout(() => {
     document.getElementById('loading').classList.remove('show');
@@ -571,16 +598,342 @@ function submitForm() {
     const done = document.getElementById('doneScreen');
     done.style.display = 'flex';
     document.getElementById('doneMsg').innerHTML =
-      `<b>${contractData.buyer.name}</b>님의 계약이 완료되었습니다.<br>` +
-      `계약번호: <b>${contractData.id}</b><br><br>` +
-      `골디 쉼터에서 확인 후 연락드리겠습니다. 🐾`;
+      `<b>${_contractData.buyer.name}</b>님의 계약이 완료되었습니다.<br>` +
+      `계약번호: <b>${_contractData.id}</b><br><br>` +
+      `아래 버튼으로 계약서를 저장해 주세요. 🐾`;
   }, 1800);
 }
 
-// ── 계약서 다운로드 (실제 PDF 생성은 서버 연동)
-function downloadContract() {
-  showToast('PDF 생성 중... (서버 연동 후 활성화)');
+// ── PDF 생성 함수
+async function downloadContract() {
+  if (!_contractData) {
+    const last = localStorage.getItem('goldi_last_contract');
+    if (last) _contractData = JSON.parse(last);
+    else { showToast('계약 데이터가 없습니다'); return; }
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const d  = _contractData;
+  const b  = d.buyer;
+  const dg = d.dog;
+
+  // ── 색상 팔레트
+  const DARK  = [62,  32,  5  ];
+  const GOLD  = [200, 134, 10 ];
+  const BEIGE = [247, 240, 230];
+  const LGRAY = [221, 208, 192];
+  const WHITE = [255, 255, 255];
+  const RED   = [192, 57,  43 ];
+  const GRAY  = [136, 136, 136];
+
+  const PW = 170; // 페이지 폭 (여백 20mm 양쪽)
+  const ML = 20;  // 왼쪽 여백
+  let y = 15;
+
+  function setFont(size, bold=false, color=[34,34,34]) {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setTextColor(...color);
+  }
+
+  function hline(yy, color=LGRAY, thick=0.3) {
+    doc.setDrawColor(...color);
+    doc.setLineWidth(thick);
+    doc.line(ML, yy, ML+PW, yy);
+  }
+
+  function secHeader(text, yy) {
+    doc.setFillColor(...DARK);
+    doc.roundedRect(ML, yy, PW, 7, 1, 1, 'F');
+    setFont(8, true, WHITE);
+    doc.text(text, ML+3, yy+5);
+    return yy + 9;
+  }
+
+  function kvRow(label, value, yy, lw=38) {
+    doc.setFillColor(...BEIGE);
+    doc.rect(ML, yy, lw, 7, 'F');
+    doc.setDrawColor(...LGRAY);
+    doc.setLineWidth(0.3);
+    doc.rect(ML, yy, PW, 7);
+    doc.rect(ML, yy, lw, 7);
+    setFont(7, true, DARK);
+    doc.text(label, ML+2, yy+4.8);
+    setFont(7.5, false);
+    doc.setTextColor(51,51,51);
+    doc.text(value||'', ML+lw+2, yy+4.8);
+    return yy + 7;
+  }
+
+  function kv2Row(l1,v1,l2,v2, yy, lw=20, pw2=PW/2) {
+    const mid = ML + pw2;
+    doc.setFillColor(...BEIGE);
+    doc.rect(ML,  yy, lw,  7, 'F');
+    doc.rect(mid, yy, lw,  7, 'F');
+    doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+    doc.rect(ML,  yy, pw2, 7);
+    doc.rect(mid, yy, pw2, 7);
+    setFont(7, true, DARK);
+    doc.text(l1, ML+2,    yy+4.8);
+    doc.text(l2, mid+2,   yy+4.8);
+    setFont(7.5, false);
+    doc.setTextColor(51,51,51);
+    doc.text(v1||'', ML+lw+1,  yy+4.8);
+    doc.text(v2||'', mid+lw+1, yy+4.8);
+    return yy + 7;
+  }
+
+  function clauseBlock(num, title, bodyLines, yy, warn=false) {
+    const hdBg = warn ? RED : DARK;
+    const bdBg = warn ? [254,245,245] : [255,253,248];
+    const ttColor = warn ? RED : DARK;
+
+    // 헤더
+    doc.setFillColor(...hdBg);
+    doc.rect(ML, yy, 10, 7, 'F');
+    doc.setFillColor(...(warn?[254,240,238]:[238,243,255]));
+    doc.rect(ML+10, yy, PW-10, 7, 'F');
+    doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+    doc.rect(ML, yy, PW, 7);
+
+    setFont(7.5, true, WHITE);
+    doc.text(num, ML+5, yy+5, {align:'center'});
+    setFont(7.5, true, ttColor);
+    doc.text(title, ML+13, yy+5);
+    yy += 7;
+
+    // 본문
+    const lineH = 4.5;
+    const totalH = bodyLines.length * lineH + 5;
+    doc.setFillColor(...bdBg);
+    doc.rect(ML, yy, PW, totalH, 'F');
+    doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+    doc.rect(ML, yy, PW, totalH);
+
+    setFont(7, false, [51,51,51]);
+    bodyLines.forEach((line, i) => {
+      doc.text(line, ML+4, yy+3.5+(i*lineH));
+    });
+    return yy + totalH + 2;
+  }
+
+  // ════════════════ 1페이지 ════════════════
+
+  // 헤더
+  setFont(16, true, GOLD);
+  doc.text('골디 쉼터', ML, y);
+  setFont(7, false, GRAY);
+  doc.text('Goldi Shelter  |  전문 소규모 브리더  |  생산업 허가번호 제 4170000-037-2023-0011', ML, y+5);
+  doc.text('010-6508-5901  |  @iam_7707  |  open.kakao.com/o/sxGtK0ri', ML, y+9);
+  y += 13;
+
+  doc.setDrawColor(...GOLD); doc.setLineWidth(1);
+  doc.line(ML, y, ML+PW, y);
+  y += 5;
+
+  setFont(13, true, DARK);
+  doc.text('골든리트리버 분양 계약서', ML+PW/2, y, {align:'center'});
+  y += 5;
+  setFont(7, false, GRAY);
+  doc.text('본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 판매자·구매자 각 1통씩 보관합니다.', ML+PW/2, y, {align:'center'});
+  y += 7;
+
+  // 1. 판매업자 정보
+  y = secHeader('1. 판매업자 정보', y);
+  y = kv2Row('업소명','골디 쉼터 (Goldi Shelter)','생산업 허가번호','제 4170000-037-2023-0011', y, 26, PW/2);
+  y = kv2Row('연락처','010-6508-5901','카카오 상담','open.kakao.com/o/sxGtK0ri', y, 18, PW/2);
+  y += 4;
+
+  // 2. 분양 동물 정보
+  y = secHeader('2. 분양 동물 정보  (동물보호법 시행규칙 [별표12] 법정 필수 기재사항)', y);
+  y = kv2Row('축종/품종','개 / 골든리트리버','성별', dg.gender||'', y, 22, PW/2);
+  y = kv2Row('출생일', dg.birth||'', '입수일','', y, 18, PW/2);
+  y = kv2Row('색상','크림빛 황금색','건강상태','양호', y, 16, PW/2);
+  y = kv2Row('동물등록번호','(30일 이내 등록 의무)','판매당시 특징','', y, 26, PW/2);
+  y += 4;
+
+  // 3. 구충 기록
+  y = secHeader('3. 수의사 구충 기록', y);
+  const colW = PW/6;
+  doc.setFillColor(...DARK);
+  doc.rect(ML, y, PW, 6.5, 'F');
+  setFont(7, true, WHITE);
+  ['구분','1차','2차','3차','4차','5차'].forEach((t,i)=>doc.text(t, ML+colW*i+colW/2, y+4.5, {align:'center'}));
+  y += 6.5;
+  doc.setFillColor(...BEIGE);
+  doc.rect(ML, y, colW, 6.5, 'F');
+  doc.setFillColor(255,255,255);
+  doc.rect(ML+colW, y, PW-colW, 6.5, 'F');
+  doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+  doc.rect(ML, y, PW, 6.5);
+  for(let i=1;i<6;i++) doc.line(ML+colW*i, y, ML+colW*i, y+6.5);
+  setFont(7.5, false, [51,51,51]);
+  doc.text('종합 구충제', ML+colW/2, y+4.5, {align:'center'});
+  y += 6.5;
+  setFont(6.5, false, GRAY);
+  doc.text('* 수의사 투여 기록 없음 (   )     수의사 치료 기록 없음 (   )', ML+1, y+3);
+  y += 6;
+
+  // 4. 판매 조건
+  y = secHeader('4. 판매 조건', y);
+  y = kv2Row('판매일', dg.saledate||'', '결제방법', b.payment||'', y, 18, PW/2);
+  const priceText = dg.price ? `금  ${parseInt(dg.price)*10000}  원 (₩${parseInt(dg.price)}만원)` : '금  ___________________  원';
+  const transferText = b.transfer ? `이체자: ${b.transfer}` : '';
+  doc.setFillColor(...BEIGE);
+  doc.rect(ML, y, 18, 7, 'F');
+  doc.setFillColor(WHITE);
+  doc.rect(ML+18, y, PW-18, 7, 'F');
+  doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+  doc.rect(ML, y, PW, 7);
+  setFont(7, true, DARK);
+  doc.text('판매금액', ML+2, y+4.8);
+  setFont(7.5, false, [51,51,51]);
+  doc.text(priceText, ML+20, y+4.8);
+  if(transferText) doc.text(transferText, ML+PW-2, y+4.8, {align:'right'});
+  y += 7+4;
+
+  // ════════════════ 2페이지 ════════════════
+  doc.addPage();
+  y = 15;
+
+  // 5. 품질 보증 조항
+  y = secHeader('5. 품질 보증 및 분쟁 해결 조항', y);
+  y += 2;
+
+  y = clauseBlock('①','잠복기 있는 질병 보증 (분양 후 15일 이내)',[
+    '분양 후 15일 이내에 잠복기가 있는 질병(파보장염·코로나장염·홍역 등)이 발병한 경우,',
+    '분양자가 무상으로 회복시켜 30일 이내에 인도해 드립니다.',
+    '해당 질병으로 15일 이내 폐사 시 동종 반려동물로 무상 재분양해 드립니다.',
+  ], y);
+
+  y = clauseBlock('②','잠복기 없는 질병 — 소비자 귀책사유 (보상 제외)',[
+    '소비자의 관리 미숙·환경 적응 과정에서 발생한 질병은 소비자 귀책사유로 보상되지 않습니다.',
+    '(호흡기·소화기 질환, 저혈당증, 식욕부진 등)',
+    '단, 분양 직후부터 증상이 있었다면 24시간 이내 분양자에게 반드시 유선 통보하셔야 합니다.',
+  ], y);
+
+  y = clauseBlock('③','보상 제외 항목 (소비자 귀책)',[
+    '▸ 방치: 이상 증상에 전화 상담도 안 받고 조치를 취하지 않은 경우',
+    '▸ 소비자의 과실로 인한 사고 또는 관리 소홀로 인한 경우',
+    '▸ 분양자의 동의 없이 지출된 동물병원 진료비·치료비·검사비용 (응급상황 포함 미보상)',
+  ], y, true);
+
+  y = clauseBlock('④','교환·환불·파양 불가',[
+    '반려동물은 생명입니다. 개인 사정·변심 등 생명에 관련되지 않은 이유로는',
+    '교환·환불이 절대 불가합니다. 파양은 절대 받지 않습니다.',
+  ], y, true);
+
+  y = clauseBlock('⑤','분양 후 15일 이후 발생 질병',[
+    '15일 이후 발생하는 모든 책임과 의무는 소비자에게 있습니다.',
+    '선천적 결함(간질·심혈관계통·고관절 등) 및 성견 시 크기·탈장 등 보상 제외.',
+  ], y);
+
+  y = clauseBlock('⑥','중대 질병 발생 시 처리 의무',[
+    '중대 질병 발생 시 반드시 분양자에게 반려동물을 인계하여 회복시키도록 합니다.',
+    '보상기간 15일 안에 질병 발생·폐사를 분양자에게 반드시 통보하셔야 보상받으실 수 있습니다.',
+  ], y);
+
+  y += 2;
+
+  // 6. 소비자 분쟁해결 기준
+  y = secHeader('6. 소비자 분쟁해결 기준 (공정거래위원회 고시)', y);
+  const dispCols = [20, 22, PW-42];
+  const dispHdrs = ['구분','내용','해결 기준'];
+  const dispRows = [
+    ['15일 이내','동물 사망','동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)'],
+    ['15일 이내','질병 발생','판매자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)'],
+  ];
+  doc.setFillColor(...DARK);
+  doc.rect(ML, y, PW, 6.5, 'F');
+  setFont(7, true, WHITE);
+  let cx = ML;
+  dispCols.forEach((w,i)=>{doc.text(dispHdrs[i], cx+w/2, y+4.5, {align:'center'}); cx+=w;});
+  y += 6.5;
+  dispRows.forEach((row,ri)=>{
+    const bg = ri%2===0 ? BEIGE : WHITE;
+    cx = ML;
+    doc.setFillColor(...bg);
+    doc.rect(ML, y, PW, 6.5, 'F');
+    doc.setFillColor(...BEIGE);
+    doc.rect(ML, y, dispCols[0], 6.5, 'F');
+    doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+    doc.rect(ML, y, PW, 6.5);
+    dispCols.forEach((w,i)=>{
+      if(i>0)doc.line(cx,y,cx,y+6.5);
+      setFont(7.5, false, [51,51,51]);
+      doc.text(row[i]||'', cx+2, y+4.5);
+      cx+=w;
+    });
+    y += 6.5;
+  });
+  y += 4;
+
+  // 7. 구매자 정보
+  y = secHeader('7. 구매자(입양인) 정보', y);
+  const signLine = b.name ? `${b.name}                    (서명)` : '                                              (서명)';
+  y = kv2Row('성명', signLine, '연락처', b.phone||'', y, 14, PW/2);
+  y = kv2Row('주소', b.addr||'', 'E-Mail', b.email||'', y, 14, PW/2);
+  y += 5;
+
+  // 서명란
+  doc.setDrawColor(...LGRAY); doc.setLineWidth(0.5);
+  doc.line(ML, y, ML+PW, y);
+  y += 4;
+  setFont(7.5, false, [51,51,51]);
+  doc.text('판매자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.', ML+PW/2, y, {align:'center'});
+  y += 7;
+
+  const signCols = PW/3;
+  setFont(7.5, false, [51,51,51]);
+  doc.text(`분양일:  ${dg.saledate||''}`, ML+signCols*0+signCols/2, y, {align:'center'});
+  doc.text('판매자 (골디 쉼터):  _______________  (인)', ML+signCols*1+signCols/2, y, {align:'center'});
+  doc.text('구매자 (입양인):  _______________  (인)', ML+signCols*2+signCols/2, y, {align:'center'});
+  y += 8;
+
+  // 전자서명 이미지 삽입
+  if (d.signature && d.signature.startsWith('data:image')) {
+    doc.setFillColor(...BEIGE);
+    doc.roundedRect(ML+PW/2, y-12, PW/2-5, 18, 2, 2, 'F');
+    doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+    doc.roundedRect(ML+PW/2, y-12, PW/2-5, 18, 2, 2);
+    try {
+      doc.addImage(d.signature, 'PNG', ML+PW/2+2, y-11, PW/2-9, 16);
+    } catch(e) {}
+    setFont(6, false, GRAY);
+    doc.text('전자서명', ML+PW/2+2, y+7);
+    y += 8;
+  }
+  y += 2;
+
+  // 법적 고지
+  doc.setFillColor(240,240,240);
+  doc.roundedRect(ML, y, PW, 12, 1, 1, 'F');
+  doc.setDrawColor(...LGRAY); doc.setLineWidth(0.3);
+  doc.roundedRect(ML, y, PW, 12, 1, 1);
+  setFont(6, false, [85,85,85]);
+  const lawText = doc.splitTextToSize(
+    '【법적 고지】 본 계약서는 「동물보호법」 시행규칙 [별표12] 및 「소비자기본법 시행령」 제8조 소비자분쟁해결기준에 의거합니다. 분양받은 날로부터 30일 이내 동물등록 신청 의무가 있습니다 (동물보호법 제12조). 이 계약과 관련하여 발생하는 모든 분쟁은 상호 협의하여 해결하며, 협의에 의해 해결되지 않을 경우 분양자 소재지 관할 법원을 관할 법원으로 합니다. 분쟁 발생 시 소비자분쟁조정위원회 (국번없이 1372) 문의 가능합니다.',
+    PW-6
+  );
+  doc.text(lawText, ML+3, y+4);
+  y += 14;
+
+  // 하단
+  doc.setDrawColor(...GOLD); doc.setLineWidth(0.8);
+  doc.line(ML, y, ML+PW, y);
+  y += 3;
+  setFont(6.5, false, GRAY);
+  doc.text('골디 쉼터  |  소규모지만 윤리적으로 키운 아이들  |  010-6508-5901  |  @iam_7707  |  open.kakao.com/o/sxGtK0ri', ML+PW/2, y, {align:'center'});
+
+  // ── 저장
+  const fname = `골디쉼터_분양계약서_${b.name||'입양인'}_${d.id}.pdf`;
+  doc.save(fname);
+  showToast('계약서 PDF 저장 완료! 📄');
 }
+
+// downloadContract 함수는 위 submitForm 내에 포함됨
 
 // ── 카카오 공유
 function shareKakao() {
