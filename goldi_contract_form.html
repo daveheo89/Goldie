@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>골디 쉼터 — 분양 계약서</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
@@ -267,7 +269,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--beige);color:var(--d
       <div class="c-sec-hd">3. 수의사 구충 기록</div>
       <table class="vac-t">
         <tr><th>구분</th><th>1차</th><th>2차</th><th>3차</th><th>4차</th><th>5차</th></tr>
-        <tr><td>종합 구충제</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>종합 구충제</td><td id="vac1">—</td><td id="vac2">—</td><td id="vac3">—</td><td id="vac4">—</td><td id="vac5">—</td></tr>
       </table>
       <p style="font-size:.63rem;color:var(--gray);margin-bottom:8px;">* 수의사 투여 기록 없음 (&nbsp;&nbsp;&nbsp;)&nbsp;&nbsp;&nbsp; 수의사 치료 기록 없음 (&nbsp;&nbsp;&nbsp;)</p>
 
@@ -436,7 +438,7 @@ const DOG = {
   dogid:   QP('dogid'),
   breed:   QP('breed')    || '골든리트리버',
   gender:  QP('gender'),
-  birth:   QP('birth2')  || QP('birth'),
+  birth:   QP('birth_b') || QP('birth2') || QP('birth'),
   price:   QP('price'),
   health:  QP('health')   || '양호',
   saledate:QP('saledate') || new Date().toLocaleDateString('ko-KR'),
@@ -507,6 +509,26 @@ function goStep(n) {
   updateStepUI(n);
 }
 
+// 구충 날짜 자동 계산 (생후 25일부터 5일 간격)
+function calcDeworming(birthStr) {
+  if (!birthStr) return ['—','—','—','—','—'];
+  // 날짜 파싱 (YYYY-MM-DD 또는 YYYY.MM.DD 또는 YYYY년 MM월 DD일)
+  let d = birthStr.replace(/년\s*/,'').replace(/월\s*/,'-').replace(/일/,'').trim();
+  d = d.replace(/\./g,'-');
+  const base = new Date(d);
+  if (isNaN(base.getTime())) return ['—','—','—','—','—'];
+  const fmt = dt => {
+    const mm = String(dt.getMonth()+1).padStart(2,'0');
+    const dd = String(dt.getDate()).padStart(2,'0');
+    return (dt.getMonth()+1)+'월 '+dt.getDate()+'일';
+  };
+  return [0,1,2,3,4].map(i => {
+    const dt = new Date(base);
+    dt.setDate(dt.getDate() + 25 + i*5);
+    return fmt(dt);
+  });
+}
+
 // 계약서 뷰에 데이터 채우기
 function fillContractView() {
   const b = getBuyer();
@@ -523,6 +545,13 @@ function fillContractView() {
   document.getElementById('cv-phone').textContent   = b.phone      || '—';
   document.getElementById('cv-addr').textContent    = b.addr       || '—';
   document.getElementById('cv-email').textContent   = b.email      || '—';
+
+  // 구충 날짜 자동 계산
+  const dewDates = calcDeworming(DOG.birth);
+  ['vac1','vac2','vac3','vac4','vac5'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = dewDates[i];
+  });
 }
 
 // 유효성
@@ -628,50 +657,71 @@ async function submitForm() {
     `<b>${b.name}</b>님, 계약이 완료되었습니다.<br>계약번호: <b>${_contractData.id}</b><br><br>아래 버튼으로 계약서를 저장하고<br>가이드북을 꼭 확인해 주세요 🐾`;
 }
 
-// PDF 다운로드 — html2canvas로 계약서 캡처 후 PDF
+// PDF 다운로드
 async function downloadPDF() {
   showLoading('PDF 생성 중...');
   try {
     const d = _contractData || JSON.parse(localStorage.getItem('goldi_last_contract') || 'null');
     if (!d) { hideLoading(); showToast('계약 데이터가 없습니다'); return; }
 
-    // 서명 이미지를 계약서 뷰에 반영
+    // 계약서 뷰 최신화
     if (d.signature && d.signature.startsWith('data:')) {
       document.getElementById('signPreviewWrap').innerHTML =
         `<img src="${d.signature}" style="max-height:36px;max-width:100%;">`;
     }
     fillContractView();
 
-    // html2canvas로 계약서 영역 캡처
-    const { default: html2canvas } = await import('https://cdn.skypack.dev/html2canvas@1.4.1');
-    const contractEl = document.querySelector('.c-paper');
-    const canvas2 = await html2canvas(contractEl, {
+    // 잠깐 대기 (렌더 완료 대기)
+    await new Promise(r => setTimeout(r, 300));
+
+    // html2canvas로 캡처
+    const el = document.querySelector('.c-paper');
+    const cvs = await html2canvas(el, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      windowWidth: el.scrollWidth,
+      windowHeight: el.scrollHeight,
     });
 
-    // 이미지를 PDF로 변환
-    const imgData = canvas2.toDataURL('image/jpeg', 0.95);
-    const { jsPDF } = await import('https://cdn.skypack.dev/jspdf@2.5.1');
+    const imgData = cvs.toDataURL('image/jpeg', 0.92);
+    const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const pW = pdf.internal.pageSize.getWidth();
-    const pH = pdf.internal.pageSize.getHeight();
-    const imgW = canvas2.width;
-    const imgH = canvas2.height;
-    const ratio = pW / imgW;
-    const scaledH = imgH * ratio;
 
-    if (scaledH <= pH) {
-      pdf.addImage(imgData, 'JPEG', 0, 0, pW, scaledH);
+    const pW = 210;  // A4 mm
+    const pH = 297;
+    const imgW = cvs.width;
+    const imgH = cvs.height;
+    const mmW  = pW;
+    const mmH  = imgH * (pW / imgW);
+
+    if (mmH <= pH) {
+      // 1페이지
+      pdf.addImage(imgData, 'JPEG', 0, 0, mmW, mmH);
     } else {
-      // 2페이지로 분할
-      pdf.addImage(imgData, 'JPEG', 0, 0, pW, scaledH);
-      // pdf-lib 없이 jsPDF 자체 페이지 분할
+      // 2페이지 분할
+      const ratio = imgW / pW;
+      const p1H   = pH * ratio;
+      // 1페이지 캔버스
+      const c1 = document.createElement('canvas');
+      c1.width  = imgW;
+      c1.height = Math.min(p1H, imgH);
+      c1.getContext('2d').drawImage(cvs, 0, 0, imgW, c1.height, 0, 0, imgW, c1.height);
+      pdf.addImage(c1.toDataURL('image/jpeg',0.92), 'JPEG', 0, 0, pW, pH);
+
+      if (imgH > p1H) {
+        pdf.addPage();
+        const c2 = document.createElement('canvas');
+        c2.width  = imgW;
+        c2.height = imgH - p1H;
+        c2.getContext('2d').drawImage(cvs, 0, p1H, imgW, c2.height, 0, 0, imgW, c2.height);
+        const h2 = c2.height * (pW / imgW);
+        pdf.addImage(c2.toDataURL('image/jpeg',0.92), 'JPEG', 0, 0, pW, h2);
+      }
     }
 
-    pdf.save('GoldiShelter_Contract_' + d.id + '.pdf');
+    pdf.save('GoldiShelter_Contract_' + (d.id || Date.now()) + '.pdf');
     hideLoading();
     showToast('계약서 PDF 저장 완료! 📄');
   } catch(err) {
