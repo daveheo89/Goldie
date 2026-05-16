@@ -435,6 +435,28 @@ function addPuppy(){
 }
 
 // ── P2: 계약 DB
+// ── Firebase에서 계약 로드 후 렌더
+function loadContractsAndRender(){
+  const db=DB();
+  if(!db){renderContracts();return;}
+  document.getElementById('cList').innerHTML='<div class="loading">🔄 계약 내역 불러오는 중...</div>';
+  db.ref('contracts').once('value').then(snap=>{
+    const fbData=snap.val();
+    if(fbData){
+      // Firebase 데이터를 localStorage에 병합
+      const local=JSON.parse(localStorage.getItem('goldi_contracts')||'[]');
+      const localIds=new Set(local.map(c=>c.id));
+      Object.values(fbData).forEach(fc=>{
+        if(!localIds.has(fc.id)){
+          local.push(fc);
+        }
+      });
+      localStorage.setItem('goldi_contracts',JSON.stringify(local));
+    }
+    renderContracts();
+  }).catch(()=>renderContracts());
+}
+
 function renderStats(){
   const all=getContracts();
   const now=new Date();
@@ -514,7 +536,7 @@ function sw(i){
   document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',i===j));
   document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('on',i===j));
   if(i===1)renderPManage();
-  if(i===2)renderContracts();
+  if(i===2)loadContractsAndRender();
 }
 function cm(id){document.getElementById(id).classList.remove('show');}
 function ov(e,id){if(e.target.classList.contains('overlay'))cm(id);}
@@ -522,6 +544,20 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 document.getElementById('inp-saledate').value=new Date().toISOString().slice(0,10);
 initFB();
+// 초기 통계용 Firebase 계약 로드
+setTimeout(()=>{
+  const db=DB();
+  if(!db)return;
+  db.ref('contracts').once('value').then(snap=>{
+    const fbData=snap.val();
+    if(!fbData)return;
+    const local=JSON.parse(localStorage.getItem('goldi_contracts')||'[]');
+    const localIds=new Set(local.map(c=>c.id));
+    Object.values(fbData).forEach(fc=>{if(!localIds.has(fc.id))local.push(fc);});
+    localStorage.setItem('goldi_contracts',JSON.stringify(local));
+    renderStats();
+  }).catch(()=>{});
+},2000);
 </script>
 </body>
 </html>
