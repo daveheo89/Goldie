@@ -3,381 +3,438 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>골디쉼터 어드민 — 분양 관리</title>
+<title>골디쉼터 관리자</title>
 <style>
-  :root {
-    --gold: #C8931A;
-    --gold-light: #F0BE5A;
-    --gold-pale: #FDF5E0;
-    --brown: #5C3D1E;
-    --brown-light: #8B6240;
-    --cream: #FAFAF5;
-    --gray: #6B6B6B;
-    --gray-light: #E8E6E0;
-    --red: #C0392B;
-    --green: #27AE60;
-    --radius: 10px;
-    --shadow: 0 2px 12px rgba(92,61,30,0.10);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
-    background: var(--cream);
-    color: var(--brown);
-    min-height: 100vh;
-  }
-
-  /* HEADER */
-  header {
-    background: var(--brown);
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  }
-  header .logo { font-size: 22px; color: var(--gold-light); font-weight: 700; letter-spacing: -0.5px; }
-  header .sub { font-size: 12px; color: rgba(255,255,255,0.5); margin-left: auto; }
-
-  /* MAIN LAYOUT */
-  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
-
-  /* SECTION TITLE */
-  .section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 14px;
-    padding-bottom: 6px;
-    border-bottom: 1.5px solid var(--gold-light);
-  }
-
-  /* LITTER CARDS */
-  .litter-grid { display: flex; flex-direction: column; gap: 20px; }
-
-  .litter-card {
-    background: #fff;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--gray-light);
-    overflow: hidden;
-  }
-  .litter-header {
-    background: var(--brown);
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-  }
-  .litter-header:hover { background: var(--brown-light); }
-  .litter-id { font-size: 13px; color: rgba(255,255,255,0.55); }
-  .litter-parents { font-size: 15px; font-weight: 700; color: var(--gold-light); flex: 1; }
-  .litter-meta { font-size: 12px; color: rgba(255,255,255,0.7); display: flex; gap: 16px; }
-  .litter-toggle { color: var(--gold-light); font-size: 18px; transition: transform 0.2s; }
-  .litter-card.open .litter-toggle { transform: rotate(180deg); }
-
-  .litter-body { display: none; padding: 16px 18px; }
-  .litter-card.open .litter-body { display: block; }
-
-  /* INFO ROW */
-  .info-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 20px;
-    margin-bottom: 16px;
-    padding: 12px 14px;
-    background: var(--gold-pale);
-    border-radius: 8px;
-    font-size: 13px;
-  }
-  .info-item { display: flex; gap: 6px; align-items: center; }
-  .info-label { color: var(--gray); font-weight: 600; }
-  .info-value { color: var(--brown); }
-
-  /* PUPPIES TABLE */
-  .puppy-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .puppy-table th {
-    background: var(--brown);
-    color: var(--gold-light);
-    padding: 8px 12px;
-    text-align: left;
-    font-weight: 600;
-  }
-  .puppy-table td { padding: 9px 12px; border-bottom: 1px solid var(--gray-light); }
-  .puppy-table tr:last-child td { border-bottom: none; }
-  .puppy-table tr:hover td { background: var(--gold-pale); }
-
-  /* STATUS BADGE */
-  .badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .badge:hover { opacity: 0.8; }
-  .badge-available { background: #E8F8EF; color: var(--green); border: 1px solid #A8DDB9; }
-  .badge-sold { background: #F0F0F0; color: #888; border: 1px solid #CCC; }
-
-  /* GENDER */
-  .gender-m { color: #1E6FBB; font-weight: 700; }
-  .gender-f { color: #BB1E6F; font-weight: 700; }
-
-  /* CONTRACT BTN */
-  .btn-contract {
-    background: var(--gold);
-    color: #fff;
-    border: none;
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-  .btn-contract:hover { background: var(--brown); }
-  .btn-contract:disabled { background: #CCC; cursor: default; }
-
-  /* LOADING / EMPTY */
-  .loading {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--gray);
-    font-size: 14px;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--gray-light);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 14px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--brown);
-    color: #fff;
-    padding: 12px 22px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-    transition: transform 0.3s;
-    z-index: 999;
-    pointer-events: none;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* STATS BAR */
-  .stats-bar {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .stat-box {
-    flex: 1;
-    min-width: 100px;
-    background: #fff;
-    border: 1px solid var(--gray-light);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    text-align: center;
-    box-shadow: var(--shadow);
-  }
-  .stat-num { font-size: 26px; font-weight: 800; color: var(--gold); line-height: 1; }
-  .stat-label { font-size: 11px; color: var(--gray); margin-top: 4px; font-weight: 600; }
+:root {
+  --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
+  --br:#5C3D1E;--br-l:#8B6240;--br-ll:#B8916A;
+  --cream:#FAFAF7;--white:#fff;
+  --gray:#6B6B6B;--gray-l:#E8E6E0;--gray-ll:#F4F3EF;
+  --green:#27AE60;--red:#C0392B;--blue:#1E6FBB;
+  --r:10px;--sh:0 2px 14px rgba(92,61,30,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
+header{background:var(--br);padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.logo{font-size:20px;color:var(--gold-l);font-weight:800;letter-spacing:-.5px}
+.logo span{color:rgba(255,255,255,.45);font-size:12px;font-weight:400;margin-left:6px}
+.tab-bar{display:flex;background:var(--br);padding:0 20px;border-bottom:2px solid var(--gold)}
+.tab-btn{padding:12px 22px;font-size:13px;font-weight:700;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap}
+.tab-btn.active{color:var(--gold-l);border-bottom-color:var(--gold-l)}
+.tab-btn:hover:not(.active){color:rgba(255,255,255,.8)}
+.tab-panel{display:none;padding:24px 20px;max-width:960px;margin:0 auto}
+.tab-panel.active{display:block}
+.stitle{font-size:11px;font-weight:800;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:5px;border-bottom:1.5px solid var(--gold-l)}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:20px;margin-bottom:16px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ffield{display:flex;flex-direction:column;gap:4px}
+.ffield label{font-size:12px;font-weight:700;color:var(--br-l)}
+.ffield input,.ffield select{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;transition:border-color .15s}
+.ffield input:focus,.ffield select:focus{border-color:var(--gold)}
+.puppy-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.puppy-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--gray-l);border-radius:8px;cursor:pointer;transition:.15s;background:#fff}
+.puppy-item:hover{border-color:var(--gold);background:var(--gold-p)}
+.puppy-item.selected{border-color:var(--gold);background:var(--gold-p);box-shadow:0 0 0 2px var(--gold-l)}
+.puppy-item.disabled{opacity:.5;cursor:not-allowed}
+.puppy-name{font-weight:700;font-size:14px;flex:1}
+.puppy-meta{font-size:12px;color:var(--gray)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-avail{background:#E8F8EF;color:var(--green);border:1px solid #A8DDB9}
+.badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7}
+.badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC}
+.gender-m{color:var(--blue);font-weight:700}
+.gender-f{color:#BB1E6F;font-weight:700}
+.litter-group{margin-bottom:20px}
+.litter-label{font-size:12px;font-weight:800;color:var(--br-l);padding:6px 12px;background:var(--gray-ll);border-radius:6px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.link-box{background:var(--gray-ll);border:1.5px solid var(--gray-l);border-radius:8px;padding:12px 14px;font-size:12px;word-break:break-all;color:var(--gray);margin-bottom:10px}
+.link-box strong{display:block;font-size:11px;color:var(--br-l);margin-bottom:4px}
+#qrWrap{text-align:center;padding:16px;background:var(--gray-ll);border-radius:8px;margin-bottom:10px;display:none}
+.btn{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{background:var(--br)}
+.btn-br{background:var(--br);color:#fff}
+.btn-br:hover{background:#3a250f}
+.btn-gray{background:var(--gray-l);color:var(--br)}
+.btn-gray:hover{background:#d8d5ce}
+.btn-green{background:var(--green);color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.status-sel{display:flex;gap:6px;flex-wrap:wrap}
+.status-opt{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--gray-l);background:#fff;transition:.15s}
+.so-avail{background:#E8F8EF;border-color:var(--green);color:var(--green)}
+.so-rsv{background:#FFF3E0;border-color:#E67E22;color:#E67E22}
+.so-sold{background:#F0F0F0;border-color:#888;color:#888}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--br);color:var(--gold-l);padding:9px 12px;text-align:left;font-weight:700}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--gray-l)}
+.tbl tr:hover td{background:var(--gold-p)}
+.tbl tr:last-child td{border-bottom:none}
+.search-row{display:flex;gap:8px;margin-bottom:14px}
+.search-row input{flex:1;border:1.5px solid var(--gray-l);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none}
+.search-row input:focus{border-color:var(--gold)}
+.stats-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat{flex:1;min-width:90px;background:#fff;border:1px solid var(--gray-l);border-radius:var(--r);padding:14px;text-align:center;box-shadow:var(--sh)}
+.stat-n{font-size:26px;font-weight:800;color:var(--gold);line-height:1}
+.stat-l{font-size:11px;color:var(--gray);margin-top:3px;font-weight:600}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;justify-content:center;align-items:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+.modal-head{background:var(--br);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0}
+.modal-head h3{color:var(--gold-l);font-size:15px}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:20px;cursor:pointer}
+.modal-body{padding:20px}
+.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-l);font-size:13px}
+.detail-row:last-child{border:none}
+.detail-key{color:var(--gray);font-weight:600}
+.detail-val{color:var(--br);font-weight:700;text-align:right;max-width:60%}
+.loading{text-align:center;padding:40px;color:var(--gray);font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-l);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--br);color:#fff;padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:transform .3s;z-index:999;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.info-chips{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 14px;background:var(--gold-p);border-radius:8px;font-size:12px;margin-bottom:14px}
+.chip{display:flex;gap:5px}
+.chip-k{color:var(--gray);font-weight:600}
+.chip-v{color:var(--br);font-weight:700}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">🐾 골디쉼터</div>
-  <div class="sub">분양 관리 어드민</div>
+  <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
 </header>
 
-<div class="container">
-  <div class="stats-bar" id="statsBar">
-    <div class="stat-box"><div class="stat-num" id="statLitters">—</div><div class="stat-label">출산 그룹</div></div>
-    <div class="stat-box"><div class="stat-num" id="statTotal">—</div><div class="stat-label">전체 강아지</div></div>
-    <div class="stat-box"><div class="stat-num" id="statAvailable">—</div><div class="stat-label">분양 가능</div></div>
-    <div class="stat-box"><div class="stat-num" id="statSold">—</div><div class="stat-label">분양 완료</div></div>
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
+  <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
+  <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+</div>
+
+<!-- TAB1 -->
+<div class="tab-panel active" id="tab-send">
+  <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
+  <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
+  <div id="puppyGroups"></div>
+
+  <div class="card" id="sendForm" style="display:none">
+    <div class="stitle">분양 조건 입력</div>
+    <div class="info-chips" id="selectedInfo"></div>
+    <div class="fgrid" style="margin-bottom:14px">
+      <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
+      <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
+    </div>
   </div>
 
-  <div class="section-title">출산 그룹별 분양 현황</div>
-
-  <div class="litter-grid" id="litterGrid">
-    <div class="loading">
-      <div class="spinner"></div>
-      Firebase에서 데이터를 불러오는 중...
+  <div class="card" id="linkCard" style="display:none">
+    <div class="stitle">발송용 링크</div>
+    <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
+    <div id="qrWrap"><div id="qrTarget"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
+      <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
+      <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
     </div>
+  </div>
+</div>
+
+<!-- TAB2 -->
+<div class="tab-panel" id="tab-puppy">
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
+    <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
+    <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
+    <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
+  </div>
+  <div class="stitle">전체 새끼 목록</div>
+  <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
+</div>
+
+<!-- TAB3 -->
+<div class="tab-panel" id="tab-db">
+  <div class="search-row">
+    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
+    <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
+  </div>
+  <div class="stitle">계약 내역</div>
+  <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
+</div>
+
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
-  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
-  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
-  projectId: "goldie-shelter-d6c81",
-  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
-  messagingSenderId: "305277425020",
-  appId: "1:305277425020:web:1f841f61d733c3a3aec0f9",
-  measurementId: "G-V1B9WV3ZGH"
+const FB = {
+  apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain:"goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL:"https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId:"goldie-shelter-d6c81",
+  storageBucket:"goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId:"305277425020",
+  appId:"1:305277425020:web:1f841f61d733c3a3aec0f9"
 };
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(FB);
 const db  = getDatabase(app);
 
-// ── 성별 매핑
-function genderLabel(sex) {
-  if (!sex) return '—';
-  const s = String(sex).toLowerCase();
-  if (s === 'm' || s === '수' || s === 'male')   return '<span class="gender-m">♂ 수컷</span>';
-  if (s === 'f' || s === '암' || s === 'female') return '<span class="gender-f">♀ 암컷</span>';
-  return sex;
+window._litters={};
+window._contracts={};
+window._selected=null;
+window._contractUrl='';
+
+// ── 유틸
+const fmt = d => d ? d.replace(/-/g,'.') : '—';
+const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
+function genderTxt(s){
+  const v=String(s||'').toLowerCase();
+  if(v==='female'||v==='암'||v==='f') return '암컷';
+  if(v==='male'  ||v==='수'||v==='m') return '수컷';
+  return s||'—';
+}
+function genderKo(s){
+  const v=String(s||'').toLowerCase();
+  if(v==='female'||v==='암'||v==='f') return '<span class="gender-f">♀ 암컷</span>';
+  if(v==='male'  ||v==='수'||v==='m') return '<span class="gender-m">♂ 수컷</span>';
+  return s||'—';
+}
+function statusBadge(st){
+  if(!st||st==='분양 전') return '<span class="badge badge-avail">분양 전</span>';
+  if(st==='예약')         return '<span class="badge badge-rsv">예약</span>';
+  return                         '<span class="badge badge-sold">분양 완료</span>';
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
 }
 
-// ── 상태 뱃지
-function statusBadge(status, litterId, puppyId) {
-  const avail = !status || status === '분양 전';
-  return `<span class="badge ${avail ? 'badge-available' : 'badge-sold'}"
-    onclick="toggleStatus('${litterId}','${puppyId}','${status}')">${avail ? '분양 가능' : '분양 완료'}</span>`;
+// ── 탭
+window.switchTab=(btn,name)=>{
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+};
+
+// ── Firebase 구독
+onValue(ref(db,'litters'),snap=>{
+  window._litters=snap.val()||{};
+  renderPuppyGroups();
+  renderManageList();
+  updateStats();
+});
+onValue(ref(db,'contracts'),snap=>{
+  const fb=snap.val()||{};
+  let ls={};
+  try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
+  window._contracts={...ls,...fb};
+  renderDB();
+});
+
+// ── TAB1: 새끼 선택
+function renderPuppyGroups(){
+  document.getElementById('puppyLoading').style.display='none';
+  const litters=window._litters;
+  const container=document.getElementById('puppyGroups');
+  if(!Object.keys(litters).length){container.innerHTML='<div class="loading">등록된 출산 그룹이 없습니다.</div>';return;}
+
+  const sorted=Object.entries(litters).sort(([,a],[,b])=>(b.birthB||'').localeCompare(a.birthB||''));
+  container.innerHTML=sorted.map(([lid,l])=>{
+    const puppies=l.puppies||{};
+    if(!Object.keys(puppies).length) return '';
+    const items=Object.entries(puppies).map(([pid,p])=>{
+      const sold=p.status==='분양 완료';
+      return `<div class="puppy-item${sold?' disabled':''}" id="pi-${lid}-${pid}" onclick="selectPuppy('${lid}','${pid}')">
+        <div style="flex:1">
+          <div class="puppy-name">${p.name||pid}</div>
+          <div class="puppy-meta">${genderTxt(p.sex)} · 출생 ${fmt(l.birthB)}</div>
+        </div>
+        <div>${statusBadge(p.status)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="litter-group">
+      <div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+      <div class="puppy-list">${items}</div>
+    </div>`;
+  }).join('');
 }
 
-// ── 날짜 포맷
-function fmt(d) { return d ? d.replace(/-/g,'.'): '—'; }
+window.selectPuppy=(lid,pid)=>{
+  const l=window._litters[lid];
+  const p=(l?.puppies||{})[pid];
+  if(!p) return;
+  if(p.status==='분양 완료'){toast('이미 분양 완료된 강아지입니다.');return;}
 
-// ── 통계 업데이트
-function updateStats(litters) {
-  let total=0, available=0, sold=0;
-  Object.values(litters).forEach(l => {
-    const pp = l.puppies || {};
-    Object.values(pp).forEach(p => {
+  window._selected={litterId:lid,puppyId:pid,litter:l,puppy:p};
+  document.querySelectorAll('.puppy-item').forEach(el=>el.classList.remove('selected'));
+  document.getElementById(`pi-${lid}-${pid}`)?.classList.add('selected');
+
+  document.getElementById('selectedInfo').innerHTML=`
+    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${p.name||pid}</span></div>
+    <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
+    <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
+    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${l.femaleCode||'—'}</span></div>
+    <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
+    <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
+  document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('sendForm').style.display='block';
+  document.getElementById('linkCard').style.display='none';
+  document.getElementById('sendForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+window.generateLink=()=>{
+  const sel=window._selected;
+  if(!sel){toast('새끼를 먼저 선택해주세요.');return;}
+  const price=document.getElementById('s_price').value;
+  const saledate=document.getElementById('s_saledate').value;
+  if(!price||!saledate){toast('분양가와 분양 예정일을 입력해주세요.');return;}
+
+  const {litterId:lid,puppyId:pid,litter:l,puppy:p}=sel;
+  const params=new URLSearchParams({
+    litter:lid, puppy:pid,
+    dogname:p.name||pid,
+    sex:p.sex||'',
+    birthB:l.birthB||'',
+    deworm1:l.deworm1||'',
+    deworm2:l.deworm2||'',
+    femaleCode:l.femaleCode||'',
+    maleCode:l.maleCode||'',
+    price, saledate
+  });
+  const base=location.href.replace('goldi_admin.html','goldi_contract_form.html');
+  const url=base+'?'+params.toString();
+  window._contractUrl=url;
+
+  document.getElementById('contractLink').textContent=url;
+  document.getElementById('linkCard').style.display='block';
+  document.getElementById('qrWrap').style.display='none';
+
+  // QR 생성
+  const target=document.getElementById('qrTarget');
+  target.innerHTML='';
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  script.onload=()=>{ new window.QRCode(target,{text:url,width:180,height:180}); };
+  if(!document.querySelector('script[src*="qrcode"]')) document.head.appendChild(script);
+  else if(window.QRCode) new window.QRCode(target,{text:url,width:180,height:180});
+
+  toast('링크가 생성됐습니다!');
+};
+
+window.copyLink=()=>{navigator.clipboard.writeText(window._contractUrl);toast('링크 복사됐습니다.');};
+window.toggleQR=()=>{const q=document.getElementById('qrWrap');q.style.display=q.style.display==='none'?'block':'none';};
+window.sendKakao=()=>{
+  const msg=`[골디쉼터] 분양 계약서 작성 안내\n\n아래 링크를 열어 계약서를 작성해주세요.\n${window._contractUrl}\n\n순서대로 따라주시면 됩니다 🐾`;
+  navigator.clipboard.writeText(msg);
+  toast('카카오 메시지 내용이 복사됐습니다. 카카오톡에 붙여넣어 전송해주세요.');
+};
+
+// ── TAB2: 새끼 관리
+function updateStats(){
+  let total=0,avail=0,rsv=0,sold=0;
+  Object.values(window._litters).forEach(l=>{
+    Object.values(l.puppies||{}).forEach(p=>{
       total++;
-      if (!p.status || p.status === '분양 전') available++;
+      if(!p.status||p.status==='분양 전') avail++;
+      else if(p.status==='예약') rsv++;
       else sold++;
     });
   });
-  document.getElementById('statLitters').textContent   = Object.keys(litters).length;
-  document.getElementById('statTotal').textContent     = total;
-  document.getElementById('statAvailable').textContent = available;
-  document.getElementById('statSold').textContent      = sold;
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-avail').textContent=avail;
+  document.getElementById('st-rsv').textContent=rsv;
+  document.getElementById('st-sold').textContent=sold;
 }
 
-// ── 카드 렌더
-function renderLitter(id, l) {
-  const puppies = l.puppies || {};
-  const rows = Object.entries(puppies).map(([pid, p]) => `
+function renderManageList(){
+  const litters=window._litters;
+  const el=document.getElementById('manageList');
+  if(!Object.keys(litters).length){el.innerHTML='<div class="loading">데이터 없음</div>';return;}
+  const sorted=Object.entries(litters).sort(([,a],[,b])=>(b.birthB||'').localeCompare(a.birthB||''));
+  let html='';
+  sorted.forEach(([lid,l])=>{
+    const puppies=l.puppies||{};
+    if(!Object.keys(puppies).length) return;
+    html+=`<div class="litter-group"><div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+    <table class="tbl"><thead><tr><th>이름</th><th>성별</th><th>상태 변경</th></tr></thead><tbody>`;
+    Object.entries(puppies).forEach(([pid,p])=>{
+      const st=p.status||'분양 전';
+      html+=`<tr>
+        <td><strong>${p.name||pid}</strong></td>
+        <td>${genderKo(p.sex)}</td>
+        <td><div class="status-sel">
+          <button class="status-opt${st==='분양 전'?' so-avail':''}" onclick="setStatus('${lid}','${pid}','분양 전')">분양 전</button>
+          <button class="status-opt${st==='예약'?' so-rsv':''}" onclick="setStatus('${lid}','${pid}','예약')">예약</button>
+          <button class="status-opt${st==='분양 완료'?' so-sold':''}" onclick="setStatus('${lid}','${pid}','분양 완료')">분양 완료</button>
+        </div></td>
+      </tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+  el.innerHTML=html;
+}
+
+window.setStatus=async(lid,pid,status)=>{
+  await update(ref(db,`litters/${lid}/puppies/${pid}`),{status});
+  toast(`"${status}"로 변경됐습니다.`);
+};
+
+// ── TAB3: 계약 DB
+window.renderDB=()=>{
+  const kw=(document.getElementById('dbSearch')?.value||'').toLowerCase();
+  const list=Object.entries(window._contracts).filter(([,c])=>{
+    if(!kw) return true;
+    return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw);
+  });
+  const el=document.getElementById('dbList');
+  if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
+  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th></th></tr></thead><tbody>
+    ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
     <tr>
-      <td>${p.name || pid}</td>
-      <td>${genderLabel(p.sex)}</td>
-      <td>${statusBadge(p.status, id, pid)}</td>
-      <td>
-        <button class="btn-contract"
-          ${p.status === '분양 완료' ? 'disabled title="이미 분양 완료"' : ''}
-          onclick="openContract('${id}','${pid}')">계약서 작성</button>
-      </td>
-    </tr>`).join('');
-
-  return `
-  <div class="litter-card" id="card-${id}">
-    <div class="litter-header" onclick="toggleCard('${id}')">
-      <div>
-        <div class="litter-parents">♀ ${l.femaleCode || '—'} × ♂ ${l.maleCode || '—'}</div>
-        <div class="litter-id">${id}</div>
-      </div>
-      <div class="litter-meta">
-        <span>출생 ${fmt(l.birthB)}</span>
-        <span>총 ${l.count || Object.keys(puppies).length}마리</span>
-      </div>
-      <span class="litter-toggle">▾</span>
-    </div>
-    <div class="litter-body">
-      <div class="info-row">
-        <div class="info-item"><span class="info-label">모견코드</span><span class="info-value">${l.femaleCode || '—'}</span></div>
-        <div class="info-item"><span class="info-label">부견</span><span class="info-value">${l.maleCode || '—'}</span></div>
-        <div class="info-item"><span class="info-label">출생일(birthB)</span><span class="info-value">${fmt(l.birthB)}</span></div>
-        <div class="info-item"><span class="info-label">구충1</span><span class="info-value">${fmt(l.deworm1)}</span></div>
-        <div class="info-item"><span class="info-label">구충2</span><span class="info-value">${fmt(l.deworm2)}</span></div>
-      </div>
-      <table class="puppy-table">
-        <thead><tr><th>이름</th><th>성별</th><th>분양 상태</th><th>계약서</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="4" style="color:var(--gray);text-align:center;padding:16px">등록된 강아지 없음</td></tr>'}</tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-// ── 메인 렌더
-onValue(ref(db, 'litters'), snap => {
-  const litters = snap.val() || {};
-  const grid = document.getElementById('litterGrid');
-
-  if (!Object.keys(litters).length) {
-    grid.innerHTML = '<div class="loading">등록된 출산 그룹이 없습니다.</div>';
-    return;
-  }
-
-  // 최신순 정렬 (birthB 기준)
-  const sorted = Object.entries(litters).sort(([,a],[,b]) => (b.birthB||'').localeCompare(a.birthB||''));
-  grid.innerHTML = sorted.map(([id, l]) => renderLitter(id, l)).join('');
-
-  updateStats(litters);
-
-  // 첫 번째 카드 자동 열기
-  if (sorted.length) {
-    document.getElementById(`card-${sorted[0][0]}`)?.classList.add('open');
-  }
-});
-
-// ── 토스트
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-// ── 상태 토글
-window.toggleStatus = async (litterId, puppyId, currentStatus) => {
-  const avail = !currentStatus || currentStatus === '분양 전';
-  const next  = avail ? '분양 완료' : '분양 전';
-  const path  = `litters/${litterId}/puppies/${puppyId}`;
-  await update(ref(db, path), { status: next });
-  showToast(`${next}으로 변경됐습니다.`);
+      <td>${fmt(c.contract_date)}</td>
+      <td><strong>${c.dogname||'—'}</strong></td>
+      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
+      <td>${c.price?numFmt(c.price):'—'}</td>
+      <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
+    </tr>`).join('')}
+  </tbody></table>`;
 };
 
-// ── 카드 토글
-window.toggleCard = (id) => {
-  document.getElementById(`card-${id}`)?.classList.toggle('open');
+window.showDetail=id=>{
+  const c=window._contracts[id];if(!c)return;
+  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',c.femaleCode],
+    ['구매자',c.buyer_name],['연락처',c.buyer_phone],['주소',c.buyer_addr],
+    ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
+    ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
+  ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
+  document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
+    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
+  document.getElementById('detailModal').classList.add('open');
 };
+window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
-// ── 계약서 열기
-window.openContract = (litterId, puppyId) => {
-  const url = `goldi_contract_form.html?litter=${litterId}&puppy=${puppyId}`;
-  window.open(url, '_blank');
+window.exportCSV=()=>{
+  const rows=[['계약일','강아지','성별','출생일','구매자','연락처','주소','분양가','계약금','결제방법']];
+  Object.values(window._contracts).forEach(c=>{
+    rows.push([c.contract_date,c.dogname,genderTxt(c.sex),c.birthB,c.buyer_name,c.buyer_phone,c.buyer_addr,c.price,c.deposit,c.payment]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${v||''}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='goldi_contracts_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 };
 </script>
 </body>

@@ -4,507 +4,527 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 분양 계약서</title>
+<!-- PDF 라이브러리 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-  :root {
-    --gold: #C8931A;
-    --gold-light: #F0BE5A;
-    --gold-pale: #FDF5E0;
-    --brown: #5C3D1E;
-    --brown-light: #8B6240;
-    --cream: #FAFAF5;
-    --gray: #6B6B6B;
-    --gray-light: #E8E6E0;
-    --green: #27AE60;
-    --radius: 10px;
-    --shadow: 0 2px 12px rgba(92,61,30,0.10);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
-    background: var(--cream);
-    color: var(--brown);
-    min-height: 100vh;
-  }
+:root{
+  --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
+  --br:#5C3D1E;--br-l:#8B6240;
+  --cream:#FAFAF7;--white:#fff;
+  --gray:#6B6B6B;--gray-l:#E8E6E0;--gray-ll:#F4F3EF;
+  --green:#27AE60;--blue:#1E6FBB;
+  --r:10px;--sh:0 2px 14px rgba(92,61,30,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
 
-  /* HEADER */
-  header {
-    background: var(--brown);
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  }
-  header .logo { font-size: 20px; color: var(--gold-light); font-weight: 700; }
-  header .page-title { font-size: 14px; color: rgba(255,255,255,0.7); margin-left: 8px; }
-  .btn-back {
-    margin-left: auto;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.25);
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .btn-back:hover { background: rgba(255,255,255,0.22); }
+/* HEADER */
+header{background:var(--br);padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.logo{font-size:18px;color:var(--gold-l);font-weight:800}
+.page-ttl{font-size:13px;color:rgba(255,255,255,.6);margin-left:6px}
 
-  /* LAYOUT */
-  .container { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; }
+/* STEP BAR */
+.step-bar{background:var(--white);border-bottom:1px solid var(--gray-l);padding:14px 20px;display:flex;gap:0;justify-content:center;position:sticky;top:52px;z-index:90}
+.step-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--gray-l)}
+.step-item.active{color:var(--gold)}
+.step-item.done{color:var(--green)}
+.step-num{width:24px;height:24px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.step-done .step-num{background:var(--green);border-color:var(--green);color:#fff}
+.step-arrow{color:var(--gray-l);margin:0 10px;font-size:14px}
 
-  /* LOADING */
-  .loading {
-    text-align: center; padding: 60px 20px; color: var(--gray); font-size: 14px;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--gray-light);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 14px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* CONTAINER */
+.container{max-width:720px;margin:0 auto;padding:24px 16px 60px}
 
-  /* CONTRACT PAPER */
-  .contract-paper {
-    background: #fff;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--gray-light);
-    overflow: hidden;
-  }
+/* STEP PANELS */
+.step-panel{display:none}
+.step-panel.active{display:block}
 
-  .contract-header {
-    background: var(--brown);
-    padding: 24px 28px;
-    text-align: center;
-  }
-  .contract-header h1 { color: var(--gold-light); font-size: 20px; font-weight: 800; letter-spacing: 2px; }
-  .contract-header p  { color: rgba(255,255,255,0.55); font-size: 12px; margin-top: 4px; }
+/* CARD */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:22px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:800;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;padding-bottom:5px;border-bottom:1.5px solid var(--gold-l)}
 
-  /* PUPPY SUMMARY */
-  .puppy-summary {
-    background: var(--gold-pale);
-    border-bottom: 1px solid var(--gray-light);
-    padding: 16px 28px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 28px;
-    font-size: 13px;
-  }
-  .ps-item { display: flex; gap: 7px; align-items: center; }
-  .ps-label { color: var(--gray); font-weight: 600; }
-  .ps-value { color: var(--brown); font-weight: 700; }
+/* FORM */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fc1{grid-template-columns:1fr}
+.ffield{display:flex;flex-direction:column;gap:4px}
+.ffield label{font-size:12px;font-weight:700;color:var(--br-l)}
+.ffield label .req{color:#C0392B;margin-left:2px}
+.ffield input,.ffield select,.ffield textarea{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;transition:border-color .15s}
+.ffield input:focus,.ffield select:focus,.ffield textarea:focus{border-color:var(--gold)}
+.ffield input[readonly]{background:var(--gold-p);color:var(--br-l);cursor:default}
+.ffield textarea{resize:vertical;min-height:70px}
 
-  /* FORM BODY */
-  .form-body { padding: 24px 28px; }
+/* INFO CHIPS */
+.info-chips{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 14px;background:var(--gold-p);border-radius:8px;font-size:12px;margin-bottom:16px}
+.chip{display:flex;gap:5px}
+.chip-k{color:var(--gray);font-weight:600}
+.chip-v{color:var(--br);font-weight:700}
 
-  .form-section {
-    margin-bottom: 24px;
-  }
-  .form-section-title {
-    font-size: 11px;
-    font-weight: 800;
-    color: var(--gold);
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    padding-bottom: 5px;
-    border-bottom: 1.5px solid var(--gold-light);
-  }
+/* ════════════════════════
+   계약서 PREVIEW (STEP2)
+════════════════════════ */
+#contractPreview{background:#fff;padding:28px 28px;border:1px solid var(--gray-l);border-radius:var(--r);font-size:12.5px;line-height:1.85;color:#222}
+.cv-header{text-align:center;margin-bottom:22px;border-bottom:2px solid #5C3D1E;padding-bottom:14px}
+.cv-header h1{font-size:18px;font-weight:900;letter-spacing:3px;color:#5C3D1E;margin-bottom:4px}
+.cv-header p{font-size:11px;color:#888}
+.cv-table{width:100%;border-collapse:collapse;margin-bottom:18px;font-size:12px}
+.cv-table th{background:#5C3D1E;color:#F0BE5A;padding:7px 10px;text-align:left;font-weight:700;width:110px}
+.cv-table td{padding:7px 10px;border:1px solid #ddd;vertical-align:top}
+.cv-table tr:nth-child(even) td{background:#fafafa}
+.cv-section{font-size:12px;font-weight:800;color:#5C3D1E;margin:14px 0 6px;letter-spacing:.5px}
+.cv-clause{margin-bottom:6px;padding:7px 10px;background:#FDF5E0;border-left:3px solid #C8931A;border-radius:0 4px 4px 0;font-size:11.5px}
+.cv-clause strong{font-weight:800}
+.cv-legal{background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 12px;font-size:11px;color:#555;margin-top:10px;line-height:1.7}
+.cv-sign{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;border-top:1px solid #ddd;padding-top:16px}
+.sign-box{border:1px dashed #ccc;border-radius:6px;padding:12px;text-align:center}
+.sign-box .s-label{font-size:11px;color:#888;font-weight:700;margin-bottom:6px}
+.sign-box .s-name{font-size:15px;font-weight:800;color:#5C3D1E;min-height:24px}
+.sign-box .s-date{font-size:11px;color:#888;margin-top:4px}
 
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-grid.col1 { grid-template-columns: 1fr; }
+/* 전자서명 캔버스 */
+#signCanvas{border:2px solid var(--gray-l);border-radius:8px;cursor:crosshair;display:block;max-width:100%;touch-action:none;background:#fff}
 
-  .form-field { display: flex; flex-direction: column; gap: 4px; }
-  .form-field label { font-size: 12px; font-weight: 700; color: var(--brown-light); }
-  .form-field input,
-  .form-field select,
-  .form-field textarea {
-    border: 1.5px solid var(--gray-light);
-    border-radius: 7px;
-    padding: 9px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--brown);
-    background: #fff;
-    transition: border-color 0.15s;
-    outline: none;
-    width: 100%;
-  }
-  .form-field input:focus,
-  .form-field select:focus,
-  .form-field textarea:focus { border-color: var(--gold); }
-  .form-field input[readonly] { background: var(--gold-pale); color: var(--brown-light); }
-  .form-field textarea { resize: vertical; min-height: 70px; }
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{background:var(--br)}
+.btn-br{background:var(--br);color:#fff}
+.btn-br:hover{background:#3a250f}
+.btn-gray{background:var(--gray-l);color:var(--br)}
+.btn-gray:hover{background:#d8d5ce}
+.btn-green{background:var(--green);color:#fff}
+.btn-row{display:flex;gap:10px;margin-top:20px;justify-content:space-between;flex-wrap:wrap}
 
-  /* CLAUSES */
-  .clause-list { display: flex; flex-direction: column; gap: 8px; }
-  .clause {
-    background: var(--gold-pale);
-    border-left: 3px solid var(--gold);
-    padding: 10px 14px;
-    border-radius: 0 6px 6px 0;
-    font-size: 12px;
-    line-height: 1.7;
-    color: var(--brown);
-  }
-  .clause strong { font-weight: 700; }
+/* COMPLETE */
+.complete-box{text-align:center;padding:40px 20px}
+.complete-icon{font-size:64px;margin-bottom:16px}
+.complete-title{font-size:22px;font-weight:800;color:var(--br);margin-bottom:8px}
+.complete-sub{font-size:14px;color:var(--gray);margin-bottom:28px;line-height:1.7}
 
-  /* SIGN SECTION */
-  .sign-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-top: 8px;
-  }
-  .sign-box {
-    border: 1.5px dashed var(--gray-light);
-    border-radius: 8px;
-    padding: 14px;
-    text-align: center;
-  }
-  .sign-box .sign-label { font-size: 11px; color: var(--gray); font-weight: 700; margin-bottom: 8px; }
-  .sign-box input {
-    border: none;
-    border-bottom: 1.5px solid var(--gray-light);
-    border-radius: 0;
-    text-align: center;
-    font-size: 15px;
-    width: 100%;
-    padding: 6px 0;
-    font-family: inherit;
-    color: var(--brown);
-    outline: none;
-    background: transparent;
-  }
-  .sign-box input:focus { border-bottom-color: var(--gold); }
-  .sign-date { font-size: 11px; color: var(--gray); margin-top: 6px; }
+/* DUPLICATE WARNING */
+.warn-box{background:#FFF3E0;border:1.5px solid #E67E22;border-radius:8px;padding:16px 20px;text-align:center;font-size:14px;font-weight:700;color:#E67E22;margin-bottom:16px}
 
-  /* BUTTONS */
-  .btn-row { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
-  .btn {
-    padding: 11px 22px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    border: none;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--gold); color: #fff; }
-  .btn-primary:hover { background: var(--brown); }
-  .btn-secondary { background: var(--gray-light); color: var(--brown); }
-  .btn-secondary:hover { background: #d8d5ce; }
-  .btn-print { background: var(--brown); color: #fff; }
-  .btn-print:hover { background: #3a250f; }
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--gray);font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-l);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--br);color:#fff;padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:transform .3s;z-index:999;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
 
-  /* TOAST */
-  .toast {
-    position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--brown); color: #fff;
-    padding: 12px 22px; border-radius: 8px;
-    font-size: 14px; font-weight: 600;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-    transition: transform 0.3s; z-index: 999; pointer-events: none;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  @media print {
-    header, .btn-row { display: none !important; }
-    body { background: #fff; }
-    .contract-paper { box-shadow: none; border: none; }
-    .container { padding: 0; max-width: 100%; }
-  }
-  @media (max-width: 560px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .sign-section { grid-template-columns: 1fr; }
-    .form-body { padding: 16px; }
-    .puppy-summary { padding: 14px 16px; }
-  }
+@media print{header,.step-bar,.btn-row{display:none!important}body{background:#fff}.container{padding:0;max-width:100%}#contractPreview{border:none;box-shadow:none}}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}.cv-sign{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">🐾 골디쉼터</div>
-  <span class="page-title">분양 계약서 작성</span>
-  <button class="btn-back" onclick="history.back()">← 목록</button>
+  <span class="page-ttl">분양 계약서</span>
 </header>
 
+<div class="step-bar">
+  <div class="step-item active" id="si1"><div class="step-num">1</div> 내 정보 입력</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="si2"><div class="step-num">2</div> 계약서 확인</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="si3"><div class="step-num">3</div> 서명</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="si4"><div class="step-num">4</div> 완료</div>
+</div>
+
 <div class="container">
-  <div id="loadingDiv" class="loading">
-    <div class="spinner"></div>
-    강아지 정보를 불러오는 중...
+
+  <!-- ── STEP1: 내 정보 입력 -->
+  <div class="step-panel active" id="step1">
+    <div id="dupWarn" style="display:none" class="warn-box">⚠ 이 강아지는 이미 계약이 완료된 상태입니다.</div>
+
+    <div class="card">
+      <div class="card-title">강아지 정보</div>
+      <div class="info-chips" id="dogInfo"></div>
+      <div class="fgrid">
+        <div class="ffield"><label>이름</label><input id="f_dogname" readonly></div>
+        <div class="ffield"><label>성별</label><input id="f_gender" readonly></div>
+        <div class="ffield"><label>출생일</label><input id="f_birth" readonly></div>
+        <div class="ffield"><label>모견 코드</label><input id="f_mother" readonly></div>
+        <div class="ffield"><label>구충 1차</label><input id="f_dw1" readonly></div>
+        <div class="ffield"><label>구충 2차</label><input id="f_dw2" readonly></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">구매자 정보</div>
+      <div class="fgrid">
+        <div class="ffield"><label>성명 <span class="req">*</span></label><input id="b_name" placeholder="홍길동"></div>
+        <div class="ffield"><label>연락처 <span class="req">*</span></label><input type="tel" id="b_phone" placeholder="010-0000-0000"></div>
+        <div class="ffield fc1" style="grid-column:span 2"><label>주소</label><input id="b_addr" placeholder="시/도 구/군까지 입력"></div>
+        <div class="ffield"><label>결제 방법 <span class="req">*</span></label>
+          <select id="b_payment">
+            <option value="">선택</option>
+            <option>계좌이체</option>
+            <option>현금</option>
+            <option>카드</option>
+          </select>
+        </div>
+        <div class="ffield"><label>이체자 성명</label><input id="b_transfer" placeholder="이체자 이름 (다를 경우)"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">분양 조건</div>
+      <div class="fgrid">
+        <div class="ffield"><label>분양가 (원)</label><input id="f_price" readonly></div>
+        <div class="ffield"><label>분양 예정일</label><input id="f_saledate" readonly></div>
+        <div class="ffield"><label>계약금 (원)</label><input type="number" id="b_deposit" placeholder="예: 300000"></div>
+        <div class="ffield"><label>잔금 납부일</label><input type="date" id="b_balance_date"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">특이사항 / 메모</div>
+      <div class="ffield"><textarea id="b_memo" placeholder="알러지, 특이체질, 기타 요청사항 등"></textarea></div>
+    </div>
+
+    <div class="btn-row">
+      <span></span>
+      <button class="btn btn-gold" onclick="goStep2()">계약서 확인 →</button>
+    </div>
   </div>
 
-  <div id="contractWrap" style="display:none">
-    <div class="contract-paper">
-      <div class="contract-header">
-        <h1>반 려 견  분 양  계 약 서</h1>
-        <p>골디쉼터 — 소규모 윤리 브리더</p>
+  <!-- ── STEP2: 계약서 미리보기 -->
+  <div class="step-panel" id="step2">
+    <div class="card">
+      <div class="card-title">계약서 미리보기 — 내용을 확인해주세요</div>
+      <div id="contractPreview"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gray" onclick="goStep(1)">← 수정</button>
+      <button class="btn btn-gold" onclick="goStep3()">서명하기 →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP3: 전자서명 -->
+  <div class="step-panel" id="step3">
+    <div class="card">
+      <div class="card-title">전자 서명</div>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px">아래 칸에 손가락 또는 마우스로 서명해주세요.</p>
+      <canvas id="signCanvas" width="640" height="180"></canvas>
+      <div class="btn-row" style="margin-top:10px;justify-content:flex-start">
+        <button class="btn btn-gray" onclick="clearSign()" style="font-size:12px;padding:7px 14px">↺ 다시 서명</button>
       </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gray" onclick="goStep(2)">← 뒤로</button>
+      <button class="btn btn-gold" onclick="submitContract()">✅ 계약 완료</button>
+    </div>
+  </div>
 
-      <!-- 강아지 요약 (자동 입력) -->
-      <div class="puppy-summary" id="puppySummary"></div>
+  <!-- ── STEP4: 완료 -->
+  <div class="step-panel" id="step4">
+    <div class="card complete-box">
+      <div class="complete-icon">🎉</div>
+      <div class="complete-title">계약이 완료됐습니다!</div>
+      <div class="complete-sub">
+        골디쉼터를 선택해주셔서 감사합니다.<br>
+        아래 버튼으로 계약서 PDF를 저장하고<br>
+        가이드북도 확인해주세요 🐾
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-br" id="pdfBtn" onclick="downloadPDF()">📄 계약서 PDF 저장</button>
+        <button class="btn btn-gold" onclick="window.open('goldi_guide.pdf','_blank')">📘 가이드북 보기</button>
+      </div>
+    </div>
+  </div>
 
-      <div class="form-body">
-
-        <!-- 강아지 정보 -->
-        <div class="form-section">
-          <div class="form-section-title">강아지 정보</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>이름</label>
-              <input type="text" id="f_name" readonly>
-            </div>
-            <div class="form-field">
-              <label>성별</label>
-              <input type="text" id="f_gender" readonly>
-            </div>
-            <div class="form-field">
-              <label>출생일</label>
-              <input type="text" id="f_birth" readonly>
-            </div>
-            <div class="form-field">
-              <label>모견 코드</label>
-              <input type="text" id="f_mother" readonly>
-            </div>
-            <div class="form-field">
-              <label>부견</label>
-              <input type="text" id="f_father" readonly>
-            </div>
-            <div class="form-field">
-              <label>구충 1차</label>
-              <input type="text" id="f_deworm1" readonly>
-            </div>
-            <div class="form-field">
-              <label>구충 2차</label>
-              <input type="text" id="f_deworm2" readonly>
-            </div>
-            <div class="form-field">
-              <label>분양 상태</label>
-              <input type="text" id="f_status" readonly>
-            </div>
-          </div>
-        </div>
-
-        <!-- 분양자 정보 -->
-        <div class="form-section">
-          <div class="form-section-title">분양자 (구매자) 정보</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>성명 *</label>
-              <input type="text" id="b_name" placeholder="홍길동">
-            </div>
-            <div class="form-field">
-              <label>연락처 *</label>
-              <input type="tel" id="b_phone" placeholder="010-0000-0000">
-            </div>
-            <div class="form-field col1">
-              <label>주소</label>
-              <input type="text" id="b_addr" placeholder="시/도 구/군까지 입력">
-            </div>
-          </div>
-        </div>
-
-        <!-- 분양 조건 -->
-        <div class="form-section">
-          <div class="form-section-title">분양 조건</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>분양가 (원) *</label>
-              <input type="number" id="c_price" placeholder="예: 1500000">
-            </div>
-            <div class="form-field">
-              <label>계약일 *</label>
-              <input type="date" id="c_date">
-            </div>
-            <div class="form-field">
-              <label>계약금</label>
-              <input type="number" id="c_deposit" placeholder="예: 300000">
-            </div>
-            <div class="form-field">
-              <label>잔금 납부일</label>
-              <input type="date" id="c_balance_date">
-            </div>
-          </div>
-        </div>
-
-        <!-- 특이사항 -->
-        <div class="form-section">
-          <div class="form-section-title">특이사항 / 메모</div>
-          <div class="form-grid col1">
-            <div class="form-field">
-              <textarea id="c_memo" placeholder="알러지, 특이체질, 기타 요청사항 등"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- 계약 조항 -->
-        <div class="form-section">
-          <div class="form-section-title">계약 조항</div>
-          <div class="clause-list">
-            <div class="clause"><strong>제1조 (건강보증)</strong> 분양일 기준 7일 이내 수의사 진단서를 통해 선천성 중증 질환이 확인될 경우, 협의 후 동일 견종으로 교환하거나 분양가의 일부를 환불합니다.</div>
-            <div class="clause"><strong>제2조 (구충 완료)</strong> 분양 시점 기준 구충은 위 일정에 따라 완료 또는 예정되어 있으며, 이후 구충 일정은 분양자가 관리합니다.</div>
-            <div class="clause"><strong>제3조 (책임 사육)</strong> 분양자는 강아지를 학대하거나 방치하지 않으며, 건강하고 안전한 환경에서 사육할 것을 약속합니다.</div>
-            <div class="clause"><strong>제4조 (재양도 금지)</strong> 분양자는 사전 동의 없이 해당 강아지를 제3자에게 양도하거나 판매할 수 없습니다.</div>
-            <div class="clause"><strong>제5조 (분쟁 해결)</strong> 본 계약과 관련한 분쟁은 상호 협의를 우선으로 하며, 합의가 이루어지지 않을 경우 관련 법령에 따릅니다.</div>
-          </div>
-        </div>
-
-        <!-- 서명 -->
-        <div class="form-section">
-          <div class="form-section-title">서명</div>
-          <div class="sign-section">
-            <div class="sign-box">
-              <div class="sign-label">분양자 (구매자)</div>
-              <input type="text" id="sign_buyer" placeholder="성명 입력 후 서명">
-              <div class="sign-date" id="sign_date_buyer"></div>
-            </div>
-            <div class="sign-box">
-              <div class="sign-label">판매자 (골디쉼터)</div>
-              <input type="text" id="sign_seller" value="골디쉼터" readonly>
-              <div class="sign-date" id="sign_date_seller"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="history.back()">취소</button>
-          <button class="btn btn-print" onclick="window.print()">🖨 인쇄</button>
-          <button class="btn btn-primary" onclick="saveContract()">💾 계약 저장</button>
-        </div>
-
-      </div><!-- /form-body -->
-    </div><!-- /contract-paper -->
-  </div><!-- /contractWrap -->
-</div>
+</div><!-- /container -->
 
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
-  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
-  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
-  projectId: "goldie-shelter-d6c81",
-  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
-  messagingSenderId: "305277425020",
-  appId: "1:305277425020:web:1f841f61d733c3a3aec0f9",
-  measurementId: "G-V1B9WV3ZGH"
+const FB={
+  apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain:"goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL:"https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId:"goldie-shelter-d6c81",
+  storageBucket:"goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId:"305277425020",
+  appId:"1:305277425020:web:1f841f61d733c3a3aec0f9"
 };
-
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+const app=initializeApp(FB);
+const db=getDatabase(app);
 
 // ── URL 파라미터
-const params   = new URLSearchParams(location.search);
-const litterId = params.get('litter');
-const puppyId  = params.get('puppy');
+const P=new URLSearchParams(location.search);
+const G={
+  litter:    P.get('litter')||'',
+  puppy:     P.get('puppy')||'',
+  dogname:   P.get('dogname')||'',
+  sex:       P.get('sex')||'',
+  birthB:    P.get('birthB')||'',
+  deworm1:   P.get('deworm1')||'',
+  deworm2:   P.get('deworm2')||'',
+  femaleCode:P.get('femaleCode')||'',
+  maleCode:  P.get('maleCode')||'',
+  price:     P.get('price')||'',
+  saledate:  P.get('saledate')||''
+};
 
-// ── 날짜 포맷
-function fmt(d) { return d ? d.replace(/-/g,'.') : '—'; }
-function today() { return new Date().toISOString().slice(0,10); }
-
-// ── 성별 매핑 (sex → 한글)
-function genderKo(sex) {
-  if (!sex) return '—';
-  const s = String(sex).toLowerCase();
-  if (s === 'm' || s === '수' || s === 'male')   return '수컷 (♂)';
-  if (s === 'f' || s === '암' || s === 'female') return '암컷 (♀)';
-  return sex;
+// ── 유틸
+const fmt=d=>d?d.replace(/-/g,'.'):'—';
+const numFmt=n=>n?Number(n).toLocaleString('ko-KR')+'원':'—';
+function genderKo(s){
+  const v=String(s||'').toLowerCase();
+  if(v==='female'||v==='암'||v==='f') return '암컷 (♀)';
+  if(v==='male'  ||v==='수'||v==='m') return '수컷 (♂)';
+  return s||'—';
 }
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+function today(){return new Date().toISOString().slice(0,10)}
 
-// ── 오늘 날짜 서명란에 세팅
-const todayStr = fmt(today());
-document.getElementById('sign_date_buyer').textContent  = todayStr;
-document.getElementById('sign_date_seller').textContent = todayStr;
-document.getElementById('c_date').value = today();
+// ── 스텝 표시
+window.goStep=n=>{
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('step'+n).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  // 스텝바 업데이트
+  [1,2,3,4].forEach(i=>{
+    const el=document.getElementById('si'+i);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done');
+    if(i===n) el.classList.add('active');
+  });
+};
 
-// ── 데이터 로드
-async function loadData() {
-  if (!litterId || !puppyId) {
-    document.getElementById('loadingDiv').textContent = 'URL 파라미터가 없습니다. 어드민에서 다시 접근해주세요.';
+// ── 초기화
+async function init(){
+  if(!G.litter||!G.puppy){
+    document.getElementById('step1').innerHTML='<div class="card" style="text-align:center;padding:40px;color:var(--gray)">잘못된 접근입니다. 관리자에게 문의해주세요.</div>';
     return;
   }
 
-  const litterSnap = await get(ref(db, `litters/${litterId}`));
-  if (!litterSnap.exists()) {
-    document.getElementById('loadingDiv').textContent = '출산 그룹 데이터를 찾을 수 없습니다.';
-    return;
-  }
-  const l = litterSnap.val();
-  const p = (l.puppies || {})[puppyId] || {};
-
-  // 강아지 정보 자동 입력
-  document.getElementById('f_name').value    = p.name    || puppyId;
-  document.getElementById('f_gender').value  = genderKo(p.sex);
-  document.getElementById('f_birth').value   = fmt(l.birthB);      // birthB → 계약서 출생일
-  document.getElementById('f_mother').value  = l.femaleCode || '—';// femaleCode → 모견
-  document.getElementById('f_father').value  = l.maleCode   || '—';
-  document.getElementById('f_deworm1').value = fmt(l.deworm1);     // deworm1 → 구충1차
-  document.getElementById('f_deworm2').value = fmt(l.deworm2);     // deworm2 → 구충2차
-  document.getElementById('f_status').value  = p.status === '분양 완료' ? '분양 완료' : '분양 가능';
-
-  // 상단 요약
-  document.getElementById('puppySummary').innerHTML = `
-    <div class="ps-item"><span class="ps-label">이름</span><span class="ps-value">${p.name || puppyId}</span></div>
-    <div class="ps-item"><span class="ps-label">성별</span><span class="ps-value">${genderKo(p.sex)}</span></div>
-    <div class="ps-item"><span class="ps-label">출생일</span><span class="ps-value">${fmt(l.birthB)}</span></div>
-    <div class="ps-item"><span class="ps-label">모견</span><span class="ps-value">${l.femaleCode || '—'}</span></div>
-    <div class="ps-item"><span class="ps-label">부견</span><span class="ps-value">${l.maleCode || '—'}</span></div>`;
-
-  document.getElementById('loadingDiv').style.display = 'none';
-  document.getElementById('contractWrap').style.display = 'block';
-}
-
-loadData();
-
-// ── 토스트
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ── 계약 저장
-window.saveContract = async () => {
-  const buyerName  = document.getElementById('b_name').value.trim();
-  const buyerPhone = document.getElementById('b_phone').value.trim();
-  const price      = document.getElementById('c_price').value;
-  const contractDate = document.getElementById('c_date').value;
-
-  if (!buyerName || !buyerPhone || !price || !contractDate) {
-    showToast('⚠ 분양자 성명, 연락처, 분양가, 계약일은 필수입니다.');
-    return;
+  // 중복 계약 확인 (Firebase + localStorage)
+  const dogid=`${G.litter}_${G.puppy}`;
+  const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
+  const fbStatus=fbSnap.val()?.status;
+  let lsDup=false;
+  try{
+    const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
+    lsDup=Object.values(ls).some(c=>c.dogid===dogid);
+  }catch(e){}
+  if(fbStatus==='분양 완료'||lsDup){
+    document.getElementById('dupWarn').style.display='block';
   }
 
-  const contractData = {
-    buyer_name:    buyerName,
-    buyer_phone:   buyerPhone,
+  // 강아지 정보 채우기
+  document.getElementById('f_dogname').value = G.dogname;
+  document.getElementById('f_gender').value  = genderKo(G.sex);
+  document.getElementById('f_birth').value   = fmt(G.birthB);
+  document.getElementById('f_mother').value  = G.femaleCode||'—';
+  document.getElementById('f_dw1').value     = fmt(G.deworm1);
+  document.getElementById('f_dw2').value     = fmt(G.deworm2);
+  document.getElementById('f_price').value   = G.price?numFmt(G.price):'—';
+  document.getElementById('f_saledate').value= fmt(G.saledate);
+
+  document.getElementById('dogInfo').innerHTML=`
+    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${G.dogname}</span></div>
+    <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderKo(G.sex)}</span></div>
+    <div class="chip"><span class="chip-k">출생일</span><span class="chip-v">${fmt(G.birthB)}</span></div>
+    <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
+}
+init();
+
+// ── STEP2: 계약서 미리보기 생성
+window.goStep2=()=>{
+  const name=document.getElementById('b_name').value.trim();
+  const phone=document.getElementById('b_phone').value.trim();
+  const payment=document.getElementById('b_payment').value;
+  if(!name||!phone||!payment){toast('성명, 연락처, 결제방법은 필수입니다.');return;}
+
+  const addr=document.getElementById('b_addr').value.trim();
+  const deposit=document.getElementById('b_deposit').value;
+  const balDate=document.getElementById('b_balance_date').value;
+  const memo=document.getElementById('b_memo').value.trim();
+  const transfer=document.getElementById('b_transfer').value.trim();
+
+  document.getElementById('contractPreview').innerHTML=`
+<div class="cv-header">
+  <h1>반 려 견  분 양  계 약 서</h1>
+  <p>본 계약서는 「동물보호법」 및 소비자분쟁해결기준에 따라 작성됩니다.</p>
+</div>
+
+<div class="cv-section">▶ 판매업자 정보</div>
+<table class="cv-table">
+  <tr><th>상호명</th><td>골디 쉼터</td><th>허가번호</th><td>제 4170000-037-2023-0011</td></tr>
+  <tr><th>연락처</th><td colspan="3">010-6508-5901</td></tr>
+</table>
+
+<div class="cv-section">▶ 분양 강아지 정보</div>
+<table class="cv-table">
+  <tr><th>이름</th><td>${G.dogname}</td><th>성별</th><td>${genderKo(G.sex)}</td></tr>
+  <tr><th>출생일</th><td>${fmt(G.birthB)}</td><th>품종</th><td>골든 리트리버</td></tr>
+  <tr><th>모견 코드</th><td>${G.femaleCode||'—'}</td><th>부견</th><td>${G.maleCode||'—'}</td></tr>
+  <tr><th>구충 1차</th><td>${fmt(G.deworm1)}</td><th>구충 2차</th><td>${fmt(G.deworm2)}</td></tr>
+</table>
+
+<div class="cv-section">▶ 구매자 정보</div>
+<table class="cv-table">
+  <tr><th>성명</th><td>${name}</td><th>연락처</th><td>${phone}</td></tr>
+  <tr><th>주소</th><td colspan="3">${addr||'—'}</td></tr>
+</table>
+
+<div class="cv-section">▶ 분양 조건</div>
+<table class="cv-table">
+  <tr><th>분양가</th><td>${numFmt(G.price)}</td><th>계약금</th><td>${deposit?numFmt(deposit):'—'}</td></tr>
+  <tr><th>잔금납부일</th><td>${fmt(balDate)}</td><th>결제방법</th><td>${payment}${transfer?' (이체자: '+transfer+')':''}</td></tr>
+  <tr><th>분양 예정일</th><td colspan="3">${fmt(G.saledate)}</td></tr>
+</table>
+
+${memo?`<div class="cv-section">▶ 특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px">${memo}</div>`:''}
+
+<div class="cv-section">▶ 보증 조항</div>
+<div class="cv-clause"><strong>① 잠복기 질병</strong> 분양일로부터 15일 이내에 수의사의 진단서를 통해 잠복성 질병이 확인된 경우 치료비를 지원하거나 교환합니다.</div>
+<div class="cv-clause"><strong>② 관리 미숙</strong> 분양 후 구매자의 관리 부주의로 인한 질병·부상·사망에 대해 판매자는 책임지지 않습니다.</div>
+<div class="cv-clause"><strong>③ 보상 제외</strong> 전염병 예방을 위한 격리기간(2주) 내 타 동물과의 접촉으로 인한 질병은 보상에서 제외됩니다.</div>
+<div class="cv-clause"><strong>④ 교환·환불 불가</strong> 단순 변심, 알러지, 이사 등 구매자 사정에 의한 교환·환불은 불가합니다.</div>
+<div class="cv-clause"><strong>⑤ 15일 이후</strong> 분양일로부터 15일이 경과한 이후 발생한 질병 및 사망에 대해 판매자는 책임지지 않습니다.</div>
+<div class="cv-clause"><strong>⑥ 중대 질병</strong> 분양일 기준 7일 이내에 수의사가 진단한 선천성 중증 질환(심장·간·신장 등)이 확인될 경우 협의하여 동일 견종으로 교환하거나 분양가의 일부를 환불합니다.</div>
+
+<div class="cv-section">▶ 소비자분쟁해결기준</div>
+<div class="cv-legal">
+• 분양받은 동물이 <strong>15일 이내 폐사</strong>한 경우: 동종의 동물로 교환 또는 구입가 환급<br>
+• 분양받은 동물이 <strong>15일 이내 질병이 발생</strong>한 경우: 판매업자 부담으로 치료 또는 동종 교환<br>
+• 위의 기준은 「소비자분쟁해결기준(공정거래위원회 고시)」에 따릅니다.<br>
+• 본 계약과 관련한 분쟁은 상호 협의를 우선으로 하며, 합의 불성립 시 관련 법령에 따릅니다.
+</div>
+
+<div class="cv-section">▶ 서명</div>
+<div class="cv-sign">
+  <div class="sign-box">
+    <div class="s-label">구매자 (분양자)</div>
+    <div class="s-name" id="cv_buyer_name">${name}</div>
+    <div class="s-date">계약일: ${fmt(today())}</div>
+    <div id="cv_sign_img" style="margin-top:8px"></div>
+  </div>
+  <div class="sign-box">
+    <div class="s-label">판매자</div>
+    <div class="s-name">골디 쉼터</div>
+    <div class="s-date">계약일: ${fmt(today())}</div>
+  </div>
+</div>`;
+
+  goStep(2);
+};
+
+// ── STEP3: 전자서명 캔버스
+const canvas=document.getElementById('signCanvas');
+const ctx=canvas.getContext('2d');
+let drawing=false;
+
+function getPos(e){
+  const r=canvas.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:e;
+  return {x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};
+}
+canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
+canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#2C1A0E';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke()});
+canvas.addEventListener('mouseup',()=>drawing=false);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#2C1A0E';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke()},{passive:false});
+canvas.addEventListener('touchend',()=>drawing=false);
+window.clearSign=()=>ctx.clearRect(0,0,canvas.width,canvas.height);
+
+window.goStep3=()=>{goStep(3);};
+
+// ── STEP4: 계약 저장
+window.submitContract=async()=>{
+  // 서명 체크 (빈 캔버스 확인)
+  const imgData=canvas.toDataURL();
+  const blank=document.createElement('canvas');blank.width=canvas.width;blank.height=canvas.height;
+  if(imgData===blank.toDataURL()){toast('서명을 완료해주세요.');return;}
+
+  // 서명 이미지를 계약서 미리보기에 삽입
+  const signImg=document.getElementById('cv_sign_img');
+  if(signImg){signImg.innerHTML=`<img src="${imgData}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;}
+
+  const contractId='C'+Date.now();
+  const dogid=`${G.litter}_${G.puppy}`;
+  const data={
+    dogid,
+    litter: G.litter,
+    puppy:  G.puppy,
+    dogname:G.dogname,
+    sex:    G.sex,
+    birthB: G.birthB,
+    femaleCode:G.femaleCode,
+    maleCode:  G.maleCode,
+    deworm1:   G.deworm1,
+    deworm2:   G.deworm2,
+    price:     Number(G.price)||0,
+    saledate:  G.saledate,
+    buyer_name:    document.getElementById('b_name').value.trim(),
+    buyer_phone:   document.getElementById('b_phone').value.trim(),
     buyer_addr:    document.getElementById('b_addr').value.trim(),
-    price:         Number(price),
-    deposit:       Number(document.getElementById('c_deposit').value || 0),
-    balance_date:  document.getElementById('c_balance_date').value,
-    contract_date: contractDate,
-    memo:          document.getElementById('c_memo').value.trim(),
-    status:        '분양 완료',
-    updated_at:    new Date().toISOString()
+    payment:       document.getElementById('b_payment').value,
+    transfer_name: document.getElementById('b_transfer').value.trim(),
+    deposit:       Number(document.getElementById('b_deposit').value)||0,
+    balance_date:  document.getElementById('b_balance_date').value,
+    memo:          document.getElementById('b_memo').value.trim(),
+    contract_date: today(),
+    signature:     imgData,
+    status:       '분양 완료',
+    created_at:    new Date().toISOString()
   };
 
-  // puppies/{puppyId}에 계약 정보 저장 + 상태 변경
-  await update(ref(db, `litters/${litterId}/puppies/${puppyId}`), contractData);
-  document.getElementById('f_status').value = '분양 완료';
-  showToast('✅ 계약서가 저장되었습니다.');
+  // Firebase 저장
+  await set(ref(db,`contracts/${contractId}`),data);
+  // 분양 완료 처리
+  await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
+  // localStorage 백업
+  try{
+    const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
+    ls[contractId]=data;
+    localStorage.setItem('goldi_contracts',JSON.stringify(ls));
+  }catch(e){}
+
+  window._savedData=data;
+  goStep(4);
+  toast('계약이 완료됐습니다! 🎉');
+};
+
+// ── PDF 다운로드
+window.downloadPDF=async()=>{
+  const btn=document.getElementById('pdfBtn');
+  btn.textContent='⏳ PDF 생성 중...';btn.disabled=true;
+  try{
+    const el=document.getElementById('contractPreview');
+    const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff'});
+    const imgData=canvas.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const w=pdf.internal.pageSize.getWidth();
+    const h=(canvas.height*w)/canvas.width;
+    let y=0;
+    const pageH=pdf.internal.pageSize.getHeight();
+    while(y<h){
+      if(y>0) pdf.addPage();
+      pdf.addImage(imgData,'PNG',0,-y,w,h);
+      y+=pageH;
+    }
+    const fname=`골디쉼터_계약서_${G.dogname}_${today()}.pdf`;
+    pdf.save(fname);
+  }catch(e){
+    toast('PDF 생성 중 오류가 발생했습니다.');
+    console.error(e);
+  }
+  btn.textContent='📄 계약서 PDF 저장';btn.disabled=false;
 };
 </script>
 </body>
