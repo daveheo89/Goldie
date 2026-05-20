@@ -164,7 +164,6 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
             <option value="">선택</option>
             <option>계좌이체</option>
             <option>현금</option>
-            <option>카드</option>
           </select>
         </div>
         <div class="ffield"><label>이체자 성명</label><input id="b_transfer" placeholder="이체자 이름 (다를 경우)"></div>
@@ -356,69 +355,79 @@ window.goStep2=()=>{
 
   document.getElementById('contractPreview').innerHTML=`
 <div class="cv-header">
-  <h1>반 려 견  분 양  계 약 서</h1>
-  <p>본 계약서는 「동물보호법」 및 소비자분쟁해결기준에 따라 작성됩니다.</p>
+  <h1>골든리트리버 분양 계약서</h1>
+  <p>골디 쉼터 Goldi Shelter | 전문 소규모 브리더 | 소규모 동물생산업 허가 보유</p>
+  <p style="font-size:10px;color:#aaa;margin-top:3px">본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 판매자·구매자 각 1통씩 보관합니다.</p>
 </div>
 
-<div class="cv-section">▶ 판매업자 정보</div>
+<div class="cv-section">1. 판매업자 정보</div>
 <table class="cv-table">
-  <tr><th>상호명</th><td>골디 쉼터</td><th>허가번호</th><td>제 4170000-037-2023-0011</td></tr>
-  <tr><th>연락처</th><td colspan="3">010-6508-5901</td></tr>
+  <tr><th>업소명</th><td>골디 쉼터 (Goldi Shelter)</td><th>생산업 허가번호</th><td>제 4170000-037-2023-0011</td></tr>
+  <tr><th>연락처</th><td>010-6508-5901</td><th>카카오 상담</th><td>open.kakao.com/o/sxGtK0ri</td></tr>
 </table>
 
-<div class="cv-section">▶ 분양 강아지 정보</div>
+<div class="cv-section">2. 분양 동물 정보 <span style="font-size:10px;font-weight:400;color:#888">(동물보호법 시행규칙 [별표12] 법정 필수 기재사항)</span></div>
 <table class="cv-table">
-  <tr><th>이름</th><td>${G.dogname}</td><th>성별</th><td>${genderKo(G.sex)}</td></tr>
-  <tr><th>출생일</th><td>${fmt(G.birthB)}</td><th>품종</th><td>골든 리트리버</td></tr>
-  <tr><th>모견 코드</th><td>${G.femaleCode||'—'}</td><th>부견</th><td>${G.maleCode||'—'}</td></tr>
-  <tr><th>구충 1차</th><td>${fmt(G.deworm1)}</td><th>구충 2차</th><td>${fmt(G.deworm2)}</td></tr>
+  <tr><th>축종 / 품종</th><td colspan="3">개 (Canis lupus familiaris) / 골든리트리버 (Golden Retriever)</td></tr>
+  <tr><th>성별</th><td>${genderKo(G.sex)}</td><th>출생일</th><td>${fmt(G.birthB)}</td></tr>
+  <tr><th>색상</th><td>크림빛 황금색</td><th>건강상태</th><td>양호</td></tr>
+  <tr><th>동물등록번호</th><td colspan="3">분양 후 30일 이내 등록 의무 (동물보호법 제12조)</td></tr>
 </table>
 
-<div class="cv-section">▶ 구매자 정보</div>
+<div class="cv-section">3. 수의사 구충 기록</div>
 <table class="cv-table">
-  <tr><th>성명</th><td>${name}</td><th>연락처</th><td>${phone}</td></tr>
+  <tr><th>구분</th><th style="text-align:center">1차</th><th style="text-align:center">2차</th><th style="text-align:center">3차 이후</th></tr>
+  <tr><td>종합 구충제</td><td style="text-align:center">${fmt(G.deworm1)}</td><td style="text-align:center">${fmt(G.deworm2)}</td><td style="text-align:center;color:#888">추후 예정</td></tr>
+</table>
+
+<div class="cv-section">4. 판매 조건</div>
+<table class="cv-table">
+  <tr><th>판매일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${payment}${transfer?' (이체자: '+transfer+')':''}</td></tr>
+  <tr><th>판매금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
+</table>
+
+<div class="cv-section">5. 품질 보증 및 분쟁 해결 조항</div>
+<div class="cv-clause"><strong>① 잠복기 있는 질병 보증 (분양 후 15일 이내)</strong><br>분양 후 15일 이내에 잠복기가 있는 질병(파보장염·코로나장염·홍역 등 바이러스성 전염병)이 발병한 경우, 분양자가 무상으로 회복시켜 30일 이내에 인도해 드립니다. 해당 질병으로 15일 이내 폐사할 경우 동종의 반려동물로 무상 재분양해 드립니다.</div>
+<div class="cv-clause"><strong>② 잠복기 없는 질병 — 소비자 귀책사유 (보상 제외)</strong><br>잠복기가 있는 전염성 질병 외에, 소비자의 관리 미숙이나 새로운 환경 적응 과정에서 발생한 질병은 소비자의 귀책사유에 해당하므로 보상되지 않습니다. 해당 질병 예시: 호흡기 질환(감기·기관지염·폐렴), 소화기 질환(설사·구토·세균성 장염·스트레스성 장염), 저혈당증, 식욕부진 등. 단, 분양 직후부터 설사·기침 등의 문제가 있었다면 분양 시점으로부터 24시간 이내에 분양자에게 유선 통보하셔야 합니다.</div>
+<div class="cv-clause"><strong>③ 보상 제외 항목 (소비자 귀책)</strong><br>다음의 경우 보상에서 제외됩니다. · 방치: 설사·기침 등 이상 증상이 있는데 전화 상담도 받지 않고 조치를 취하지 않은 경우 · 소비자의 과실로 인한 사고 또는 관리 소홀로 인한 경우 · 분양자의 상호 동의 없이 지출된 동물병원 진료비·치료비·검사비용 (응급상황 포함 어떠한 경우라도 미보상)</div>
+<div class="cv-clause"><strong>④ 교환·환불·파양 불가</strong><br>반려동물은 물건이 아닌 생명입니다. 분양 후 개인 사정이나 변심 등 반려동물의 생명에 관련되지 않은 이유로는 교환·환불이 절대 불가합니다. 파양은 절대 받지 않습니다.</div>
+<div class="cv-clause"><strong>⑤ 분양 후 15일 이후 발생 질병</strong><br>분양 후 15일 이후에 발생하는 모든 책임과 의무는 소비자에게 있으며, 분양자는 책임지지 않습니다. 성장기 어린 반려동물의 경우 분양 당시 확인할 수 없는 선천적 결함(간질·심혈관계통·고관절 이상 등), 성견 시 크기·인물·탈장·잠복고환 등 분양 후 15일 이후 발생하는 모든 상황에 대해서는 보상되지 않습니다.</div>
+<div class="cv-clause"><strong>⑥ 중대 질병 발생 시 처리 의무</strong><br>분양 후 중대 질병이 발생했을 경우 반드시 분양자에게 반려동물을 인계하여 회복시키도록 합니다. 소비자가 이에 따르지 않을 경우 보상을 거부하는 것으로 판단합니다. 단, 협의 후 개인 치료는 인정됩니다. 보상기간 15일 안에 질병 발생 또는 폐사를 반드시 분양자에게 통보하셔야만 보상받으실 수 있습니다.</div>
+
+<div class="cv-section">6. 소비자 분쟁해결 기준 <span style="font-size:10px;font-weight:400;color:#888">(공정거래위원회 고시)</span></div>
+<table class="cv-table">
+  <tr><th>구분</th><th>내용</th><th>해결 기준</th></tr>
+  <tr><td>15일 이내 동물 사망</td><td colspan="2">동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)</td></tr>
+  <tr><td>15일 이내 질병 발생</td><td colspan="2">판매자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
+</table>
+
+<div class="cv-section">7. 구매자(입양인) 정보</div>
+<table class="cv-table">
+  <tr><th>성명</th><td>${name} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${phone}</td></tr>
   <tr><th>주소</th><td colspan="3">${addr||'—'}</td></tr>
 </table>
 
-<div class="cv-section">▶ 분양 조건</div>
-<table class="cv-table">
-  <tr><th>분양가</th><td>${numFmt(G.price)}</td><th>계약금</th><td>${deposit?numFmt(deposit):'—'}</td></tr>
-  <tr><th>잔금납부일</th><td>${fmt(balDate)}</td><th>결제방법</th><td>${payment}${transfer?' (이체자: '+transfer+')':''}</td></tr>
-  <tr><th>분양 예정일</th><td colspan="3">${fmt(G.saledate)}</td></tr>
-</table>
+${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+memo+'</div>':''} 
 
-${memo?`<div class="cv-section">▶ 특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px">${memo}</div>`:''}
-
-<div class="cv-section">▶ 보증 조항</div>
-<div class="cv-clause"><strong>① 잠복기 질병</strong> 분양일로부터 15일 이내에 수의사의 진단서를 통해 잠복성 질병이 확인된 경우 치료비를 지원하거나 교환합니다.</div>
-<div class="cv-clause"><strong>② 관리 미숙</strong> 분양 후 구매자의 관리 부주의로 인한 질병·부상·사망에 대해 판매자는 책임지지 않습니다.</div>
-<div class="cv-clause"><strong>③ 보상 제외</strong> 전염병 예방을 위한 격리기간(2주) 내 타 동물과의 접촉으로 인한 질병은 보상에서 제외됩니다.</div>
-<div class="cv-clause"><strong>④ 교환·환불 불가</strong> 단순 변심, 알러지, 이사 등 구매자 사정에 의한 교환·환불은 불가합니다.</div>
-<div class="cv-clause"><strong>⑤ 15일 이후</strong> 분양일로부터 15일이 경과한 이후 발생한 질병 및 사망에 대해 판매자는 책임지지 않습니다.</div>
-<div class="cv-clause"><strong>⑥ 중대 질병</strong> 분양일 기준 7일 이내에 수의사가 진단한 선천성 중증 질환(심장·간·신장 등)이 확인될 경우 협의하여 동일 견종으로 교환하거나 분양가의 일부를 환불합니다.</div>
-
-<div class="cv-section">▶ 소비자분쟁해결기준</div>
 <div class="cv-legal">
-• 분양받은 동물이 <strong>15일 이내 폐사</strong>한 경우: 동종의 동물로 교환 또는 구입가 환급<br>
-• 분양받은 동물이 <strong>15일 이내 질병이 발생</strong>한 경우: 판매업자 부담으로 치료 또는 동종 교환<br>
-• 위의 기준은 「소비자분쟁해결기준(공정거래위원회 고시)」에 따릅니다.<br>
-• 본 계약과 관련한 분쟁은 상호 협의를 우선으로 하며, 합의 불성립 시 관련 법령에 따릅니다.
+판매자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
+【법적 고지】 본 계약서는 「동물보호법」 시행규칙 [별표12] 및 「소비자기본법 시행령」 제8조 소비자분쟁해결기준에 의거합니다. 분양받은 날로부터 30일 이내 동물등록 신청 의무가 있습니다 (동물보호법 제12조). 이 계약과 관련하여 발생하는 모든 분쟁은 상호 협의하여 해결하며, 협의에 의해 해결되지 않아 소송이 제기되어야 하는 경우 분양자의 소재지를 관할하는 법원을 관할 법원으로 합니다. 분쟁 발생 시 소비자분쟁조정위원회 (국번없이 1372) 문의 가능합니다.
 </div>
 
-<div class="cv-section">▶ 서명</div>
-<div class="cv-sign">
+<div class="cv-sign" style="margin-top:16px">
   <div class="sign-box">
-    <div class="s-label">구매자 (분양자)</div>
-    <div class="s-name" id="cv_buyer_name">${name}</div>
-    <div class="s-date">계약일: ${fmt(today())}</div>
+    <div class="s-label">구매자 (입양인)</div>
+    <div class="s-name">${name}</div>
+    <div class="s-date">분양일: ${fmt(G.saledate)}</div>
     <div id="cv_sign_img" style="margin-top:8px"></div>
   </div>
   <div class="sign-box">
-    <div class="s-label">판매자</div>
+    <div class="s-label">판매자 (골디 쉼터)</div>
     <div class="s-name">골디 쉼터</div>
-    <div class="s-date">계약일: ${fmt(today())}</div>
+    <div class="s-date">분양일: ${fmt(G.saledate)}</div>
   </div>
-</div>`;
+</div>
+<div style="text-align:center;margin-top:14px;font-size:10px;color:#aaa">골디 쉼터 | 소규모지만 윤리적으로 키운 아이들 | 010-6508-5901 | @iam_7707 | open.kakao.com/o/sxGtK0ri</div>`;
 
   goStep(2);
 };
@@ -505,21 +514,41 @@ window.downloadPDF=async()=>{
   btn.textContent='⏳ PDF 생성 중...';btn.disabled=true;
   try{
     const el=document.getElementById('contractPreview');
-    const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff'});
-    const imgData=canvas.toDataURL('image/png');
+    // 숨겨진 요소도 캡처되도록 임시 스타일 적용
+    const prevPos=el.style.position;
+    const prevLeft=el.style.left;
+    const prevTop=el.style.top;
+    const prevZIndex=el.style.zIndex;
+    el.style.position='fixed';
+    el.style.left='-9999px';
+    el.style.top='0';
+    el.style.zIndex='-1';
+    el.style.display='block';
+    el.style.width='794px'; // A4 width px 기준
+    await new Promise(r=>setTimeout(r,100)); // 렌더 대기
+    const cvs=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
+    // 스타일 복원
+    el.style.position=prevPos;
+    el.style.left=prevLeft;
+    el.style.top=prevTop;
+    el.style.zIndex=prevZIndex;
+    el.style.display='';
+    el.style.width='';
+    const imgData=cvs.toDataURL('image/png');
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
-    const w=pdf.internal.pageSize.getWidth();
-    const h=(canvas.height*w)/canvas.width;
-    let y=0;
+    const pageW=pdf.internal.pageSize.getWidth();
     const pageH=pdf.internal.pageSize.getHeight();
-    while(y<h){
-      if(y>0) pdf.addPage();
-      pdf.addImage(imgData,'PNG',0,-y,w,h);
-      y+=pageH;
+    const imgH=(cvs.height*pageW)/cvs.width;
+    let offsetY=0;
+    while(offsetY<imgH){
+      if(offsetY>0) pdf.addPage();
+      pdf.addImage(imgData,'PNG',0,-offsetY,pageW,imgH);
+      offsetY+=pageH;
     }
-    const fname=`골디쉼터_계약서_${G.dogname}_${today()}.pdf`;
+    const fname='골디쉼터_계약서_'+(G.dogname||'')+'_'+today()+'.pdf';
     pdf.save(fname);
+    toast('PDF 저장 완료!');
   }catch(e){
     toast('PDF 생성 중 오류가 발생했습니다.');
     console.error(e);
