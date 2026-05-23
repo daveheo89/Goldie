@@ -351,7 +351,12 @@ function renderPuppyGroups(){
     if(!Object.keys(puppies).length) return '';
     const items=Object.entries(puppies).map(([pid,p])=>{
       const sold=p.status==='분양 완료';
+      const photoEl = p.photo
+        ? `<img src="${p.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--gray-l);flex-shrink:0;">`
+        : `<div style="width:40px;height:40px;border-radius:6px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--gray-l);flex-shrink:0;">🐶</div>`;
+      
       return `<div class="puppy-item${sold?' disabled':''}" id="pi-${lid}-${pid}" onclick="selectPuppy('${lid}','${pid}')">
+        ${photoEl}
         <div style="flex:1">
           <div class="puppy-name">${esc(p.name||pid)}</div>
           <div class="puppy-meta">${genderTxt(p.sex)} · 출생 ${fmt(l.birthB)}</div>
@@ -376,13 +381,20 @@ window.selectPuppy=(lid,pid)=>{
   document.querySelectorAll('.puppy-item').forEach(el=>el.classList.remove('selected'));
   document.getElementById(`pi-${lid}-${pid}`)?.classList.add('selected');
 
+  const selectedPhoto = p.photo
+    ? `<img src="${p.photo}" style="width:54px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid var(--gold);flex-shrink:0;">`
+    : `<div style="width:54px;height:54px;border-radius:8px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:24px;border:1.5px solid var(--gold);flex-shrink:0;">🐶</div>`;
+
   document.getElementById('selectedInfo').innerHTML=`
-    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(p.name||pid)}</span></div>
-    <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
-    <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
-    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${esc(l.femaleCode||'—')}</span></div>
-    <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
-    <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
+    ${selectedPhoto}
+    <div style="flex:1;display:flex;flex-wrap:wrap;gap:6px 14px">
+      <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(p.name||pid)}</span></div>
+      <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
+      <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
+      <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${esc(l.femaleCode||'—')}</span></div>
+      <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
+      <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>
+    </div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
   document.getElementById('sendForm').style.display='block';
   document.getElementById('linkCard').style.display='none';
