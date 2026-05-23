@@ -85,7 +85,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .sign-box .s-date{font-size:11px;color:#888;margin-top:4px}
 
 /* 전자서명 캔버스 */
-#signCanvas{border:2px solid var(--gray-l);border-radius:8px;cursor:crosshair;display:block;max-width:100%;touch-action:none;background:#fff}
+#signCanvas, #memoSignCanvas{border:2px solid var(--gray-l);border-radius:8px;cursor:crosshair;display:block;max-width:100%;touch-action:none;background:#fff}
 
 /* BUTTONS */
 .btn{padding:11px 22px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:7px}
@@ -132,6 +132,12 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   .cv-table th{width:90px;font-size:11px;padding:6px 8px}
   .cv-table td{font-size:11px;padding:6px 8px}
   .cv-clause{font-size:10.5px;padding:6px 8px}
+
+  /* 모바일 여백 및 레이아웃 최적화 */
+  .card{padding:16px;margin-bottom:12px}
+  .card-title{margin-bottom:12px}
+  .step-panel > .btn-row{flex-direction:row;gap:10px;margin-top:24px}
+  .step-panel > .btn-row .btn{flex:1;justify-content:center;padding:13px 16px;font-size:14px}
 }
 </style>
 </head>
@@ -205,10 +211,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">구매자 메모 / 추가 요청사항</div>
-      <div class="ffield"><textarea id="b_memo" placeholder="알러지, 특이체질, 기타 요청사항 등"></textarea></div>
-    </div>
+
 
     <div class="btn-row">
       <span></span>
@@ -489,7 +492,7 @@ window.goStep2=()=>{
 
   const deposit=document.getElementById('b_deposit').value;
   const balDate=document.getElementById('b_balance_date').value;
-  const memo=document.getElementById('b_memo').value.trim();
+  const memo='';
   const transfer=document.getElementById('b_transfer').value.trim();
 
   const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
@@ -563,7 +566,7 @@ window.goStep2=()=>{
 
 ${specialMemoSection}
 
-${memo?'<div class="cv-section">구매자 추가 요청사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+esc(memo)+'</div>':''} 
+
 
 <div class="cv-legal">
 분양자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
@@ -771,7 +774,7 @@ window.submitContract=async()=>{
     el.style.display='block';
     el.style.width='794px';
     await new Promise(r=>setTimeout(r,150));
-    const cvs=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
+    const cvs=await html2canvas(el,{scale:1.2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
     el.style.position=prevPos;
     el.style.left=prevLeft;
     el.style.top=prevTop;
@@ -823,7 +826,7 @@ window.submitContract=async()=>{
     transfer_name: document.getElementById('b_transfer').value.trim(),
     deposit:       Number(document.getElementById('b_deposit').value)||0,
     balance_date:  document.getElementById('b_balance_date').value,
-    memo:          document.getElementById('b_memo').value.trim(),
+    memo:          '',
     special_memo:  G.memo,
     contract_date: today(),
     signature:     imgData,
@@ -878,7 +881,7 @@ window.downloadPDF=async()=>{
     el.style.display='block';
     el.style.width='794px'; // A4 width px 기준
     await new Promise(r=>setTimeout(r,100)); // 렌더 대기
-    const cvs=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
+    const cvs=await html2canvas(el,{scale:1.2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
     // 스타일 복원
     el.style.position=prevPos;
     el.style.left=prevLeft;
