@@ -448,7 +448,6 @@ window.goStep2=()=>{
   const phoneRegex=/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
   if(!phoneRegex.test(phone)){toast('연락처 형식이 올바르지 않습니다. (예: 010-1234-5678)');return;}
 
-  const addr=document.getElementById('b_addr').value.trim();
   const deposit=document.getElementById('b_deposit').value;
   const balDate=document.getElementById('b_balance_date').value;
   const memo=document.getElementById('b_memo').value.trim();
