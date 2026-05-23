@@ -500,7 +500,8 @@ window.generateLink=()=>{
     maleCode:l.maleCode||'',
     price, saledate
   });
-  const base=location.href.replace('goldi_admin.html','goldi_contract_form.html');
+  const cleanHref=location.href.split('?')[0];
+  const base=cleanHref.replace('goldi_admin.html','goldi_contract_form.html');
   const url=base+'?'+params.toString();
   window._contractUrl=url;
 
