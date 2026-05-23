@@ -189,6 +189,10 @@ const FB = {
 const app = initializeApp(FB);
 const db  = getDatabase(app);
 
+const P = new URLSearchParams(location.search);
+const initLitter = P.get('litter');
+const initPuppy = P.get('puppy');
+
 window._litters={};
 window._contracts={};
 window._selected=null;
@@ -235,6 +239,14 @@ onValue(ref(db,'litters'),snap=>{
   renderPuppyGroups();
   renderManageList();
   updateStats();
+  
+  // 농장관리로부터 넘어온 자동 분양 연동 처리
+  if (initLitter && initPuppy && !window._autoSelectedTriggered) {
+    window._autoSelectedTriggered = true;
+    setTimeout(() => {
+      selectPuppy(initLitter, initPuppy);
+    }, 300);
+  }
 });
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};

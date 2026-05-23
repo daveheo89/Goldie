@@ -403,6 +403,7 @@ let dogSelectedSex='female';
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().slice(0,10);}
 function daysFrom(d){return Math.ceil((new Date(d)-new Date())/86400000);}
 function fmtDate(d){return d?d.replace(/-/g,'.'):'−';}
+function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function today(){return new Date().toISOString().slice(0,10);}
 function setSyncing(state){
   const dot=document.getElementById('sync-dot');
@@ -774,9 +775,15 @@ window.registerBreeding=async function(){
   showToast(`✅ ${fDog.code} 출산 예정일: ${fmtDate(due)}`);
 };
 
+// ── 새끼 탭
 // ═══════════════════════════════════════
-//  새끼 탭
-// ═══════════════════════════════════════
+window.goToAdminContract=(lid, pid, status)=>{
+  if(status === '분양 완료') {
+    showToast('이미 분양 완료된 강아지입니다.'); return;
+  }
+  location.href = `goldi_admin.html?litter=${lid}&puppy=${pid}`;
+};
+
 function renderPuppies(){
   const list=document.getElementById('litter-list');list.innerHTML='';
   document.getElementById('lm-female').innerHTML=females.map(f=>`<option value="${f._key}">${f.code}</option>`).join('');
@@ -788,13 +795,19 @@ function renderPuppies(){
     const card=document.createElement('div');card.className='litter-card';
     function vc(d){if(!d)return'';const n=daysFrom(d);if(n<-1)return'done';if(n===0||n===-1)return'today-due';if(n<0)return'overdue';return'';}
     function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
-    const puppies=lt.puppies?Object.values(lt.puppies):[];
-    const puppyCards=puppies.map((p,pi)=>`
-      <div class="puppy-card">
+    const puppyEntries=lt.puppies?Object.entries(lt.puppies):[];
+    const puppyCards=puppyEntries.map(([pid,p])=>{
+      const status = p.status || '분양 전';
+      let badgeClass = 'badge-avail';
+      if(status === '예약') badgeClass = 'badge-rsv';
+      if(status === '분양 완료') badgeClass = 'badge-sold';
+      return `
+      <div class="puppy-card" onclick="goToAdminContract('${lt._key}','${pid}','${status}')" style="cursor:pointer">
         ${p.photo?`<img class="p-photo" src="${p.photo}">`:`<div class="p-placeholder">🐶</div>`}
-        <div class="p-name">${p.name||`새끼${pi+1}`}</div>
-        <div class="p-sex">${p.sex==='female'?'♀ 암':p.sex==='male'?'♂ 수':'미정'}</div>
-      </div>`).join('');
+        <div class="p-name">${esc(p.name||pid)}</div>
+        <div class="p-sex" style="margin-bottom:4px">${p.sex==='female'?'♀ 암':p.sex==='male'?'♂ 수':'미정'}</div>
+        <span class="badge ${badgeClass}" style="font-size:9px;padding:1px 5px">${status}</span>
+      </div>`;}).join('');
     card.innerHTML=`
       <div class="litter-header" onclick="toggleLitter(this)">
         <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; ${fmtDate(lt.birthA)}</h3>
