@@ -587,6 +587,42 @@ async function fbUpdate(path,data){
 }
 
 // ═══════════════════════════════════════
+//  SWR 로컬 캐시 저장 및 복원 (체감 로딩 속도 0.01초 부스터)
+// ═══════════════════════════════════════
+function saveLocalCache(key, data) {
+  try {
+    localStorage.setItem('goldie_cache_' + key, JSON.stringify(data));
+  } catch(e) {
+    console.warn(`[Cache Limit] ${key} 로컬 캐싱 용량 제한 또는 실패:`, e);
+  }
+}
+
+function restoreLocalCache() {
+  try {
+    const cachedFemales = localStorage.getItem('goldie_cache_females');
+    const cachedMales = localStorage.getItem('goldie_cache_males');
+    const cachedBreeding = localStorage.getItem('goldie_cache_breeding');
+    const cachedLitters = localStorage.getItem('goldie_cache_litters');
+    const cachedMoveLog = localStorage.getItem('goldie_cache_moveLog');
+
+    if (cachedFemales) females = JSON.parse(cachedFemales);
+    if (cachedMales) males = JSON.parse(cachedMales);
+    if (cachedBreeding) breedingRecords = JSON.parse(cachedBreeding);
+    if (cachedLitters) litters = JSON.parse(cachedLitters);
+    if (cachedMoveLog) moveLog = JSON.parse(cachedMoveLog);
+
+    // 로컬 스토리지에 한 마리의 강아지 정보라도 캐싱되어 있다면 즉각 렌더링하고 로더 걷기!
+    if (females.length || males.length) {
+      const loader = document.getElementById('loading-screen');
+      if (loader) loader.style.display = 'none';
+      renderDogs();
+    }
+  } catch(e) {
+    console.error('[Cache Restore Error]:', e);
+  }
+}
+
+// ═══════════════════════════════════════
 //  실시간 동기화 리스너
 // ═══════════════════════════════════════
 let isFemalesLoaded = false;
@@ -607,6 +643,7 @@ function startListeners(){
     renderDogs();
     if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
     
+    saveLocalCache('females', females);
     isFemalesLoaded = true;
     hideLoaderIfReady();
   });
@@ -616,6 +653,7 @@ function startListeners(){
     snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
     renderDogs();
     
+    saveLocalCache('males', males);
     isMalesLoaded = true;
     hideLoaderIfReady();
   });
@@ -624,6 +662,7 @@ function startListeners(){
     breedingRecords=[];
     snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
+    saveLocalCache('breeding', breedingRecords);
   });
   // 출산
   onValue(ref(db,'litters'), snap=>{
@@ -631,12 +670,14 @@ function startListeners(){
     snap.forEach(child=>{litters.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
     checkVaxAlerts();
+    saveLocalCache('litters', litters);
   });
   // 이동
   onValue(ref(db,'moveLog'), snap=>{
     moveLog=[];
     snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
+    saveLocalCache('moveLog', moveLog);
   });
 }
 
@@ -645,7 +686,8 @@ function startListeners(){
 // ═══════════════════════════════════════
 async function init(){
   try{
-    startListeners();
+    restoreLocalCache(); // 초고속 로컬 캐시 우선 복원
+    startListeners();    // 백그라운드 데이터 동기화 시작
   }catch(e){
     document.querySelector('#loading-screen .ls-text').textContent='연결 실패 😢';
     document.querySelector('#loading-screen .ls-sub').textContent=e.message;

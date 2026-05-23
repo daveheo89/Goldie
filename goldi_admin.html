@@ -350,12 +350,55 @@ window.switchTab=(btn,name)=>{
   btn.classList.add('active');
 };
 
+// ── SWR 로컬 캐시 부스터 (체감 로딩 속도 0.01초 단축)
+function saveLocalCache(key, data) {
+  try {
+    localStorage.setItem('goldi_admin_cache_' + key, JSON.stringify(data));
+  } catch(e) {
+    console.warn(`[Cache Limit] Admin ${key} 저장 제한:`, e);
+  }
+}
+
+function restoreLocalCache() {
+  try {
+    const cachedLitters = localStorage.getItem('goldi_admin_cache_litters');
+    const cachedContracts = localStorage.getItem('goldi_admin_cache_contracts');
+    
+    if (cachedLitters) {
+      window._litters = JSON.parse(cachedLitters);
+      // DOM 로드 완료 대기 후 캐시 데이터 렌더링
+      setTimeout(() => {
+        renderPuppyGroups();
+        renderManageList();
+        updateStats();
+        
+        // 자동 선택 연동 파라미터가 있는 경우 처리
+        if (initLitter && initPuppy && !window._autoSelectedTriggered) {
+          window._autoSelectedTriggered = true;
+          selectPuppy(initLitter, initPuppy);
+        }
+      }, 50);
+    }
+    if (cachedContracts) {
+      window._contracts = JSON.parse(cachedContracts);
+      setTimeout(renderDB, 50);
+    }
+  } catch(e) {
+    console.error('[Admin Cache Restore Error]:', e);
+  }
+}
+
+// 스크립트 실행 즉시 캐시 복원
+restoreLocalCache();
+
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
   renderPuppyGroups();
   renderManageList();
   updateStats();
+  
+  saveLocalCache('litters', window._litters);
   
   // 농장관리로부터 넘어온 자동 분양 연동 처리
   if (initLitter && initPuppy && !window._autoSelectedTriggered) {
@@ -371,6 +414,8 @@ onValue(ref(db,'contracts'),snap=>{
   try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
   window._contracts={...ls,...fb};
   renderDB();
+  
+  saveLocalCache('contracts', window._contracts);
 });
 
 // ── TAB1: 새끼 선택
