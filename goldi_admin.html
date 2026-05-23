@@ -188,6 +188,10 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
         <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
       </div>
+      <div class="ffield" style="margin-bottom:14px">
+        <label>특이사항 / 특별 약정 (계약서에 별도 서명 필요)</label>
+        <textarea id="s_memo" placeholder="예: 사료 하루 3번 급여, 예방접종 3차 대행 등 (공백 시 서명 생략)" style="width:100%; height:64px; padding:9px 12px; border:1.5px solid var(--gray-l); border-radius:7px; outline:none; resize:vertical; font-family:inherit; font-size:14px; color:var(--br);"></textarea>
+      </div>
       <div class="btn-row">
         <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
       </div>
@@ -475,6 +479,7 @@ window.selectPuppy=(lid,pid)=>{
       <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
       <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>
     </div>`;
+  document.getElementById('s_memo').value = '';
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
   document.getElementById('sendForm').style.display='block';
   document.getElementById('linkCard').style.display='none';
@@ -486,6 +491,7 @@ window.generateLink=()=>{
   if(!sel){toast('새끼를 먼저 선택해주세요.');return;}
   const price=document.getElementById('s_price').value;
   const saledate=document.getElementById('s_saledate').value;
+  const memo=document.getElementById('s_memo').value.trim();
   if(!price||!saledate){toast('분양가와 분양 예정일을 입력해주세요.');return;}
 
   const {litterId:lid,puppyId:pid,litter:l,puppy:p}=sel;
@@ -498,7 +504,8 @@ window.generateLink=()=>{
     deworm2:l.deworm2||'',
     femaleCode:l.femaleCode||'',
     maleCode:l.maleCode||'',
-    price, saledate
+    price, saledate,
+    memo
   });
   const base=location.href.split('?')[0].replace(/\/goldi_admin(\.html)?$/i,'/goldi_contract_form.html');
   const url=base+'?'+params.toString();

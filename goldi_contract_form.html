@@ -178,10 +178,11 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <div class="ffield"><label>연락처 <span class="req">*</span></label><input type="tel" id="b_phone" placeholder="010-0000-0000"></div>
         <div class="ffield fc1" style="grid-column:span 2">
           <label>주소 <span class="req">*</span></label>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
             <input id="b_addr" placeholder="오른쪽 주소 검색 버튼을 눌러 입력해주세요." readonly style="flex:1">
             <button type="button" class="btn btn-br btn-sm" onclick="searchAddress()" style="padding:9px 16px;white-space:nowrap">🔍 주소 검색</button>
           </div>
+          <input id="b_addr_detail" placeholder="상세 주소 (예: 101동 202호)를 입력해주세요.">
         </div>
         <div class="ffield"><label>결제 방법 <span class="req">*</span></label>
           <select id="b_payment">
@@ -205,7 +206,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     </div>
 
     <div class="card">
-      <div class="card-title">특이사항 / 메모</div>
+      <div class="card-title">구매자 메모 / 추가 요청사항</div>
       <div class="ffield"><textarea id="b_memo" placeholder="알러지, 특이체질, 기타 요청사항 등"></textarea></div>
     </div>
 
@@ -221,6 +222,16 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div class="card-title">계약서 미리보기 — 내용을 확인해주세요</div>
       <div id="contractPreview"></div>
     </div>
+    
+    <div class="card" style="border: 2px solid var(--gold); background: var(--gold-p); margin-bottom: 20px;">
+      <div style="display:flex; align-items:flex-start; gap:12px;">
+        <input type="checkbox" id="agreeDispute" style="width:20px; height:20px; margin-top:2px; cursor:pointer; flex-shrink:0;">
+        <label for="agreeDispute" style="font-size:13px; font-weight:700; color:var(--br); cursor:pointer; line-height:1.5;">
+          [필수] 본 계약서 제5조(품질 보증 및 분쟁 해결 조항) 및 제6조(소비자 분쟁해결 기준)의 내용을 충분히 숙지하였으며, 이에 적극 동의합니다.
+        </label>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-gray" onclick="goStep(1)">← 수정</button>
       <button class="btn btn-gold" onclick="goStep3()">서명하기 →</button>
@@ -230,13 +241,28 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <!-- ── STEP3: 전자서명 -->
   <div class="step-panel" id="step3">
     <div class="card">
-      <div class="card-title">전자 서명</div>
-      <p style="font-size:13px;color:var(--gray);margin-bottom:14px">아래 칸에 손가락 또는 마우스로 서명해주세요.</p>
+      <div class="card-title">전자 서명 (전체 계약서 동의)</div>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px">아래 칸에 손가락 또는 마우스로 전체 계약 동의 서명을 해주세요.</p>
       <canvas id="signCanvas" width="640" height="180"></canvas>
       <div class="btn-row" style="margin-top:10px;justify-content:flex-start">
         <button class="btn btn-gray" onclick="clearSign()" style="font-size:12px;padding:7px 14px">↺ 다시 서명</button>
       </div>
     </div>
+
+    <!-- 특이사항 동의용 서명 카드 (동적 제어) -->
+    <div class="card" id="memoSignCard" style="display:none">
+      <div class="card-title">특이사항 확인 및 동의 서명</div>
+      <div style="background:var(--gold-p); padding:12px; border-radius:6px; font-size:13px; font-weight:700; margin-bottom:12px; border-left:4px solid var(--gold);">
+        📝 분양자 기재 특이사항:<br>
+        <span id="memoContentText" style="font-weight:500; display:inline-block; margin-top:4px; line-height:1.6; color:var(--br);"></span>
+      </div>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px">위 특이사항 내용을 확인하였으며, 이에 적극 동의하는 서명을 해주세요.</p>
+      <canvas id="memoSignCanvas" width="640" height="180"></canvas>
+      <div class="btn-row" style="margin-top:10px;justify-content:flex-start">
+        <button class="btn btn-gray" onclick="clearMemoSign()" style="font-size:12px;padding:7px 14px">↺ 다시 서명</button>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-gray" onclick="goStep(2)">← 뒤로</button>
       <button class="btn btn-gold" onclick="submitContract()">✅ 계약 완료</button>
@@ -293,7 +319,8 @@ let G = {
   femaleCode:P.get('femaleCode')||'',
   maleCode:  P.get('maleCode')||'',
   price:     P.get('price')||'',
-  saledate:  P.get('saledate')||''
+  saledate:  P.get('saledate')||'',
+  memo:      P.get('memo')||''
 };
 
 // [안심 예외 복원 가드] 표준 파서에서 필수값이 유실된 경우에만 자가 치유(Self-healing) 가동
@@ -313,7 +340,8 @@ if (!G.litter || !G.puppy) {
         femaleCode:P2.get('femaleCode')||G.femaleCode,
         maleCode:  P2.get('maleCode')||G.maleCode,
         price:     P2.get('price')||G.price,
-        saledate:  P2.get('saledate')||G.saledate
+        saledate:  P2.get('saledate')||G.saledate,
+        memo:      P2.get('memo')||G.memo
       };
     } catch(e) {
       console.warn('URL 자가 복구 실패:', e);
@@ -394,6 +422,16 @@ async function init(){
   document.getElementById('f_price').value   = G.price?numFmt(G.price):'—';
   document.getElementById('f_saledate').value= fmt(G.saledate);
 
+  // 특이사항 전용 서명 카드 및 텍스트 설정
+  if (G.memo) {
+    const memoSignCard = document.getElementById('memoSignCard');
+    const memoContentText = document.getElementById('memoContentText');
+    if (memoSignCard && memoContentText) {
+      memoSignCard.style.display = 'block';
+      memoContentText.textContent = G.memo;
+    }
+  }
+
   document.getElementById('dogInfo').innerHTML=`
     <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(G.dogname)}</span></div>
     <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderKo(G.sex)}</span></div>
@@ -444,6 +482,7 @@ window.goStep2=()=>{
   const phone=document.getElementById('b_phone').value.trim();
   const payment=document.getElementById('b_payment').value;
   const addr=document.getElementById('b_addr').value.trim();
+  const addrDetail=document.getElementById('b_addr_detail').value.trim();
   if(!name||!phone||!payment||!addr){toast('성명, 연락처, 주소, 결제방법은 필수입니다.');return;}
   const phoneRegex=/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
   if(!phoneRegex.test(phone)){toast('연락처 형식이 올바르지 않습니다. (예: 010-1234-5678)');return;}
@@ -453,14 +492,29 @@ window.goStep2=()=>{
   const memo=document.getElementById('b_memo').value.trim();
   const transfer=document.getElementById('b_transfer').value.trim();
 
+  const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
+
+  // 특이사항 합의서명 영역 분리
+  const specialMemoSection = G.memo ? `
+<div class="cv-section">특별 합의 및 특이사항 조항</div>
+<div style="padding:12px 14px; background:#FDF5E0; border:1.5px solid var(--gold-l); border-radius:6px; font-size:12px; margin-bottom:12px">
+  <div style="font-weight:700; margin-bottom:6px; color:var(--br);">📝 분양자 기재 특이사항:</div>
+  <div style="line-height:1.7; margin-bottom:12px; font-weight:500;">${esc(G.memo)}</div>
+  
+  <div style="display:flex; justify-content:flex-end; align-items:center; gap:12px; border-top:1px dashed #ddd; padding-top:10px;">
+    <div style="font-size:11px; color:#6B6B6B; font-weight:700;">위 특이사항 확인 및 합의 서명:</div>
+    <div id="cv_memo_sign_img" style="min-width:120px; height:45px; border:1px dashed #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#aaa; background:#fff;">(서명 대기)</div>
+  </div>
+</div>` : '';
+
   document.getElementById('contractPreview').innerHTML=`
 <div class="cv-header">
   <h1>골든리트리버 분양 계약서</h1>
   <p>골디 쉼터 Goldi Shelter | 전문 소규모 브리더 | 소규모 동물생산업 허가 보유</p>
-  <p style="font-size:10px;color:#aaa;margin-top:3px">본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 판매자·구매자 각 1통씩 보관합니다.</p>
+  <p style="font-size:10px;color:#aaa;margin-top:3px">본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 분양자·구매자 각 1통씩 보관합니다.</p>
 </div>
 
-<div class="cv-section">1. 판매업자 정보</div>
+<div class="cv-section">1. 분양자 정보</div>
 <table class="cv-table">
   <tr><th>업소명</th><td>골디 쉼터 (Goldi Shelter)</td><th>생산업 허가번호</th><td>제 4170000-037-2023-0011</td></tr>
   <tr><th>연락처</th><td>010-6508-5901</td><th>카카오 상담</th><td>open.kakao.com/o/sxGtK0ri</td></tr>
@@ -480,10 +534,10 @@ window.goStep2=()=>{
   <tr><td>종합 구충제</td><td style="text-align:center">${fmt(G.deworm1)}</td><td style="text-align:center">${fmt(G.deworm2)}</td><td style="text-align:center;color:#888">추후 예정</td></tr>
 </table>
 
-<div class="cv-section">4. 판매 조건</div>
+<div class="cv-section">4. 분양 조건</div>
 <table class="cv-table">
-  <tr><th>판매일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${esc(payment)}${transfer?' (이체자: '+esc(transfer)+')':''}</td></tr>
-  <tr><th>판매금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
+  <tr><th>분양일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${esc(payment)}${transfer?' (이체자: '+esc(transfer)+')':''}</td></tr>
+  <tr><th>분양금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
 </table>
 
 <div class="cv-section">5. 품질 보증 및 분쟁 해결 조항</div>
@@ -498,19 +552,21 @@ window.goStep2=()=>{
 <table class="cv-table">
   <tr><th>구분</th><th>내용</th><th>해결 기준</th></tr>
   <tr><td>15일 이내 동물 사망</td><td colspan="2">동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)</td></tr>
-  <tr><td>15일 이내 질병 발생</td><td colspan="2">판매자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
+  <tr><td>15일 이내 질병 발생</td><td colspan="2">분양자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
 </table>
 
 <div class="cv-section">7. 구매자(입양인) 정보</div>
 <table class="cv-table">
   <tr><th>성명</th><td>${esc(name)} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${esc(phone)}</td></tr>
-  <tr><th>주소</th><td colspan="3">${esc(addr||'—')}</td></tr>
+  <tr><th>주소</th><td colspan="3">${esc(fullAddr||'—')}</td></tr>
 </table>
 
-${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+esc(memo)+'</div>':''} 
+${specialMemoSection}
+
+${memo?'<div class="cv-section">구매자 추가 요청사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+esc(memo)+'</div>':''} 
 
 <div class="cv-legal">
-판매자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
+분양자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
 【법적 고지】 본 계약서는 「동물보호법」 시행규칙 [별표12] 및 「소비자기본법 시행령」 제8조 소비자분쟁해결기준에 의거합니다. 분양받은 날로부터 30일 이내 동물등록 신청 의무가 있습니다 (동물보호법 제12조). 이 계약과 관련하여 발생하는 모든 분쟁은 상호 협의하여 해결하며, 협의에 의해 해결되지 않아 소송이 제기되어야 하는 경우 분양자의 소재지를 관할하는 법원을 관할 법원으로 합니다. 분쟁 발생 시 소비자분쟁조정위원회 (국번없이 1372) 문의 가능합니다.
 </div>
 
@@ -522,7 +578,7 @@ ${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;b
     <div id="cv_sign_img" style="margin-top:8px"></div>
   </div>
   <div class="sign-box">
-    <div class="s-label">판매자 (골디 쉼터)</div>
+    <div class="s-label">분양자 (골디 쉼터)</div>
     <div class="s-name">골디 쉼터</div>
     <div class="s-date">분양일: ${fmt(G.saledate)}</div>
   </div>
@@ -532,10 +588,14 @@ ${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;b
   goStep(2);
 };
 
-// ── STEP3: 전자서명 캔버스
+// ── STEP3: 전자서명 캔버스 제어
 const canvas=document.getElementById('signCanvas');
 const ctx=canvas.getContext('2d');
 let drawing=false;
+
+const memoCanvas=document.getElementById('memoSignCanvas');
+const memoCtx=memoCanvas ? memoCanvas.getContext('2d') : null;
+let memoDrawing=false;
 
 // 모바일 해상도에 유연하게 반응하는 스마트 캔버스 리사이저
 window.resizeCanvas = () => {
@@ -563,29 +623,49 @@ window.resizeCanvas = () => {
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+
+  // 특이사항 서명 리사이즈 및 복원
+  if (memoCanvas && memoCtx) {
+    const tempMemoCanvas = document.createElement('canvas');
+    tempMemoCanvas.width = memoCanvas.width;
+    tempMemoCanvas.height = memoCanvas.height;
+    const tempMemoCtx = tempMemoCanvas.getContext('2d');
+    tempMemoCtx.drawImage(memoCanvas, 0, 0);
+
+    memoCanvas.width = targetW;
+    memoCanvas.height = targetH;
+
+    memoCtx.drawImage(tempMemoCanvas, 0, 0, tempMemoCanvas.width, tempMemoCanvas.height, 0, 0, targetW, targetH);
+
+    memoCtx.strokeStyle = '#2C1A0E';
+    memoCtx.lineWidth = 3;
+    memoCtx.lineCap = 'round';
+    memoCtx.lineJoin = 'round';
+  }
 };
 
 // 리사이즈 이벤트 바인딩
 window.addEventListener('resize', window.resizeCanvas);
 
-function getPos(e){
-  const r=canvas.getBoundingClientRect();
+function getPos(c, e){
+  const r=c.getBoundingClientRect();
   const src=e.touches?e.touches[0]:e;
   return {
-    x: (src.clientX - r.left) * (canvas.width / r.width),
-    y: (src.clientY - r.top) * (canvas.height / r.height)
+    x: (src.clientX - r.left) * (c.width / r.width),
+    y: (src.clientY - r.top) * (c.height / r.height)
   };
 }
 
-canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
-canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke()});
+// signCanvas 리스너
+canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(canvas, e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
+canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(canvas, e);ctx.lineTo(p.x,p.y);ctx.stroke()});
 canvas.addEventListener('mouseup',()=>drawing=false);
 canvas.addEventListener('mouseleave',()=>drawing=false);
 
 canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
   drawing=true;
-  const p=getPos(e);
+  const p=getPos(canvas, e);
   ctx.beginPath();
   ctx.moveTo(p.x,p.y);
 },{passive:false});
@@ -593,7 +673,7 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{
   e.preventDefault();
   if(!drawing)return;
-  const p=getPos(e);
+  const p=getPos(canvas, e);
   ctx.lineTo(p.x,p.y);
   ctx.stroke();
 },{passive:false});
@@ -601,7 +681,39 @@ canvas.addEventListener('touchmove',e=>{
 canvas.addEventListener('touchend',()=>drawing=false);
 window.clearSign=()=>ctx.clearRect(0,0,canvas.width,canvas.height);
 
+// memoSignCanvas 리스너
+if (memoCanvas && memoCtx) {
+  memoCanvas.addEventListener('mousedown',e=>{memoDrawing=true;const p=getPos(memoCanvas, e);memoCtx.beginPath();memoCtx.moveTo(p.x,p.y)});
+  memoCanvas.addEventListener('mousemove',e=>{if(!memoDrawing)return;const p=getPos(memoCanvas, e);memoCtx.lineTo(p.x,p.y);memoCtx.stroke()});
+  memoCanvas.addEventListener('mouseup',()=>memoDrawing=false);
+  memoCanvas.addEventListener('mouseleave',()=>memoDrawing=false);
+
+  memoCanvas.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    memoDrawing=true;
+    const p=getPos(memoCanvas, e);
+    memoCtx.beginPath();
+    memoCtx.moveTo(p.x,p.y);
+  },{passive:false});
+
+  memoCanvas.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(!memoDrawing)return;
+    const p=getPos(memoCanvas, e);
+    memoCtx.lineTo(p.x,p.y);
+    memoCtx.stroke();
+  },{passive:false});
+
+  memoCanvas.addEventListener('touchend',()=>memoDrawing=false);
+  window.clearMemoSign=()=>memoCtx.clearRect(0,0,memoCanvas.width,memoCanvas.height);
+}
+
 window.goStep3=()=>{
+  const checked = document.getElementById('agreeDispute').checked;
+  if(!checked){
+    toast('⚠ 분쟁 해결 및 품질 보증 조항 필수 동의 체크박스를 선택해주세요.');
+    return;
+  }
   goStep(3);
   setTimeout(window.resizeCanvas, 50); // DOM 렌더링 이후 안전하게 캔버스 리사이즈 트리거
 };
@@ -615,7 +727,24 @@ window.submitContract=async()=>{
   // 서명 체크 (빈 캔버스 확인)
   const imgData=canvas.toDataURL();
   const blank=document.createElement('canvas');blank.width=canvas.width;blank.height=canvas.height;
-  if(imgData===blank.toDataURL()){toast('서명을 완료해주세요.');return;}
+  if(imgData===blank.toDataURL()){toast('전체 서명을 완료해주세요.');return;}
+
+  // 특이사항 동의 서명 체크 (존재하는 경우)
+  let memoImgData = '';
+  if (G.memo && memoCanvas) {
+    memoImgData = memoCanvas.toDataURL();
+    const memoBlank = document.createElement('canvas'); memoBlank.width = memoCanvas.width; memoBlank.height = memoCanvas.height;
+    if (memoImgData === memoBlank.toDataURL()) {
+      toast('특이사항 동의 서명을 완료해주세요.');
+      return;
+    }
+    const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
+    if (cvMemoSignImg) {
+      cvMemoSignImg.innerHTML = `<img src="${memoImgData}" style="max-height:40px; border-radius:3px;">`;
+      cvMemoSignImg.style.border = 'none';
+      cvMemoSignImg.style.background = 'transparent';
+    }
+  }
 
   submitBtn.disabled=true;
   submitBtn.textContent='⏳ 저장 중...';
@@ -667,6 +796,10 @@ window.submitContract=async()=>{
     console.error('PDF 자동 보관 빌드 실패:', e);
   }
 
+  const addr=document.getElementById('b_addr').value.trim();
+  const addrDetail=document.getElementById('b_addr_detail').value.trim();
+  const fullAddr=addr + (addrDetail ? ' ' + addrDetail : '');
+
   const contractId='C'+Date.now();
   const dogid=`${G.litter}_${G.puppy}`;
   const data={
@@ -684,14 +817,17 @@ window.submitContract=async()=>{
     saledate:  G.saledate,
     buyer_name:    document.getElementById('b_name').value.trim(),
     buyer_phone:   document.getElementById('b_phone').value.trim(),
-    buyer_addr:    document.getElementById('b_addr').value.trim(),
+    buyer_addr:    fullAddr,
+    buyer_addr_detail: addrDetail,
     payment:       document.getElementById('b_payment').value,
     transfer_name: document.getElementById('b_transfer').value.trim(),
     deposit:       Number(document.getElementById('b_deposit').value)||0,
     balance_date:  document.getElementById('b_balance_date').value,
     memo:          document.getElementById('b_memo').value.trim(),
+    special_memo:  G.memo,
     contract_date: today(),
     signature:     imgData,
+    signature_memo:memoImgData,
     pdf_document:  pdfBase64,
     status:       '분양 완료',
     created_at:    new Date().toISOString()
