@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디 셸터 농장 관리</title>
+<script>
+  if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
+    document.documentElement.classList.add('authenticated');
+  }
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 :root {
@@ -18,6 +23,15 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(--text);min-height:100vh;}
+#main-content { display: none; opacity: 0; transition: opacity 0.4s ease; }
+.authenticated #main-content { display: block; opacity: 1; }
+.authenticated #login-overlay { display: none !important; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
 
 /* loading */
 #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--brown),var(--gold));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
@@ -221,146 +235,162 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 </head>
 <body>
 
-<!-- 로딩 화면 -->
-<div id="loading-screen">
-  <div class="ls-icon">🐕</div>
-  <div class="ls-text">골디 셸터 불러오는 중...</div>
-  <div class="ls-sub">Firebase에 연결하고 있어요</div>
-</div>
-
-<div class="paw-bg">🐾</div>
-
-<header>
-  <h1>🐕 골디 셸터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
-  <p>골든리트리버 번식·견사 통합 관리</p>
-</header>
-
-<div class="tabs">
-  <div class="tab active" onclick="showTab('dogs')">🐶 개체</div>
-  <div class="tab" onclick="showTab('kennels')">🏠 견사</div>
-  <div class="tab" onclick="showTab('breeding')">🌸 번식</div>
-  <div class="tab" onclick="showTab('puppies')">🐾 새끼</div>
-  <div class="tab" onclick="showTab('move')">🔄 이동</div>
-</div>
-
-<div class="content">
-  <!-- 개체 탭 -->
-  <div id="tab-dogs">
-    <div class="sec-title">🐕‍🦺 모견 <span class="badge" id="female-count">0</span></div>
-    <button class="add-dog-btn" onclick="openAddDog('female')">＋ 모견 추가</button>
-    <div class="dog-grid" id="female-grid"></div>
-    <div class="sec-title">🐕 부견 <span class="badge" id="male-count">0</span></div>
-    <button class="add-dog-btn" onclick="openAddDog('male')">＋ 부견 추가</button>
-    <div class="dog-grid" id="male-grid"></div>
-    <div class="detail-panel" id="dog-detail"></div>
-  </div>
-
-  <!-- 견사 탭 -->
-  <div id="tab-kennels" class="hidden">
-    <div class="sec-title">🏠 견사 현황</div>
-    <div class="kennel-grid" id="kennel-grid"></div>
-  </div>
-
-  <!-- 번식 탭 -->
-  <div id="tab-breeding" class="hidden">
-    <div class="sec-title">🌸 교배 현황</div>
-    <div class="breeding-list" id="breeding-list"></div>
-    <div style="margin-top:20px;" class="sec-title">교배 등록</div>
-    <div class="form-card">
-      <div class="form-group"><label>모견</label><select id="b-female"></select></div>
-      <div class="form-group"><label>부견</label><select id="b-male"></select></div>
-      <div class="form-group"><label>교배일</label><input type="date" id="b-date"></div>
-      <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
+<!-- 로그인 오버레이 -->
+<div id="login-overlay" style="position:fixed;inset:0;background:var(--gold-bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:360px;width:100%;text-align:center;box-shadow:var(--shadow);padding:30px;border-radius:12px;border:1px solid var(--border);background:#fff">
+    <div style="font-size:3.5rem;margin-bottom:14px">🔑</div>
+    <h2 style="font-size:1.1rem;font-weight:900;color:var(--brown);margin-bottom:8px">골디셸터 보안 인증</h2>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px">농장관리 비밀번호를 입력해주세요.</p>
+    <div style="margin-bottom:16px">
+      <input type="password" id="login-password" placeholder="비밀번호 입력" style="border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;width:100%;outline:none;text-align:center;background:var(--gold-pale);color:var(--text);font-family:inherit">
     </div>
-  </div>
-
-  <!-- 새끼 탭 -->
-  <div id="tab-puppies" class="hidden">
-    <div class="sec-title">🐾 새끼 현황</div>
-    <button class="add-dog-btn" onclick="openAddLitter()">＋ 출산 기록 추가</button>
-    <div id="litter-list"></div>
-  </div>
-
-  <!-- 이동 탭 -->
-  <div id="tab-move" class="hidden">
-    <div class="sec-title">🔄 견사 이동</div>
-    <div class="form-card">
-      <div class="form-group"><label>이동할 아이</label><select id="m-dog"></select></div>
-      <div class="form-group"><label>이동할 견사</label><select id="m-kennel"></select></div>
-      <div class="form-group"><label>이동 날짜</label><input type="date" id="m-date"></div>
-      <button class="btn" onclick="moveKennel()">이동 완료</button>
-    </div>
-    <div class="sec-title">📋 이동 기록</div>
-    <div class="move-log" id="move-log"></div>
+    <button class="btn" onclick="attemptLogin()" style="width:100%;justify-content:center;padding:12px">인증하기</button>
+    <div id="login-error" style="color:#C0392B;font-size:12px;margin-top:10px;font-weight:700;display:none">⚠️ 비밀번호가 일치하지 않습니다.</div>
   </div>
 </div>
 
-<!-- 라이트박스 -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <button class="lightbox-close">✕</button>
-  <img id="lightbox-img" src="" alt="">
-  <div class="lightbox-lbl" id="lightbox-lbl"></div>
-</div>
+<div id="main-content">
+  <!-- 로딩 화면 -->
+  <div id="loading-screen">
+    <div class="ls-icon">🐕</div>
+    <div class="ls-text">골디 셸터 불러오는 중...</div>
+    <div class="ls-sub">Firebase에 연결하고 있어요</div>
+  </div>
 
-<!-- 개체 추가/편집 모달 -->
-<div class="modal-overlay" id="dog-modal" onclick="handleDogModalOverlay(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="dog-modal-title">개체 추가</h2>
-      <button class="modal-close" onclick="closeDogModal()">✕</button>
+  <div class="paw-bg">🐾</div>
+
+  <header>
+    <h1>🐕 골디 셸터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
+    <p>골든리트리버 번식·견사 통합 관리</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('dogs')">🐶 개체</div>
+    <div class="tab" onclick="showTab('kennels')">🏠 견사</div>
+    <div class="tab" onclick="showTab('breeding')">🌸 번식</div>
+    <div class="tab" onclick="showTab('puppies')">🐾 새끼</div>
+    <div class="tab" onclick="showTab('move')">🔄 이동</div>
+  </div>
+
+  <div class="content">
+    <!-- 개체 탭 -->
+    <div id="tab-dogs">
+      <div class="sec-title">🐕‍🦺 모견 <span class="badge" id="female-count">0</span></div>
+      <button class="add-dog-btn" onclick="openAddDog('female')">＋ 모견 추가</button>
+      <div class="dog-grid" id="female-grid"></div>
+      <div class="sec-title">🐕 부견 <span class="badge" id="male-count">0</span></div>
+      <button class="add-dog-btn" onclick="openAddDog('male')">＋ 부견 추가</button>
+      <div class="dog-grid" id="male-grid"></div>
+      <div class="detail-panel" id="dog-detail"></div>
     </div>
-    <div class="photo-upload-wrap" id="dm-photo-wrap">
-      <input type="file" accept="image/*" id="dm-photo-input" onchange="handleDogPhoto(event)">
-      <div class="pu-hint" id="dm-hint"><div class="ph-icon">📷</div><div>사진 추가 (선택)</div></div>
-      <div class="pu-overlay" id="dm-overlay">📷 사진 변경</div>
+
+    <!-- 견사 탭 -->
+    <div id="tab-kennels" class="hidden">
+      <div class="sec-title">🏠 견사 현황</div>
+      <div class="kennel-grid" id="kennel-grid"></div>
     </div>
-    <div class="form-group">
-      <label>암수 구분</label>
-      <div class="sex-toggle">
-        <button class="sex-btn female" id="sex-btn-female" onclick="selectSex('female')">🐕‍🦺 암컷 (모견)</button>
-        <button class="sex-btn male"   id="sex-btn-male"   onclick="selectSex('male')">🐕 수컷 (부견)</button>
+
+    <!-- 번식 탭 -->
+    <div id="tab-breeding" class="hidden">
+      <div class="sec-title">🌸 교배 현황</div>
+      <div class="breeding-list" id="breeding-list"></div>
+      <div style="margin-top:20px;" class="sec-title">교배 등록</div>
+      <div class="form-card">
+        <div class="form-group"><label>모견</label><select id="b-female"></select></div>
+        <div class="form-group"><label>부견</label><select id="b-male"></select></div>
+        <div class="form-group"><label>교배일</label><input type="date" id="b-date"></div>
+        <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
       </div>
     </div>
-    <div class="form-group"><label>번호 / 코드</label><input type="text" id="dm-code" placeholder="예: F21, M06"></div>
-    <div class="form-group"><label>견사</label><select id="dm-kennel"></select></div>
-    <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
-      <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
+
+    <!-- 새끼 탭 -->
+    <div id="tab-puppies" class="hidden">
+      <div class="sec-title">🐾 새끼 현황</div>
+      <button class="add-dog-btn" onclick="openAddLitter()">＋ 출산 기록 추가</button>
+      <div id="litter-list"></div>
+    </div>
+
+    <!-- 이동 탭 -->
+    <div id="tab-move" class="hidden">
+      <div class="sec-title">🔄 견사 이동</div>
+      <div class="form-card">
+        <div class="form-group"><label>이동할 아이</label><select id="m-dog"></select></div>
+        <div class="form-group"><label>이동할 견사</label><select id="m-kennel"></select></div>
+        <div class="form-group"><label>이동 날짜</label><input type="date" id="m-date"></div>
+        <button class="btn" onclick="moveKennel()">이동 완료</button>
+      </div>
+      <div class="sec-title">📋 이동 기록</div>
+      <div class="move-log" id="move-log"></div>
     </div>
   </div>
-</div>
 
-<!-- 출산 기록 추가 모달 -->
-<div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>출산 기록 추가</h2>
-      <button class="modal-close" onclick="closeLitterModal()">✕</button>
-    </div>
-    <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
-    <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
-    <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
-    <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
-    <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
-      <button class="btn" onclick="saveLitter()">✅ 저장</button>
+  <!-- 라이트박스 -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">✕</button>
+    <img id="lightbox-img" src="" alt="">
+    <div class="lightbox-lbl" id="lightbox-lbl"></div>
+  </div>
+
+  <!-- 개체 추가/편집 모달 -->
+  <div class="modal-overlay" id="dog-modal" onclick="handleDogModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="dog-modal-title">개체 추가</h2>
+        <button class="modal-close" onclick="closeDogModal()">✕</button>
+      </div>
+      <div class="photo-upload-wrap" id="dm-photo-wrap">
+        <input type="file" accept="image/*" id="dm-photo-input" onchange="handleDogPhoto(event)">
+        <div class="pu-hint" id="dm-hint"><div class="ph-icon">📷</div><div>사진 추가 (선택)</div></div>
+        <div class="pu-overlay" id="dm-overlay">📷 사진 변경</div>
+      </div>
+      <div class="form-group">
+        <label>암수 구분</label>
+        <div class="sex-toggle">
+          <button class="sex-btn female" id="sex-btn-female" onclick="selectSex('female')">🐕‍🦺 암컷 (모견)</button>
+          <button class="sex-btn male"   id="sex-btn-male"   onclick="selectSex('male')">🐕 수컷 (부견)</button>
+        </div>
+      </div>
+      <div class="form-group"><label>번호 / 코드</label><input type="text" id="dm-code" placeholder="예: F21, M06"></div>
+      <div class="form-group"><label>견사</label><select id="dm-kennel"></select></div>
+      <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
+        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- 백신 알림 팝업 -->
-<div class="vax-popup-overlay hidden" id="vax-popup-overlay">
-  <div class="vax-popup">
-    <h2>💉 오늘의 백신 알림</h2>
-    <p class="vp-sub">오늘 또는 놓친 일정이 있어요!</p>
-    <div id="vax-popup-list"></div>
-    <button class="btn" style="margin-top:8px;" onclick="closeVaxPopup()">확인했어요 ✓</button>
+  <!-- 출산 기록 추가 모달 -->
+  <div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>출산 기록 추가</h2>
+        <button class="modal-close" onclick="closeLitterModal()">✕</button>
+      </div>
+      <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
+      <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
+      <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
+      <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
+      <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
+        <button class="btn" onclick="saveLitter()">✅ 저장</button>
+      </div>
+    </div>
   </div>
-</div>
 
-<div class="toast" id="toast"></div>
+  <!-- 백신 알림 팝업 -->
+  <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
+    <div class="vax-popup">
+      <h2>💉 오늘의 백신 알림</h2>
+      <p class="vp-sub">오늘 또는 놓친 일정이 있어요!</p>
+      <div id="vax-popup-list"></div>
+      <button class="btn" style="margin-top:8px;" onclick="closeVaxPopup()">확인했어요 ✓</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
 
 <!-- Firebase SDK -->
 <script type="module">
@@ -400,6 +430,59 @@ let dogPendingPhoto=null;
 let dogSelectedSex='female';
 
 // ── 유틸 ──
+// ── 로그인 세션 보안 제어 ──
+window.attemptLogin = () => {
+  const pw = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  const overlay = document.getElementById('login-overlay');
+  const main = document.getElementById('main-content');
+  
+  if (pw === '5900') {
+    sessionStorage.setItem('goldi_auth', 'authenticated');
+    err.style.display = 'none';
+    
+    // 부드러운 화면 전환 효과
+    overlay.style.transition = 'opacity 0.4s ease';
+    overlay.style.opacity = '0';
+    main.style.display = 'block';
+    setTimeout(() => {
+      main.style.opacity = '1';
+    }, 50);
+    
+    setTimeout(() => {
+      overlay.remove();
+      document.documentElement.classList.add('authenticated');
+    }, 400);
+  } else {
+    err.style.display = 'block';
+    const pwInput = document.getElementById('login-password');
+    pwInput.value = '';
+    pwInput.focus();
+    
+    // 좌우 흔들기 애니메이션 부여
+    const card = overlay.querySelector('.card');
+    card.style.animation = 'none';
+    setTimeout(() => {
+      card.style.animation = 'shake 0.4s ease';
+    }, 10);
+  }
+};
+
+// 엔터 키 이벤트 바인딩 및 자동 포커스
+window.addEventListener('DOMContentLoaded', () => {
+  const pwInput = document.getElementById('login-password');
+  if (pwInput) {
+    pwInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        window.attemptLogin();
+      }
+    });
+    if (sessionStorage.getItem('goldi_auth') !== 'authenticated') {
+      setTimeout(() => pwInput.focus(), 100);
+    }
+  }
+});
+
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().slice(0,10);}
 function daysFrom(d){return Math.ceil((new Date(d)-new Date())/86400000);}
 function fmtDate(d){return d?d.replace(/-/g,'.'):'−';}

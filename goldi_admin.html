@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 관리자</title>
+<script>
+  if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
+    document.documentElement.classList.add('authenticated');
+  }
+</script>
 <style>
 :root {
   --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
@@ -15,6 +20,14 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
+#main-content { display: none; opacity: 0; transition: opacity 0.4s ease; }
+.authenticated #main-content { display: block; opacity: 1; }
+.authenticated #login-overlay { display: none !important; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
 header{background:var(--br);padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .logo{font-size:20px;color:var(--gold-l);font-weight:800;letter-spacing:-.5px}
 .logo span{color:rgba(255,255,255,.45);font-size:12px;font-weight:400;margin-left:6px}
@@ -102,76 +115,92 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 </head>
 <body>
 
-<header>
-  <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
-</header>
-
-<div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
-  <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
-  <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
-</div>
-
-<!-- TAB1 -->
-<div class="tab-panel active" id="tab-send">
-  <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
-  <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
-  <div id="puppyGroups"></div>
-
-  <div class="card" id="sendForm" style="display:none">
-    <div class="stitle">분양 조건 입력</div>
-    <div class="info-chips" id="selectedInfo"></div>
-    <div class="fgrid" style="margin-bottom:14px">
-      <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
-      <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
+<!-- 로그인 오버레이 -->
+<div id="login-overlay" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:360px;width:100%;text-align:center;box-shadow:var(--sh);padding:30px;border-radius:12px;border:1px solid var(--gray-l);background:#fff">
+    <div style="font-size:3.5rem;margin-bottom:14px">🔑</div>
+    <h2 style="font-size:1.1rem;font-weight:900;color:var(--br);margin-bottom:8px">골디쉼터 보안 인증</h2>
+    <p style="font-size:0.8rem;color:var(--gray);margin-bottom:20px">관리자 비밀번호를 입력해주세요.</p>
+    <div style="margin-bottom:16px">
+      <input type="password" id="login-password" placeholder="비밀번호 입력" style="border:1.5px solid var(--gray-l);border-radius:8px;padding:10px 14px;font-size:15px;width:100%;outline:none;text-align:center">
     </div>
-    <div class="btn-row">
-      <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
+    <button class="btn btn-gold" onclick="attemptLogin()" style="width:100%;justify-content:center;padding:12px">인증하기</button>
+    <div id="login-error" style="color:var(--red);font-size:12px;margin-top:10px;font-weight:700;display:none">⚠️ 비밀번호가 일치하지 않습니다.</div>
+  </div>
+</div>
+
+<div id="main-content">
+  <header>
+    <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+  </header>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
+    <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
+    <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+  </div>
+
+  <!-- TAB1 -->
+  <div class="tab-panel active" id="tab-send">
+    <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
+    <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
+    <div id="puppyGroups"></div>
+
+    <div class="card" id="sendForm" style="display:none">
+      <div class="stitle">분양 조건 입력</div>
+      <div class="info-chips" id="selectedInfo"></div>
+      <div class="fgrid" style="margin-bottom:14px">
+        <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
+        <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
+      </div>
+    </div>
+
+    <div class="card" id="linkCard" style="display:none">
+      <div class="stitle">발송용 링크</div>
+      <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
+      <div id="qrWrap"><div id="qrTarget"></div></div>
+      <div class="btn-row">
+        <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
+        <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
+        <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
+      </div>
     </div>
   </div>
 
-  <div class="card" id="linkCard" style="display:none">
-    <div class="stitle">발송용 링크</div>
-    <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
-    <div id="qrWrap"><div id="qrTarget"></div></div>
-    <div class="btn-row">
-      <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
-      <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
-      <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
+  <!-- TAB2 -->
+  <div class="tab-panel" id="tab-puppy">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
+      <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
+      <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
+      <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
+    </div>
+    <div class="stitle">전체 새끼 목록</div>
+    <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
+  </div>
+
+  <!-- TAB3 -->
+  <div class="tab-panel" id="tab-db">
+    <div class="search-row">
+      <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
+      <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    </div>
+    <div class="stitle">계약 내역</div>
+    <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
+  </div>
+
+  <div class="modal-bg" id="detailModal">
+    <div class="modal">
+      <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body" id="modalBody"></div>
     </div>
   </div>
-</div>
 
-<!-- TAB2 -->
-<div class="tab-panel" id="tab-puppy">
-  <div class="stats-row">
-    <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
-    <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
-    <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
-    <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
-  </div>
-  <div class="stitle">전체 새끼 목록</div>
-  <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
+  <div class="toast" id="toast"></div>
 </div>
-
-<!-- TAB3 -->
-<div class="tab-panel" id="tab-db">
-  <div class="search-row">
-    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
-    <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
-  </div>
-  <div class="stitle">계약 내역</div>
-  <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
-</div>
-
-<div class="modal-bg" id="detailModal">
-  <div class="modal">
-    <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-    <div class="modal-body" id="modalBody"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -199,6 +228,59 @@ window._selected=null;
 window._contractUrl='';
 
 // ── 유틸
+// ── 로그인 세션 보안 제어
+window.attemptLogin = () => {
+  const pw = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  const overlay = document.getElementById('login-overlay');
+  const main = document.getElementById('main-content');
+  
+  if (pw === '5900') {
+    sessionStorage.setItem('goldi_auth', 'authenticated');
+    err.style.display = 'none';
+    
+    // 부드러운 화면 전환 효과
+    overlay.style.transition = 'opacity 0.4s ease';
+    overlay.style.opacity = '0';
+    main.style.display = 'block';
+    setTimeout(() => {
+      main.style.opacity = '1';
+    }, 50);
+    
+    setTimeout(() => {
+      overlay.remove();
+      document.documentElement.classList.add('authenticated');
+    }, 400);
+  } else {
+    err.style.display = 'block';
+    const pwInput = document.getElementById('login-password');
+    pwInput.value = '';
+    pwInput.focus();
+    
+    // 좌우 흔들기 애니메이션 부여
+    const card = overlay.querySelector('.card');
+    card.style.animation = 'none';
+    setTimeout(() => {
+      card.style.animation = 'shake 0.4s ease';
+    }, 10);
+  }
+};
+
+// 엔터 키 이벤트 바인딩 및 자동 포커스
+window.addEventListener('DOMContentLoaded', () => {
+  const pwInput = document.getElementById('login-password');
+  if (pwInput) {
+    pwInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        window.attemptLogin();
+      }
+    });
+    if (sessionStorage.getItem('goldi_auth') !== 'authenticated') {
+      setTimeout(() => pwInput.focus(), 100);
+    }
+  }
+});
+
 const fmt = d => d ? d.replace(/-/g,'.') : '—';
 const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
 function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
