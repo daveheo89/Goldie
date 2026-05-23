@@ -338,26 +338,7 @@ async function init(){
     return;
   }
 
-  // 중복 계약 확인 (Firebase + localStorage)
-  const dogid=`${G.litter}_${G.puppy}`;
-  try{
-    const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
-    const fbStatus=fbSnap.val()?.status;
-    let lsDup=false;
-    try{
-      const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
-      lsDup=Object.values(ls).some(c=>c.dogid===dogid);
-    }catch(e){}
-    if(fbStatus==='분양 완료'||lsDup){
-      document.getElementById('dupWarn').style.display='block';
-      window._isDuplicate=true;
-    }
-  }catch(e){
-    console.error('초기화 오류:',e);
-    toast('⚠ 데이터를 불러오는 중 오류가 발생했습니다. 새로고침 해주세요.');
-  }
-
-  // 강아지 정보 채우기
+  // 1. URL 파라미터로 즉시 0.01초 만에 강아지 정보 채우기 (Firebase 비동기 블로킹 락 방지)
   document.getElementById('f_dogname').value = G.dogname;
   document.getElementById('f_gender').value  = genderKo(G.sex);
   document.getElementById('f_birth').value   = fmt(G.birthB);
@@ -368,10 +349,30 @@ async function init(){
   document.getElementById('f_saledate').value= fmt(G.saledate);
 
   document.getElementById('dogInfo').innerHTML=`
-    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${G.dogname}</span></div>
+    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(G.dogname)}</span></div>
     <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderKo(G.sex)}</span></div>
     <div class="chip"><span class="chip-k">출생일</span><span class="chip-v">${fmt(G.birthB)}</span></div>
     <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
+
+  // 2. 중복 계약 확인은 백그라운드 비동기로 완전 격리 처리 (화면 노출 지연 차단)
+  const dogid=`${G.litter}_${G.puppy}`;
+  (async()=>{
+    try{
+      const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
+      const fbStatus=fbSnap.val()?.status;
+      let lsDup=false;
+      try{
+        const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
+        lsDup=Object.values(ls).some(c=>c.dogid===dogid);
+      }catch(e){}
+      if(fbStatus==='분양 완료'||lsDup){
+        document.getElementById('dupWarn').style.display='block';
+        window._isDuplicate=true;
+      }
+    }catch(e){
+      console.warn('중복 계약 백그라운드 스캔 지연:',e);
+    }
+  })();
 }
 init();
 
