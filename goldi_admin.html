@@ -197,17 +197,18 @@ window._contractUrl='';
 // ── 유틸
 const fmt = d => d ? d.replace(/-/g,'.') : '—';
 const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
+function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function genderTxt(s){
   const v=String(s||'').toLowerCase();
   if(v==='female'||v==='암'||v==='f') return '암컷';
   if(v==='male'  ||v==='수'||v==='m') return '수컷';
-  return s||'—';
+  return esc(s)||'—';
 }
 function genderKo(s){
   const v=String(s||'').toLowerCase();
   if(v==='female'||v==='암'||v==='f') return '<span class="gender-f">♀ 암컷</span>';
   if(v==='male'  ||v==='수'||v==='m') return '<span class="gender-m">♂ 수컷</span>';
-  return s||'—';
+  return esc(s)||'—';
 }
 function statusBadge(st){
   if(!st||st==='분양 전') return '<span class="badge badge-avail">분양 전</span>';
@@ -258,14 +259,14 @@ function renderPuppyGroups(){
       const sold=p.status==='분양 완료';
       return `<div class="puppy-item${sold?' disabled':''}" id="pi-${lid}-${pid}" onclick="selectPuppy('${lid}','${pid}')">
         <div style="flex:1">
-          <div class="puppy-name">${p.name||pid}</div>
+          <div class="puppy-name">${esc(p.name||pid)}</div>
           <div class="puppy-meta">${genderTxt(p.sex)} · 출생 ${fmt(l.birthB)}</div>
         </div>
         <div>${statusBadge(p.status)}</div>
       </div>`;
     }).join('');
     return `<div class="litter-group">
-      <div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+      <div class="litter-label">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
       <div class="puppy-list">${items}</div>
     </div>`;
   }).join('');
@@ -282,10 +283,10 @@ window.selectPuppy=(lid,pid)=>{
   document.getElementById(`pi-${lid}-${pid}`)?.classList.add('selected');
 
   document.getElementById('selectedInfo').innerHTML=`
-    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${p.name||pid}</span></div>
+    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(p.name||pid)}</span></div>
     <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
     <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
-    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${l.femaleCode||'—'}</span></div>
+    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${esc(l.femaleCode||'—')}</span></div>
     <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
     <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
@@ -324,11 +325,18 @@ window.generateLink=()=>{
   // QR 생성
   const target=document.getElementById('qrTarget');
   target.innerHTML='';
-  const script=document.createElement('script');
-  script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-  script.onload=()=>{ new window.QRCode(target,{text:url,width:180,height:180}); };
-  if(!document.querySelector('script[src*="qrcode"]')) document.head.appendChild(script);
-  else if(window.QRCode) new window.QRCode(target,{text:url,width:180,height:180});
+  function makeQR(){try{new window.QRCode(target,{text:url,width:180,height:180});}catch(e){console.error('QR 생성 실패:',e);}}
+  const existScript=document.querySelector('script[src*="qrcode"]');
+  if(!existScript){
+    const script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.onload=makeQR;
+    document.head.appendChild(script);
+  } else if(window.QRCode){
+    makeQR();
+  } else {
+    existScript.addEventListener('load',makeQR);
+  }
 
   toast('링크가 생성됐습니다!');
 };
@@ -367,12 +375,12 @@ function renderManageList(){
   sorted.forEach(([lid,l])=>{
     const puppies=l.puppies||{};
     if(!Object.keys(puppies).length) return;
-    html+=`<div class="litter-group"><div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+    html+=`<div class="litter-group"><div class="litter-label">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
     <table class="tbl"><thead><tr><th>이름</th><th>성별</th><th>상태 변경</th></tr></thead><tbody>`;
     Object.entries(puppies).forEach(([pid,p])=>{
       const st=p.status||'분양 전';
       html+=`<tr>
-        <td><strong>${p.name||pid}</strong></td>
+        <td><strong>${esc(p.name||pid)}</strong></td>
         <td>${genderKo(p.sex)}</td>
         <td><div class="status-sel">
           <button class="status-opt${st==='분양 전'?' so-avail':''}" onclick="setStatus('${lid}','${pid}','분양 전')">분양 전</button>
@@ -387,8 +395,13 @@ function renderManageList(){
 }
 
 window.setStatus=async(lid,pid,status)=>{
-  await update(ref(db,`litters/${lid}/puppies/${pid}`),{status});
-  toast(`"${status}"로 변경됐습니다.`);
+  try{
+    await update(ref(db,`litters/${lid}/puppies/${pid}`),{status});
+    toast(`"${status}"로 변경됐습니다.`);
+  }catch(e){
+    console.error('상태 변경 실패:',e);
+    toast('⚠ 상태 변경에 실패했습니다. 다시 시도해주세요.');
+  }
 };
 
 // ── TAB3: 계약 DB
@@ -404,8 +417,8 @@ window.renderDB=()=>{
     ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
     <tr>
       <td>${fmt(c.contract_date)}</td>
-      <td><strong>${c.dogname||'—'}</strong></td>
-      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
+      <td><strong>${esc(c.dogname||'—')}</strong></td>
+      <td>${esc(c.buyer_name||'—')}<br><span style="font-size:11px;color:var(--gray)">${esc(c.buyer_phone||'')}</span></td>
       <td>${c.price?numFmt(c.price):'—'}</td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
     </tr>`).join('')}
@@ -420,7 +433,7 @@ window.showDetail=id=>{
     ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
   ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
-    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
+    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v)}</span></div>`).join('');
   document.getElementById('detailModal').classList.add('open');
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');

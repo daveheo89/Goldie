@@ -30,7 +30,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .step-item.active{color:var(--gold)}
 .step-item.done{color:var(--green)}
 .step-num{width:24px;height:24px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
-.step-done .step-num{background:var(--green);border-color:var(--green);color:#fff}
+.done .step-num{background:var(--green);border-color:var(--green);color:#fff}
 .step-arrow{color:var(--gray-l);margin:0 10px;font-size:14px}
 
 /* CONTAINER */
@@ -63,7 +63,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 
 /* ════════════════════════
    계약서 PREVIEW (STEP2)
-════════════════════════ */
+ ════════════════════════ */
 #contractPreview{background:#fff;padding:28px 28px;border:1px solid var(--gray-l);border-radius:var(--r);font-size:12.5px;line-height:1.85;color:#222}
 .cv-header{text-align:center;margin-bottom:22px;border-bottom:2px solid #5C3D1E;padding-bottom:14px}
 .cv-header h1{font-size:18px;font-weight:900;letter-spacing:3px;color:#5C3D1E;margin-bottom:4px}
@@ -275,11 +275,12 @@ const G={
 // ── 유틸
 const fmt=d=>d?d.replace(/-/g,'.'):'—';
 const numFmt=n=>n?Number(n).toLocaleString('ko-KR')+'원':'—';
+function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function genderKo(s){
   const v=String(s||'').toLowerCase();
   if(v==='female'||v==='암'||v==='f') return '암컷 (♀)';
   if(v==='male'  ||v==='수'||v==='m') return '수컷 (♂)';
-  return s||'—';
+  return esc(s)||'—';
 }
 function toast(msg){
   const t=document.getElementById('toast');
@@ -311,15 +312,21 @@ async function init(){
 
   // 중복 계약 확인 (Firebase + localStorage)
   const dogid=`${G.litter}_${G.puppy}`;
-  const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
-  const fbStatus=fbSnap.val()?.status;
-  let lsDup=false;
   try{
-    const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
-    lsDup=Object.values(ls).some(c=>c.dogid===dogid);
-  }catch(e){}
-  if(fbStatus==='분양 완료'||lsDup){
-    document.getElementById('dupWarn').style.display='block';
+    const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
+    const fbStatus=fbSnap.val()?.status;
+    let lsDup=false;
+    try{
+      const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
+      lsDup=Object.values(ls).some(c=>c.dogid===dogid);
+    }catch(e){}
+    if(fbStatus==='분양 완료'||lsDup){
+      document.getElementById('dupWarn').style.display='block';
+      window._isDuplicate=true;
+    }
+  }catch(e){
+    console.error('초기화 오류:',e);
+    toast('⚠ 데이터를 불러오는 중 오류가 발생했습니다. 새로고침 해주세요.');
   }
 
   // 강아지 정보 채우기
@@ -342,10 +349,13 @@ init();
 
 // ── STEP2: 계약서 미리보기 생성
 window.goStep2=()=>{
+  if(window._isDuplicate){toast('⚠ 이미 계약 완료된 강아지입니다. 관리자에게 문의해주세요.');return;}
   const name=document.getElementById('b_name').value.trim();
   const phone=document.getElementById('b_phone').value.trim();
   const payment=document.getElementById('b_payment').value;
   if(!name||!phone||!payment){toast('성명, 연락처, 결제방법은 필수입니다.');return;}
+  const phoneRegex=/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
+  if(!phoneRegex.test(phone)){toast('연락처 형식이 올바르지 않습니다. (예: 010-1234-5678)');return;}
 
   const addr=document.getElementById('b_addr').value.trim();
   const deposit=document.getElementById('b_deposit').value;
@@ -382,7 +392,7 @@ window.goStep2=()=>{
 
 <div class="cv-section">4. 판매 조건</div>
 <table class="cv-table">
-  <tr><th>판매일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${payment}${transfer?' (이체자: '+transfer+')':''}</td></tr>
+  <tr><th>판매일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${esc(payment)}${transfer?' (이체자: '+esc(transfer)+')':''}</td></tr>
   <tr><th>판매금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
 </table>
 
@@ -403,11 +413,11 @@ window.goStep2=()=>{
 
 <div class="cv-section">7. 구매자(입양인) 정보</div>
 <table class="cv-table">
-  <tr><th>성명</th><td>${name} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${phone}</td></tr>
-  <tr><th>주소</th><td colspan="3">${addr||'—'}</td></tr>
+  <tr><th>성명</th><td>${esc(name)} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${esc(phone)}</td></tr>
+  <tr><th>주소</th><td colspan="3">${esc(addr||'—')}</td></tr>
 </table>
 
-${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+memo+'</div>':''} 
+${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;background:#fafafa;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:10px">'+esc(memo)+'</div>':''} 
 
 <div class="cv-legal">
 판매자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
@@ -417,7 +427,7 @@ ${memo?'<div class="cv-section">특이사항</div><div style="padding:8px 10px;b
 <div class="cv-sign" style="margin-top:16px">
   <div class="sign-box">
     <div class="s-label">구매자 (입양인)</div>
-    <div class="s-name">${name}</div>
+    <div class="s-name">${esc(name)}</div>
     <div class="s-date">분양일: ${fmt(G.saledate)}</div>
     <div id="cv_sign_img" style="margin-top:8px"></div>
   </div>
@@ -454,10 +464,17 @@ window.goStep3=()=>{goStep(3);};
 
 // ── STEP4: 계약 저장
 window.submitContract=async()=>{
+  // 이중 제출 방지
+  const submitBtn=document.querySelector('#step3 .btn-gold');
+  if(submitBtn.disabled) return;
+
   // 서명 체크 (빈 캔버스 확인)
   const imgData=canvas.toDataURL();
   const blank=document.createElement('canvas');blank.width=canvas.width;blank.height=canvas.height;
   if(imgData===blank.toDataURL()){toast('서명을 완료해주세요.');return;}
+
+  submitBtn.disabled=true;
+  submitBtn.textContent='⏳ 저장 중...';
 
   // 서명 이미지를 계약서 미리보기에 삽입
   const signImg=document.getElementById('cv_sign_img');
@@ -492,20 +509,27 @@ window.submitContract=async()=>{
     created_at:    new Date().toISOString()
   };
 
-  // Firebase 저장
-  await set(ref(db,`contracts/${contractId}`),data);
-  // 분양 완료 처리
-  await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
-  // localStorage 백업
   try{
-    const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
-    ls[contractId]=data;
-    localStorage.setItem('goldi_contracts',JSON.stringify(ls));
-  }catch(e){}
+    // Firebase 저장
+    await set(ref(db,`contracts/${contractId}`),data);
+    // 분양 완료 처리
+    await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
+    // localStorage 백업
+    try{
+      const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
+      ls[contractId]=data;
+      localStorage.setItem('goldi_contracts',JSON.stringify(ls));
+    }catch(e){}
 
-  window._savedData=data;
-  goStep(4);
-  toast('계약이 완료됐습니다! 🎉');
+    window._savedData=data;
+    goStep(4);
+    toast('계약이 완료됐습니다! 🎉');
+  }catch(e){
+    console.error('계약 저장 실패:',e);
+    toast('⚠ 계약 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    submitBtn.disabled=false;
+    submitBtn.textContent='✅ 계약 완료';
+  }
 };
 
 // ── PDF 다운로드
@@ -514,6 +538,10 @@ window.downloadPDF=async()=>{
   btn.textContent='⏳ PDF 생성 중...';btn.disabled=true;
   try{
     const el=document.getElementById('contractPreview');
+    // 부모 step-panel이 숨겨져 있을 수 있으므로 임시 표시
+    const step2Panel=document.getElementById('step2');
+    const step2WasHidden=!step2Panel.classList.contains('active');
+    if(step2WasHidden) step2Panel.style.display='block';
     // 숨겨진 요소도 캡처되도록 임시 스타일 적용
     const prevPos=el.style.position;
     const prevLeft=el.style.left;
@@ -534,6 +562,7 @@ window.downloadPDF=async()=>{
     el.style.zIndex=prevZIndex;
     el.style.display='';
     el.style.width='';
+    if(step2WasHidden) step2Panel.style.display='';
     const imgData=cvs.toDataURL('image/png');
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
