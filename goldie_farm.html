@@ -521,6 +521,15 @@ window.attemptLogin = () => {
     setTimeout(() => {
       overlay.remove();
       document.documentElement.classList.add('authenticated');
+      
+      // 로그인 직후 데이터 로드 세이프티 타이머 가드 작동 (최대 1.5초 대기 후 강제 해제)
+      setTimeout(() => {
+        const loader = document.getElementById('loading-screen');
+        if (loader && loader.style.display !== 'none') {
+          loader.style.display = 'none';
+          showToast('ℹ️ 백그라운드에서 실시간 데이터를 안전하게 불러오고 있습니다.');
+        }
+      }, 1500);
     }, 400);
   } else {
     err.style.display = 'block';
@@ -686,8 +695,24 @@ function startListeners(){
 // ═══════════════════════════════════════
 async function init(){
   try{
-    restoreLocalCache(); // 초고속 로컬 캐시 우선 복원
-    startListeners();    // 백그라운드 데이터 동기화 시작
+    // 1. DOM 파싱 상태에 맞춰 안전하게 로컬 캐시 우선 복원
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', restoreLocalCache);
+    } else {
+      restoreLocalCache();
+    }
+
+    // 2. 백그라운드 데이터 실시간 리스너 동기화 시작
+    startListeners();
+
+    // 3. 초광속 강제 로딩 화면 제거 세이프티 가드 (최대 2.2초 대기 후 강제 해제)
+    setTimeout(() => {
+      const loader = document.getElementById('loading-screen');
+      if (loader && loader.style.display !== 'none') {
+        loader.style.display = 'none';
+        showToast('ℹ️ 백그라운드에서 실시간 데이터를 안전하게 불러오고 있습니다.');
+      }
+    }, 2200);
   }catch(e){
     document.querySelector('#loading-screen .ls-text').textContent='연결 실패 😢';
     document.querySelector('#loading-screen .ls-sub').textContent=e.message;
