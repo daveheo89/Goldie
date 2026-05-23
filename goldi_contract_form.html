@@ -132,6 +132,41 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   .cv-table th{width:90px;font-size:11px;padding:6px 8px}
   .cv-table td{font-size:11px;padding:6px 8px}
   .cv-clause{font-size:10.5px;padding:6px 8px}
+  .cv-legal{font-size:10px;padding:8px 10px;line-height:1.6}
+
+  /* 모바일용 Key-Value 테이블 반응형 리모델링 (PDF 캡처 시에는 794px 폭으로 복원되므로 원본 유지됨) */
+  .cv-table-kv, .cv-table-kv tbody, .cv-table-kv tr, .cv-table-kv th, .cv-table-kv td {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .cv-table-kv tr {
+    border: 1px solid #ddd !important;
+    border-radius: 6px !important;
+    margin-bottom: 10px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+  }
+  .cv-table-kv th {
+    background: #5C3D1E !important;
+    color: #F0BE5A !important;
+    padding: 7px 10px !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  }
+  .cv-table-kv td {
+    padding: 8px 10px !important;
+    border: none !important;
+    background: #fff !important;
+  }
+  .cv-table-kv tr:nth-child(even) td {
+    background: #fff !important;
+  }
+  .cv-table-kv td[colspan] {
+    border-top: 1px dashed #eee !important;
+  }
 
   /* 모바일 여백 및 레이아웃 최적화 */
   .card{padding:16px;margin-bottom:12px}
@@ -518,13 +553,13 @@ window.goStep2=()=>{
 </div>
 
 <div class="cv-section">1. 분양자 정보</div>
-<table class="cv-table">
+<table class="cv-table cv-table-kv">
   <tr><th>업소명</th><td>골디 쉼터 (Goldi Shelter)</td><th>생산업 허가번호</th><td>제 4170000-037-2023-0011</td></tr>
   <tr><th>연락처</th><td>010-6508-5901</td><th>카카오 상담</th><td>open.kakao.com/o/sxGtK0ri</td></tr>
 </table>
 
 <div class="cv-section">2. 분양 동물 정보 <span style="font-size:10px;font-weight:400;color:#888">(동물보호법 시행규칙 [별표12] 법정 필수 기재사항)</span></div>
-<table class="cv-table">
+<table class="cv-table cv-table-kv">
   <tr><th>축종 / 품종</th><td colspan="3">개 (Canis lupus familiaris) / 골든리트리버 (Golden Retriever)</td></tr>
   <tr><th>성별</th><td>${genderKo(G.sex)}</td><th>출생일</th><td>${fmt(G.birthB)}</td></tr>
   <tr><th>색상</th><td>크림빛 황금색</td><th>건강상태</th><td>양호</td></tr>
@@ -532,13 +567,15 @@ window.goStep2=()=>{
 </table>
 
 <div class="cv-section">3. 수의사 구충 기록</div>
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px">
 <table class="cv-table">
   <tr><th>구분</th><th style="text-align:center">1차</th><th style="text-align:center">2차</th><th style="text-align:center">3차 이후</th></tr>
   <tr><td>종합 구충제</td><td style="text-align:center">${fmt(G.deworm1)}</td><td style="text-align:center">${fmt(G.deworm2)}</td><td style="text-align:center;color:#888">추후 예정</td></tr>
 </table>
+</div>
 
 <div class="cv-section">4. 분양 조건</div>
-<table class="cv-table">
+<table class="cv-table cv-table-kv">
   <tr><th>분양일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${esc(payment)}${transfer?' (이체자: '+esc(transfer)+')':''}</td></tr>
   <tr><th>분양금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
 </table>
@@ -552,14 +589,16 @@ window.goStep2=()=>{
 <div class="cv-clause"><strong>⑥ 중대 질병 발생 시 처리 의무</strong><br>분양 후 중대 질병이 발생했을 경우 반드시 분양자에게 반려동물을 인계하여 회복시키도록 합니다. 소비자가 이에 따르지 않을 경우 보상을 거부하는 것으로 판단합니다. 단, 협의 후 개인 치료는 인정됩니다. 보상기간 15일 안에 질병 발생 또는 폐사를 반드시 분양자에게 통보하셔야만 보상받으실 수 있습니다.</div>
 
 <div class="cv-section">6. 소비자 분쟁해결 기준 <span style="font-size:10px;font-weight:400;color:#888">(공정거래위원회 고시)</span></div>
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px">
 <table class="cv-table">
   <tr><th>구분</th><th>내용</th><th>해결 기준</th></tr>
   <tr><td>15일 이내 동물 사망</td><td colspan="2">동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)</td></tr>
   <tr><td>15일 이내 질병 발생</td><td colspan="2">분양자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
 </table>
+</div>
 
 <div class="cv-section">7. 구매자(입양인) 정보</div>
-<table class="cv-table">
+<table class="cv-table cv-table-kv">
   <tr><th>성명</th><td>${esc(name)} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${esc(phone)}</td></tr>
   <tr><th>주소</th><td colspan="3">${esc(fullAddr||'—')}</td></tr>
 </table>
