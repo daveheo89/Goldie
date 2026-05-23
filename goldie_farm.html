@@ -233,6 +233,73 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 .paw-bg{position:fixed;right:-30px;bottom:-30px;font-size:160px;opacity:.04;pointer-events:none;z-index:0;transform:rotate(-20deg);}
 .hidden{display:none!important;}
+
+@media(max-width:560px){
+  /* 헤더/여백 튜닝 */
+  header{padding:12px 16px 10px}
+  header h1{font-size:1.15rem}
+  header p{font-size:0.7rem}
+  .content{padding:12px 8px 60px}
+  
+  /* 관성 스크롤 모바일 탭 바 */
+  .tabs{
+    display:flex;
+    justify-content:flex-start;
+    gap:2px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;min-width:76px;padding:12px 6px;font-size:0.8rem}
+  
+  /* 개체 카드 그리드 반응형 (2열 또는 3열이 꽉 차도록 minmax 95px 설정) */
+  .dog-grid{grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:6px;margin-bottom:18px}
+  .dog-card{border-radius:12px}
+  .dog-photo, .dog-photo-placeholder{height:76px;font-size:1.8rem}
+  .dog-card-body{padding:6px 8px 8px}
+  .dog-card .code{font-size:0.85rem;margin-bottom:1px}
+  .kennel-tag{font-size:0.6rem;padding:1px 4px;border-radius:4px}
+  
+  .sec-title{font-size:0.9rem;margin-bottom:8px}
+  .add-dog-btn{padding:10px;border-radius:12px;font-size:0.8rem;margin-bottom:12px}
+  
+  /* selectedInfo 및 상세 패널 압축 */
+  .detail-panel{padding:12px;border-radius:12px;border-left-width:4px}
+  .info-row{gap:6px}
+  .info-item{padding:5px 8px;min-width:85px;border-radius:6px}
+  .info-item .label{font-size:0.6rem}
+  .info-item .value{font-size:0.8rem}
+  
+  /* 견사 탭 그리드 튜닝 */
+  .kennel-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px}
+  .kennel-box{padding:8px;border-radius:10px;min-height:68px}
+  .kennel-box .kname{font-size:0.75rem;margin-bottom:4px}
+  
+  /* 새끼 탭 그리드 튜닝 */
+  .litter-card{border-radius:12px;border-left-width:4px}
+  .litter-header{padding:10px 12px}
+  .litter-header h3{font-size:0.82rem}
+  .litter-body{padding:10px}
+  .vax-row{gap:4px;margin-bottom:6px}
+  .vax-chip{padding:5px 4px;min-width:70px;border-radius:6px}
+  .vax-chip .vc-label{font-size:0.55rem}
+  .vax-chip .vc-date{font-size:0.72rem}
+  
+  /* 새끼 카드 썸네일 그리드 */
+  .litter-puppies{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:5px}
+  .puppy-card{padding:6px;border-radius:8px}
+  .puppy-card .p-name{font-size:0.65rem}
+  .puppy-card .p-sex{font-size:0.55rem;margin-bottom:2px}
+  
+  /* 모달 레이아웃 95% 폭 통제 */
+  .modal{max-width:94%;margin:16px auto;padding:16px;border-radius:16px;max-height:92vh}
+  .modal-header{margin-bottom:12px}
+  .form-group{margin-bottom:10px}
+  .form-group label{font-size:0.75rem;margin-bottom:3px}
+  .form-group select, .form-group input{padding:8px 10px;font-size:0.85rem}
+  .photo-upload-wrap{height:120px;border-radius:10px}
+}
 </style>
 </head>
 <body>

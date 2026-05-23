@@ -110,7 +110,42 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .chip{display:flex;gap:5px}
 .chip-k{color:var(--gray);font-weight:600}
 .chip-v{color:var(--br);font-weight:700}
-@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}}
+@media(max-width:560px){
+  .fgrid{grid-template-columns:1fr}
+  
+  /* 헤더 모바일 튜닝 */
+  header{padding:10px 16px}
+  .logo{font-size:16px}
+  .logo span{font-size:10px;margin-left:4px}
+  
+  /* 탭바 균등 정렬 및 터치 확보 */
+  .tab-bar{padding:0 8px;gap:2px}
+  .tab-btn{flex:1;padding:12px 4px;font-size:12px;text-align:center;justify-content:center}
+  
+  /* 계약 DB 모바일 스크롤 지원 */
+  #tab-db{padding:16px 12px}
+  .search-row{gap:6px}
+  .search-row input{font-size:13px;padding:8px 10px}
+  
+  #dbList{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid var(--gray-l);background:#fff}
+  .tbl{min-width:620px}
+  .tbl th, .tbl td{padding:8px 10px;font-size:12px}
+  
+  /* 카드 모바일 여백 축소 */
+  .card{padding:14px 12px;margin-bottom:12px}
+  .stitle{font-size:10px;margin-bottom:10px}
+  .info-chips{padding:8px 10px;gap:4px 10px;font-size:11px;margin-bottom:12px}
+  .chip{gap:3px}
+  
+  .puppy-list{gap:6px;margin-bottom:12px}
+  .puppy-item{padding:10px 12px;gap:8px}
+  .puppy-name{font-size:13px}
+  .puppy-meta{font-size:11px}
+  
+  .modal{max-width:94%;margin:16px auto}
+  .modal-head{padding:12px 16px}
+  .modal-body{padding:14px 16px}
+}
 </style>
 </head>
 <body>

@@ -116,7 +116,23 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 @media print{header,.step-bar,.btn-row{display:none!important}body{background:#fff}.container{padding:0;max-width:100%}#contractPreview{border:none;box-shadow:none}}
-@media(max-width:560px){.fgrid{grid-template-columns:1fr}.cv-sign{grid-template-columns:1fr}}
+@media(max-width:560px){
+  .fgrid{grid-template-columns:1fr}
+  .cv-sign{grid-template-columns:1fr}
+  
+  /* 모바일 스텝 바 정렬 고도화 (글씨 숨기고 화살표/동그라미 정렬) */
+  .step-bar{padding:10px 14px;gap:2px;top:48px}
+  .step-item{font-size:0px;gap:0}
+  .step-item .step-num{font-size:11px;width:26px;height:26px}
+  .step-arrow{margin:0 4px;font-size:11px}
+  
+  /* 미리보기 본문 가로폭 보장 */
+  #contractPreview{padding:18px 12px;font-size:11.5px}
+  .cv-header h1{font-size:15px;letter-spacing:1px}
+  .cv-table th{width:90px;font-size:11px;padding:6px 8px}
+  .cv-table td{font-size:11px;padding:6px 8px}
+  .cv-clause{font-size:10.5px;padding:6px 8px}
+}
 </style>
 </head>
 <body>
@@ -471,20 +487,74 @@ const canvas=document.getElementById('signCanvas');
 const ctx=canvas.getContext('2d');
 let drawing=false;
 
+// 모바일 해상도에 유연하게 반응하는 스마트 캔버스 리사이저
+window.resizeCanvas = () => {
+  const rect = canvas.parentNode.getBoundingClientRect();
+  const parentW = rect.width - (window.innerWidth <= 560 ? 24 : 44); // 모바일/웹 패딩 차이 보정
+  const targetW = Math.max(280, Math.min(parentW, 640)); // 최소 280px ~ 최대 640px 보장
+  const targetH = 180;
+
+  // 기존 드로잉 서명 백업
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(canvas, 0, 0);
+
+  // 물리 해상도 재설정 (내용이 초기화됨)
+  canvas.width = targetW;
+  canvas.height = targetH;
+
+  // 백업된 서명 복원 (비율 보정)
+  ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, targetW, targetH);
+  
+  // 펜 스타일 재지정
+  ctx.strokeStyle = '#2C1A0E';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+};
+
+// 리사이즈 이벤트 바인딩
+window.addEventListener('resize', window.resizeCanvas);
+
 function getPos(e){
   const r=canvas.getBoundingClientRect();
   const src=e.touches?e.touches[0]:e;
-  return {x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};
+  return {
+    x: (src.clientX - r.left) * (canvas.width / r.width),
+    y: (src.clientY - r.top) * (canvas.height / r.height)
+  };
 }
+
 canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
-canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#2C1A0E';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke()});
+canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke()});
 canvas.addEventListener('mouseup',()=>drawing=false);
-canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)},{passive:false});
-canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#2C1A0E';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke()},{passive:false});
+canvas.addEventListener('mouseleave',()=>drawing=false);
+
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  drawing=true;
+  const p=getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y);
+},{passive:false});
+
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!drawing)return;
+  const p=getPos(e);
+  ctx.lineTo(p.x,p.y);
+  ctx.stroke();
+},{passive:false});
+
 canvas.addEventListener('touchend',()=>drawing=false);
 window.clearSign=()=>ctx.clearRect(0,0,canvas.width,canvas.height);
 
-window.goStep3=()=>{goStep(3);};
+window.goStep3=()=>{
+  goStep(3);
+  setTimeout(window.resizeCanvas, 50); // DOM 렌더링 이후 안전하게 캔버스 리사이즈 트리거
+};
 
 // ── STEP4: 계약 저장
 window.submitContract=async()=>{
