@@ -518,18 +518,18 @@ window.attemptLogin = () => {
       main.style.opacity = '1';
     }, 50);
     
+    // ═══ 1.5초 강제 해제 부스터 ═══
+    setTimeout(() => {
+      const loadingEl = document.getElementById('loading-screen');
+      if (loadingEl && loadingEl.style.display !== 'none') {
+        loadingEl.style.display = 'none';
+        console.log('[Booster] 1.5초 강제 해제 작동');
+      }
+    }, 1500);
+    
     setTimeout(() => {
       overlay.remove();
       document.documentElement.classList.add('authenticated');
-      
-      // 로그인 직후 데이터 로드 세이프티 타이머 가드 작동 (최대 1.5초 대기 후 강제 해제)
-      setTimeout(() => {
-        const loader = document.getElementById('loading-screen');
-        if (loader && loader.style.display !== 'none') {
-          loader.style.display = 'none';
-          showToast('ℹ️ 백그라운드에서 실시간 데이터를 안전하게 불러오고 있습니다.');
-        }
-      }, 1500);
     }, 400);
   } else {
     err.style.display = 'block';
