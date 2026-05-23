@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>골디 셸터 농장 관리</title>
+<title>골디쉼터 농장 관리</title>
 <script>
   if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
     document.documentElement.classList.add('authenticated');
@@ -241,7 +241,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 <div id="login-overlay" style="position:fixed;inset:0;background:var(--gold-bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px">
   <div class="card" style="max-width:360px;width:100%;text-align:center;box-shadow:var(--shadow);padding:30px;border-radius:12px;border:1px solid var(--border);background:#fff">
     <div style="font-size:3.5rem;margin-bottom:14px">🔑</div>
-    <h2 style="font-size:1.1rem;font-weight:900;color:var(--brown);margin-bottom:8px">골디셸터 보안 인증</h2>
+    <h2 style="font-size:1.1rem;font-weight:900;color:var(--brown);margin-bottom:8px">골디쉼터 보안 인증</h2>
     <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px">농장관리 비밀번호를 입력해주세요.</p>
     <div style="margin-bottom:16px">
       <input type="password" id="login-password" placeholder="비밀번호 입력" style="border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;width:100%;outline:none;text-align:center;background:var(--gold-pale);color:var(--text);font-family:inherit">
@@ -255,14 +255,14 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   <!-- 로딩 화면 -->
   <div id="loading-screen">
     <div class="ls-icon">🐕</div>
-    <div class="ls-text">골디 셸터 불러오는 중...</div>
+    <div class="ls-text">골디쉼터 불러오는 중...</div>
     <div class="ls-sub">Firebase에 연결하고 있어요</div>
   </div>
 
   <div class="paw-bg">🐾</div>
 
   <header>
-    <h1>🐕 골디 셸터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
+    <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
     <p>골든리트리버 번식·견사 통합 관리</p>
   </header>
 
