@@ -369,23 +369,50 @@ async function init(){
   document.getElementById('f_price').value   = G.price?numFmt(G.price):'—';
   document.getElementById('f_saledate').value= fmt(G.saledate);
 
-  document.getElementById('dogInfo').innerHTML=`
-    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(G.dogname)}</span></div>
-    <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderKo(G.sex)}</span></div>
-    <div class="chip"><span class="chip-k">출생일</span><span class="chip-v">${fmt(G.birthB)}</span></div>
-    <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
+  const updateInfoChips = () => {
+    document.getElementById('dogInfo').innerHTML=`
+      <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(G.dogname)}</span></div>
+      <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderKo(G.sex)}</span></div>
+      <div class="chip"><span class="chip-k">출생일</span><span class="chip-v">${fmt(G.birthB)}</span></div>
+      <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
+  };
+  updateInfoChips();
 
-  // 2. 중복 계약 확인은 백그라운드 비동기로 완전 격리 처리 (화면 노출 지연 차단)
+  // 2. 중복 계약 확인 및 누락된 데이터 자가 복구 (백그라운드 비동기로 격리)
   const dogid=`${G.litter}_${G.puppy}`;
   (async()=>{
     try{
-      const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
-      const fbStatus=fbSnap.val()?.status;
+      // 강아지가 속한 모견(litter) 전체 데이터를 가져와 URL에서 잘린 정보 복구
+      let pData = null;
+      let fbStatus = null;
+      // puppy 키에 붙은 쓰레기값(?)이 있다면 제거 (잘못 생성된 URL 대응)
+      const cleanPuppyId = G.puppy.split('?')[0]; 
+      
+      const litterSnap=await get(ref(db,`litters/${G.litter}`));
+      const lData=litterSnap.val();
+      if(lData && lData.puppies) {
+        pData = lData.puppies[cleanPuppyId];
+        if(pData) {
+          fbStatus = pData.status;
+          
+          // 메신저에서 링크가 잘려 URL 파라미터가 유실되었을 경우 Firebase 데이터로 채우기
+          if(!G.dogname && pData.name) { G.dogname = pData.name; document.getElementById('f_dogname').value = G.dogname; }
+          if(!G.sex && pData.sex) { G.sex = pData.sex; document.getElementById('f_gender').value = genderKo(G.sex); }
+          if(!G.birthB && lData.birthB) { G.birthB = lData.birthB; document.getElementById('f_birth').value = fmt(G.birthB); }
+          if(!G.femaleCode && lData.femaleCode) { G.femaleCode = lData.femaleCode; document.getElementById('f_mother').value = G.femaleCode; }
+          if(!G.deworm1 && lData.deworm1) { G.deworm1 = lData.deworm1; document.getElementById('f_dw1').value = fmt(G.deworm1); }
+          if(!G.deworm2 && lData.deworm2) { G.deworm2 = lData.deworm2; document.getElementById('f_dw2').value = fmt(G.deworm2); }
+          
+          updateInfoChips();
+        }
+      }
+
       let lsDup=false;
       try{
         const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
         lsDup=Object.values(ls).some(c=>c.dogid===dogid);
       }catch(e){}
+      
       if(fbStatus==='분양 완료'||lsDup){
         document.getElementById('dupWarn').style.display='block';
         window._isDuplicate=true;
