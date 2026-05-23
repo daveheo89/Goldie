@@ -413,13 +413,16 @@ window.renderDB=()=>{
   });
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
-  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th></th></tr></thead><tbody>
+  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>연락처</th><th>결제방법</th><th>분양가</th><th>상태</th><th></th></tr></thead><tbody>
     ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
     <tr>
       <td>${fmt(c.contract_date)}</td>
       <td><strong>${esc(c.dogname||'—')}</strong></td>
-      <td>${esc(c.buyer_name||'—')}<br><span style="font-size:11px;color:var(--gray)">${esc(c.buyer_phone||'')}</span></td>
+      <td>${esc(c.buyer_name||'—')}</td>
+      <td>${esc(c.buyer_phone||'—')}</td>
+      <td>${esc(c.payment||'—')}</td>
       <td>${c.price?numFmt(c.price):'—'}</td>
+      <td><span class="badge" style="background:var(--gray-ll);color:var(--br);border:1px solid var(--gray-l)">${esc(c.status||'분양 완료')}</span></td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
     </tr>`).join('')}
   </tbody></table>`;
@@ -432,10 +435,80 @@ window.showDetail=id=>{
     ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
     ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
   ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
-  document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
+  
+  let html = rows.map(([k,v])=>`
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v)}</span></div>`).join('');
+  
+  // 상태 변경 셀렉터 UI 추가 (파양, 환불, 교환 등)
+  const st = c.status || '분양 완료';
+  html += `
+    <div class="detail-row" style="margin-top:14px;border-top:1.5px solid var(--gray-l);padding-top:14px;align-items:center">
+      <span class="detail-key" style="color:var(--gold);font-weight:800">계약 상태 변경</span>
+      <span class="detail-val">
+        <select id="m_status_${id}" onchange="updateContractStatus('${id}', this.value)" style="border:1.5px solid var(--gray-l);border-radius:6px;padding:6px 10px;font-size:13px;font-family:inherit;color:var(--br);outline:none;background:#fff">
+          <option value="분양 완료"${st==='분양 완료'?' selected':''}>분양 완료</option>
+          <option value="파양"${st==='파양'?' selected':''}>파양</option>
+          <option value="환불"${st==='환불'?' selected':''}>환불</option>
+          <option value="교환"${st==='교환'?' selected':''}>교환</option>
+        </select>
+      </span>
+    </div>
+  `;
+  
+  // PDF 다운로드 버튼
+  if (c.pdf_document) {
+    html += `
+      <div style="margin-top:16px">
+        <button class="btn btn-gold btn-sm" onclick="downloadStoredPDF('${id}')" style="width:100%;justify-content:center;padding:10px">📄 보관된 PDF 계약서 다운로드</button>
+      </div>
+    `;
+  } else {
+    html += `
+      <div style="margin-top:16px;text-align:center;font-size:12px;color:var(--gray)">
+        ⚠️ 이 계약건은 PDF가 DB에 보관되어 있지 않습니다.
+      </div>
+    `;
+  }
+  
+  document.getElementById('modalBody').innerHTML=html;
   document.getElementById('detailModal').classList.add('open');
 };
+
+window.updateContractStatus=async(id,status)=>{
+  try {
+    await update(ref(db,`contracts/${id}`),{status});
+    const c=window._contracts[id];
+    if(c && c.litter && c.puppy) {
+      let puppyStatus = '분양 완료';
+      if(status === '파양' || status === '환불' || status === '교환') {
+        puppyStatus = '분양 전';
+      }
+      await update(ref(db,`litters/${c.litter}/puppies/${c.puppy}`),{status:puppyStatus});
+    }
+    toast(`계약 상태가 "${status}"로 변경되었습니다.`);
+  } catch (e) {
+    console.error('상태 변경 실패:',e);
+    toast('⚠️ 상태 변경에 실패했습니다. 다시 시도해주세요.');
+  }
+};
+
+window.downloadStoredPDF=(id)=>{
+  const c=window._contracts[id];
+  if(!c || !c.pdf_document) { toast('보관된 PDF 파일이 없습니다.'); return; }
+  try {
+    const link=document.createElement('a');
+    link.href=c.pdf_document;
+    link.download=`골디쉼터_계약서_${c.buyer_name||'고객'}_${c.dogname||'강아지'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast('PDF 계약서 다운로드 완료!');
+  } catch(e) {
+    console.error('PDF 다운로드 실패:',e);
+    toast('⚠️ PDF 다운로드 중 오류가 발생했습니다.');
+  }
+};
+
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
 window.exportCSV=()=>{

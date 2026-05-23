@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 분양 계약서</title>
-<!-- PDF 라이브러리 -->
+<!-- PDF 라이브러리 및 주소 API -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
 <style>
 :root{
   --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
@@ -158,7 +160,13 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div class="fgrid">
         <div class="ffield"><label>성명 <span class="req">*</span></label><input id="b_name" placeholder="홍길동"></div>
         <div class="ffield"><label>연락처 <span class="req">*</span></label><input type="tel" id="b_phone" placeholder="010-0000-0000"></div>
-        <div class="ffield fc1" style="grid-column:span 2"><label>주소</label><input id="b_addr" placeholder="시/도 구/군까지 입력"></div>
+        <div class="ffield fc1" style="grid-column:span 2">
+          <label>주소 <span class="req">*</span></label>
+          <div style="display:flex;gap:8px">
+            <input id="b_addr" placeholder="오른쪽 주소 검색 버튼을 눌러 입력해주세요." readonly style="flex:1">
+            <button type="button" class="btn btn-br btn-sm" onclick="searchAddress()" style="padding:9px 16px;white-space:nowrap">🔍 주소 검색</button>
+          </div>
+        </div>
         <div class="ffield"><label>결제 방법 <span class="req">*</span></label>
           <select id="b_payment">
             <option value="">선택</option>
@@ -347,13 +355,29 @@ async function init(){
 }
 init();
 
+// ── 주소 검색 (Daum API 연동)
+window.searchAddress=()=>{
+  new window.daum.Postcode({
+    oncomplete: function(data) {
+      let addr = '';
+      if (data.userSelectedType === 'R') {
+        addr = data.roadAddress;
+      } else {
+        addr = data.jibunAddress;
+      }
+      document.getElementById('b_addr').value = addr;
+    }
+  }).open();
+};
+
 // ── STEP2: 계약서 미리보기 생성
 window.goStep2=()=>{
   if(window._isDuplicate){toast('⚠ 이미 계약 완료된 강아지입니다. 관리자에게 문의해주세요.');return;}
   const name=document.getElementById('b_name').value.trim();
   const phone=document.getElementById('b_phone').value.trim();
   const payment=document.getElementById('b_payment').value;
-  if(!name||!phone||!payment){toast('성명, 연락처, 결제방법은 필수입니다.');return;}
+  const addr=document.getElementById('b_addr').value.trim();
+  if(!name||!phone||!payment||!addr){toast('성명, 연락처, 주소, 결제방법은 필수입니다.');return;}
   const phoneRegex=/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
   if(!phoneRegex.test(phone)){toast('연락처 형식이 올바르지 않습니다. (예: 010-1234-5678)');return;}
 
@@ -480,6 +504,49 @@ window.submitContract=async()=>{
   const signImg=document.getElementById('cv_sign_img');
   if(signImg){signImg.innerHTML=`<img src="${imgData}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;}
 
+  // 백그라운드 PDF 생성 (어드민 자동 보관용)
+  let pdfBase64 = '';
+  try {
+    const el=document.getElementById('contractPreview');
+    const step2Panel=document.getElementById('step2');
+    const step2WasHidden=!step2Panel.classList.contains('active');
+    if(step2WasHidden) step2Panel.style.display='block';
+    const prevPos=el.style.position;
+    const prevLeft=el.style.left;
+    const prevTop=el.style.top;
+    const prevZIndex=el.style.zIndex;
+    el.style.position='fixed';
+    el.style.left='-9999px';
+    el.style.top='0';
+    el.style.zIndex='-1';
+    el.style.display='block';
+    el.style.width='794px';
+    await new Promise(r=>setTimeout(r,150));
+    const cvs=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff',width:794,windowWidth:794});
+    el.style.position=prevPos;
+    el.style.left=prevLeft;
+    el.style.top=prevTop;
+    el.style.zIndex=prevZIndex;
+    el.style.display='';
+    el.style.width='';
+    if(step2WasHidden) step2Panel.style.display='';
+    const pdfImgData=cvs.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pageW=pdf.internal.pageSize.getWidth();
+    const pageH=pdf.internal.pageSize.getHeight();
+    const imgH=(cvs.height*pageW)/cvs.width;
+    let offsetY=0;
+    while(offsetY<imgH){
+      if(offsetY>0) pdf.addPage();
+      pdf.addImage(pdfImgData,'PNG',0,-offsetY,pageW,imgH);
+      offsetY+=pageH;
+    }
+    pdfBase64 = pdf.output('datauristring');
+  } catch (e) {
+    console.error('PDF 자동 보관 빌드 실패:', e);
+  }
+
   const contractId='C'+Date.now();
   const dogid=`${G.litter}_${G.puppy}`;
   const data={
@@ -505,6 +572,7 @@ window.submitContract=async()=>{
     memo:          document.getElementById('b_memo').value.trim(),
     contract_date: today(),
     signature:     imgData,
+    pdf_document:  pdfBase64,
     status:       '분양 완료',
     created_at:    new Date().toISOString()
   };
