@@ -501,7 +501,7 @@ window.generateLink=()=>{
     price, saledate
   });
   const cleanHref=location.href.split('?')[0];
-  const base=cleanHref.replace('goldi_admin.html','goldi_contract_form.html');
+  const base=cleanHref.replace(/goldi_admin(\.html)?$/i,'goldi_contract_form.html');
   const url=base+'?'+params.toString();
   window._contractUrl=url;
 

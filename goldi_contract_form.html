@@ -280,8 +280,12 @@ const FB={
 const app=initializeApp(FB);
 const db=getDatabase(app);
 
-// ── URL 파라미터
-const P=new URLSearchParams(location.search);
+// URL 내 중첩된 물음표(?) 결함을 자가 보정하는 안심 쿼리 파서 (캐시 및 깨진 옛 링크 완벽 지원)
+let searchStr = location.search || '';
+if (location.href.includes('?')) {
+  searchStr = '?' + location.href.split('?').slice(1).join('&');
+}
+const P=new URLSearchParams(searchStr);
 const G={
   litter:    P.get('litter')||'',
   puppy:     P.get('puppy')||'',
