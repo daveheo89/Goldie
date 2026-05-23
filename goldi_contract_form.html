@@ -904,7 +904,13 @@ window.downloadPDF=async()=>{
     }
     const fname='골디쉼터_계약서_'+(G.dogname||'')+'_'+today()+'.pdf';
     pdf.save(fname);
-    toast('PDF 저장 완료!');
+    toast('기기의 기본 다운로드 폴더에 저장되었습니다! 🐾');
+    try{
+      const blobUrl=pdf.output('bloburl');
+      if(blobUrl) window.open(blobUrl,'_blank');
+    }catch(e2){
+      console.warn('PDF 미리보기 팝업 실패:',e2);
+    }
   }catch(e){
     toast('PDF 생성 중 오류가 발생했습니다.');
     console.error(e);
