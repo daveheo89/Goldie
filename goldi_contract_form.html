@@ -782,7 +782,7 @@ window.submitContract=async()=>{
     el.style.display='';
     el.style.width='';
     if(step2WasHidden) step2Panel.style.display='';
-    const pdfImgData=cvs.toDataURL('image/png');
+    const pdfImgData=cvs.toDataURL('image/jpeg',0.7);
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
     const pageW=pdf.internal.pageSize.getWidth();
@@ -791,7 +791,7 @@ window.submitContract=async()=>{
     let offsetY=0;
     while(offsetY<imgH){
       if(offsetY>0) pdf.addPage();
-      pdf.addImage(pdfImgData,'PNG',0,-offsetY,pageW,imgH);
+      pdf.addImage(pdfImgData,'JPEG',0,-offsetY,pageW,imgH);
       offsetY+=pageH;
     }
     pdfBase64 = pdf.output('datauristring');
@@ -890,7 +890,7 @@ window.downloadPDF=async()=>{
     el.style.display='';
     el.style.width='';
     if(step2WasHidden) step2Panel.style.display='';
-    const imgData=cvs.toDataURL('image/png');
+    const imgData=cvs.toDataURL('image/jpeg',0.7);
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
     const pageW=pdf.internal.pageSize.getWidth();
@@ -899,7 +899,7 @@ window.downloadPDF=async()=>{
     let offsetY=0;
     while(offsetY<imgH){
       if(offsetY>0) pdf.addPage();
-      pdf.addImage(imgData,'PNG',0,-offsetY,pageW,imgH);
+      pdf.addImage(imgData,'JPEG',0,-offsetY,pageW,imgH);
       offsetY+=pageH;
     }
     const fname='골디쉼터_계약서_'+(G.dogname||'')+'_'+today()+'.pdf';
