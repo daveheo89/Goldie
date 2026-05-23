@@ -280,13 +280,9 @@ const FB={
 const app=initializeApp(FB);
 const db=getDatabase(app);
 
-// URL 내 중첩된 물음표(?) 결함을 자가 보정하는 안심 쿼리 파서 (캐시 및 깨진 옛 링크 완벽 지원)
-let searchStr = location.search || '';
-if (location.href.includes('?')) {
-  searchStr = '?' + location.href.split('?').slice(1).join('&');
-}
-const P=new URLSearchParams(searchStr);
-const G={
+// ── URL 파라미터 수신 (표준 파서 우선)
+let P = new URLSearchParams(location.search);
+let G = {
   litter:    P.get('litter')||'',
   puppy:     P.get('puppy')||'',
   dogname:   P.get('dogname')||'',
@@ -299,6 +295,31 @@ const G={
   price:     P.get('price')||'',
   saledate:  P.get('saledate')||''
 };
+
+// [안심 예외 복원 가드] 표준 파서에서 필수값이 유실된 경우에만 자가 치유(Self-healing) 가동
+if (!G.litter || !G.puppy) {
+  if (location.href.includes('?')) {
+    try {
+      const searchStr = '?' + location.href.split('?').slice(1).join('&');
+      const P2 = new URLSearchParams(searchStr);
+      G = {
+        litter:    P2.get('litter')||G.litter,
+        puppy:     P2.get('puppy')||G.puppy,
+        dogname:   P2.get('dogname')||G.dogname,
+        sex:       P2.get('sex')||G.sex,
+        birthB:    P2.get('birthB')||G.birthB,
+        deworm1:   P2.get('deworm1')||G.deworm1,
+        deworm2:   P2.get('deworm2')||G.deworm2,
+        femaleCode:P2.get('femaleCode')||G.femaleCode,
+        maleCode:  P2.get('maleCode')||G.maleCode,
+        price:     P2.get('price')||G.price,
+        saledate:  P2.get('saledate')||G.saledate
+      };
+    } catch(e) {
+      console.warn('URL 자가 복구 실패:', e);
+    }
+  }
+}
 
 // ── 유틸
 const fmt=d=>d?d.replace(/-/g,'.'):'—';
