@@ -9,8 +9,10 @@
     document.documentElement.classList.add('authenticated');
   }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 :root {
   --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
   --brown:#6B3F0E; --brown-light:#A0632A; --cream:#FDF3DC;
@@ -520,6 +522,16 @@ async function fbUpdate(path,data){
 // ═══════════════════════════════════════
 //  실시간 동기화 리스너
 // ═══════════════════════════════════════
+let isFemalesLoaded = false;
+let isMalesLoaded = false;
+
+function hideLoaderIfReady(){
+  if(isFemalesLoaded && isMalesLoaded){
+    const loader = document.getElementById('loading-screen');
+    if(loader) loader.style.display='none';
+  }
+}
+
 function startListeners(){
   // 모견
   onValue(ref(db,'females'), snap=>{
@@ -527,12 +539,18 @@ function startListeners(){
     snap.forEach(child=>{females.push({_key:child.key,...child.val()});});
     renderDogs();
     if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
+    
+    isFemalesLoaded = true;
+    hideLoaderIfReady();
   });
   // 부견
   onValue(ref(db,'males'), snap=>{
     males=[];
     snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
     renderDogs();
+    
+    isMalesLoaded = true;
+    hideLoaderIfReady();
   });
   // 교배
   onValue(ref(db,'breeding'), snap=>{
@@ -561,12 +579,6 @@ function startListeners(){
 async function init(){
   try{
     startListeners();
-    // 첫 로드 완료 대기 (females 기준)
-    await new Promise(resolve=>{
-      const unsub=onValue(ref(db,'females'),()=>{ resolve(); },{ onlyOnce:true });
-    });
-    document.getElementById('loading-screen').style.display='none';
-    renderDogs();
   }catch(e){
     document.querySelector('#loading-screen .ls-text').textContent='연결 실패 😢';
     document.querySelector('#loading-screen .ls-sub').textContent=e.message;
