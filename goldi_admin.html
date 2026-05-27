@@ -4,11 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 관리자</title>
-<script>
-  if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
-    document.documentElement.classList.add('authenticated');
-  }
-</script>
 <style>
 :root {
   --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
@@ -20,14 +15,6 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
-#main-content { display: none; opacity: 0; transition: opacity 0.4s ease; }
-.authenticated #main-content { display: block; opacity: 1; }
-.authenticated #login-overlay { display: none !important; }
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
-}
 header{background:var(--br);padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .logo{font-size:20px;color:var(--gold-l);font-weight:800;letter-spacing:-.5px}
 .logo span{color:rgba(255,255,255,.45);font-size:12px;font-weight:400;margin-left:6px}
@@ -110,136 +97,92 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .chip{display:flex;gap:5px}
 .chip-k{color:var(--gray);font-weight:600}
 .chip-v{color:var(--br);font-weight:700}
-@media(max-width:560px){
-  .fgrid{grid-template-columns:1fr}
-  
-  /* 헤더 모바일 튜닝 */
-  header{padding:10px 16px}
-  .logo{font-size:16px}
-  .logo span{font-size:10px;margin-left:4px}
-  
-  /* 탭바 균등 정렬 및 터치 확보 */
-  .tab-bar{padding:0 8px;gap:2px}
-  .tab-btn{flex:1;padding:12px 4px;font-size:12px;text-align:center;justify-content:center}
-  
-  /* 계약 DB 모바일 스크롤 지원 */
-  #tab-db{padding:16px 12px}
-  .search-row{gap:6px}
-  .search-row input{font-size:13px;padding:8px 10px}
-  
-  #dbList{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid var(--gray-l);background:#fff}
-  .tbl{min-width:620px}
-  .tbl th, .tbl td{padding:8px 10px;font-size:12px}
-  
-  /* 카드 모바일 여백 축소 */
-  .card{padding:14px 12px;margin-bottom:12px}
-  .stitle{font-size:10px;margin-bottom:10px}
-  .info-chips{padding:8px 10px;gap:4px 10px;font-size:11px;margin-bottom:12px}
-  .chip{gap:3px}
-  
-  .puppy-list{gap:6px;margin-bottom:12px}
-  .puppy-item{padding:10px 12px;gap:8px}
-  .puppy-name{font-size:13px}
-  .puppy-meta{font-size:11px}
-  
-  .modal{max-width:94%;margin:16px auto}
-  .modal-head{padding:12px 16px}
-  .modal-body{padding:14px 16px}
-}
+.edit-puppy{padding:10px 12px;background:var(--gray-ll);border-radius:8px;margin-bottom:8px;border:1px solid var(--gray-l)}
+.edit-puppy .fgrid{align-items:end}
+.ep-label{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.litter-label .btn{margin-left:auto;flex-shrink:0}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}}
 </style>
 </head>
 <body>
 
-<!-- 로그인 오버레이 -->
-<div id="login-overlay" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px">
-  <div class="card" style="max-width:360px;width:100%;text-align:center;box-shadow:var(--sh);padding:30px;border-radius:12px;border:1px solid var(--gray-l);background:#fff">
-    <div style="font-size:3.5rem;margin-bottom:14px">🔑</div>
-    <h2 style="font-size:1.1rem;font-weight:900;color:var(--br);margin-bottom:8px">골디쉼터 보안 인증</h2>
-    <p style="font-size:0.8rem;color:var(--gray);margin-bottom:20px">관리자 비밀번호를 입력해주세요.</p>
-    <div style="margin-bottom:16px">
-      <input type="password" id="login-password" placeholder="비밀번호 입력" style="border:1.5px solid var(--gray-l);border-radius:8px;padding:10px 14px;font-size:15px;width:100%;outline:none;text-align:center">
+<header>
+  <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
+  <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
+  <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+</div>
+
+<!-- TAB1 -->
+<div class="tab-panel active" id="tab-send">
+  <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
+  <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
+  <div id="puppyGroups"></div>
+
+  <div class="card" id="sendForm" style="display:none">
+    <div class="stitle">분양 조건 입력</div>
+    <div class="info-chips" id="selectedInfo"></div>
+    <div class="fgrid" style="margin-bottom:14px">
+      <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
+      <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
     </div>
-    <button class="btn btn-gold" onclick="attemptLogin()" style="width:100%;justify-content:center;padding:12px">인증하기</button>
-    <div id="login-error" style="color:var(--red);font-size:12px;margin-top:10px;font-weight:700;display:none">⚠️ 비밀번호가 일치하지 않습니다.</div>
+    <div class="btn-row">
+      <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
+    </div>
+  </div>
+
+  <div class="card" id="linkCard" style="display:none">
+    <div class="stitle">발송용 링크</div>
+    <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
+    <div id="qrWrap"><div id="qrTarget"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
+      <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
+      <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
+    </div>
   </div>
 </div>
 
-<div id="main-content">
-  <header>
-    <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
-  </header>
-
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
-    <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
-    <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+<!-- TAB2 -->
+<div class="tab-panel" id="tab-puppy">
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
+    <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
+    <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
+    <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
   </div>
-
-  <!-- TAB1 -->
-  <div class="tab-panel active" id="tab-send">
-    <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
-    <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
-    <div id="puppyGroups"></div>
-
-    <div class="card" id="sendForm" style="display:none">
-      <div class="stitle">분양 조건 입력</div>
-      <div class="info-chips" id="selectedInfo"></div>
-      <div class="fgrid" style="margin-bottom:14px">
-        <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
-        <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
-      </div>
-      <div class="ffield" style="margin-bottom:14px">
-        <label>특이사항 / 특별 약정 (계약서에 별도 서명 필요)</label>
-        <textarea id="s_memo" placeholder="예: 사료 하루 3번 급여, 예방접종 3차 대행 등 (공백 시 서명 생략)" style="width:100%; height:64px; padding:9px 12px; border:1.5px solid var(--gray-l); border-radius:7px; outline:none; resize:vertical; font-family:inherit; font-size:14px; color:var(--br);"></textarea>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
-      </div>
-    </div>
-
-    <div class="card" id="linkCard" style="display:none">
-      <div class="stitle">발송용 링크</div>
-      <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
-      <div id="qrWrap"><div id="qrTarget"></div></div>
-      <div class="btn-row">
-        <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
-        <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
-        <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB2 -->
-  <div class="tab-panel" id="tab-puppy">
-    <div class="stats-row">
-      <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
-      <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
-      <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
-      <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
-    </div>
-    <div class="stitle">전체 새끼 목록</div>
-    <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
-  </div>
-
-  <!-- TAB3 -->
-  <div class="tab-panel" id="tab-db">
-    <div class="search-row">
-      <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
-      <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
-    </div>
-    <div class="stitle">계약 내역</div>
-    <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
-  </div>
-
-  <div class="modal-bg" id="detailModal">
-    <div class="modal">
-      <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body" id="modalBody"></div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
+  <div class="stitle">전체 새끼 목록</div>
+  <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
+
+<!-- TAB3 -->
+<div class="tab-panel" id="tab-db">
+  <div class="search-row">
+    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
+    <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
+  </div>
+  <div class="stitle">계약 내역</div>
+  <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
+</div>
+
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="editModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head"><h3 id="editModalTitle">그룹 정보 수정</h3><button class="modal-close" onclick="closeEditModal()">✕</button></div>
+    <div class="modal-body" id="editModalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -257,83 +200,25 @@ const FB = {
 const app = initializeApp(FB);
 const db  = getDatabase(app);
 
-const P = new URLSearchParams(location.search);
-const initLitter = P.get('litter');
-const initPuppy = P.get('puppy');
-
 window._litters={};
 window._contracts={};
 window._selected=null;
 window._contractUrl='';
 
 // ── 유틸
-// ── 로그인 세션 보안 제어
-window.attemptLogin = () => {
-  const pw = document.getElementById('login-password').value;
-  const err = document.getElementById('login-error');
-  const overlay = document.getElementById('login-overlay');
-  const main = document.getElementById('main-content');
-  
-  if (pw === '5900') {
-    sessionStorage.setItem('goldi_auth', 'authenticated');
-    err.style.display = 'none';
-    
-    // 부드러운 화면 전환 효과
-    overlay.style.transition = 'opacity 0.4s ease';
-    overlay.style.opacity = '0';
-    main.style.display = 'block';
-    setTimeout(() => {
-      main.style.opacity = '1';
-    }, 50);
-    
-    setTimeout(() => {
-      overlay.remove();
-      document.documentElement.classList.add('authenticated');
-    }, 400);
-  } else {
-    err.style.display = 'block';
-    const pwInput = document.getElementById('login-password');
-    pwInput.value = '';
-    pwInput.focus();
-    
-    // 좌우 흔들기 애니메이션 부여
-    const card = overlay.querySelector('.card');
-    card.style.animation = 'none';
-    setTimeout(() => {
-      card.style.animation = 'shake 0.4s ease';
-    }, 10);
-  }
-};
-
-// 엔터 키 이벤트 바인딩 및 자동 포커스
-window.addEventListener('DOMContentLoaded', () => {
-  const pwInput = document.getElementById('login-password');
-  if (pwInput) {
-    pwInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        window.attemptLogin();
-      }
-    });
-    if (sessionStorage.getItem('goldi_auth') !== 'authenticated') {
-      setTimeout(() => pwInput.focus(), 100);
-    }
-  }
-});
-
 const fmt = d => d ? d.replace(/-/g,'.') : '—';
 const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
-function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function genderTxt(s){
   const v=String(s||'').toLowerCase();
   if(v==='female'||v==='암'||v==='f') return '암컷';
   if(v==='male'  ||v==='수'||v==='m') return '수컷';
-  return esc(s)||'—';
+  return s||'—';
 }
 function genderKo(s){
   const v=String(s||'').toLowerCase();
   if(v==='female'||v==='암'||v==='f') return '<span class="gender-f">♀ 암컷</span>';
   if(v==='male'  ||v==='수'||v==='m') return '<span class="gender-m">♂ 수컷</span>';
-  return esc(s)||'—';
+  return s||'—';
 }
 function statusBadge(st){
   if(!st||st==='분양 전') return '<span class="badge badge-avail">분양 전</span>';
@@ -354,63 +239,12 @@ window.switchTab=(btn,name)=>{
   btn.classList.add('active');
 };
 
-// ── SWR 로컬 캐시 부스터 (체감 로딩 속도 0.01초 단축)
-function saveLocalCache(key, data) {
-  try {
-    localStorage.setItem('goldi_admin_cache_' + key, JSON.stringify(data));
-  } catch(e) {
-    console.warn(`[Cache Limit] Admin ${key} 저장 제한:`, e);
-  }
-}
-
-function restoreLocalCache() {
-  try {
-    const cachedLitters = localStorage.getItem('goldi_admin_cache_litters');
-    const cachedContracts = localStorage.getItem('goldi_admin_cache_contracts');
-    
-    if (cachedLitters) {
-      window._litters = JSON.parse(cachedLitters);
-      // DOM 로드 완료 대기 후 캐시 데이터 렌더링
-      setTimeout(() => {
-        renderPuppyGroups();
-        renderManageList();
-        updateStats();
-        
-        // 자동 선택 연동 파라미터가 있는 경우 처리
-        if (initLitter && initPuppy && !window._autoSelectedTriggered) {
-          window._autoSelectedTriggered = true;
-          selectPuppy(initLitter, initPuppy);
-        }
-      }, 50);
-    }
-    if (cachedContracts) {
-      window._contracts = JSON.parse(cachedContracts);
-      setTimeout(renderDB, 50);
-    }
-  } catch(e) {
-    console.error('[Admin Cache Restore Error]:', e);
-  }
-}
-
-// 스크립트 실행 즉시 캐시 복원
-restoreLocalCache();
-
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
   renderPuppyGroups();
   renderManageList();
   updateStats();
-  
-  saveLocalCache('litters', window._litters);
-  
-  // 농장관리로부터 넘어온 자동 분양 연동 처리
-  if (initLitter && initPuppy && !window._autoSelectedTriggered) {
-    window._autoSelectedTriggered = true;
-    setTimeout(() => {
-      selectPuppy(initLitter, initPuppy);
-    }, 300);
-  }
 });
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};
@@ -418,8 +252,6 @@ onValue(ref(db,'contracts'),snap=>{
   try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
   window._contracts={...ls,...fb};
   renderDB();
-  
-  saveLocalCache('contracts', window._contracts);
 });
 
 // ── TAB1: 새끼 선택
@@ -435,21 +267,16 @@ function renderPuppyGroups(){
     if(!Object.keys(puppies).length) return '';
     const items=Object.entries(puppies).map(([pid,p])=>{
       const sold=p.status==='분양 완료';
-      const photoEl = p.photo
-        ? `<img src="${p.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--gray-l);flex-shrink:0;">`
-        : `<div style="width:40px;height:40px;border-radius:6px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--gray-l);flex-shrink:0;">🐶</div>`;
-      
       return `<div class="puppy-item${sold?' disabled':''}" id="pi-${lid}-${pid}" onclick="selectPuppy('${lid}','${pid}')">
-        ${photoEl}
         <div style="flex:1">
-          <div class="puppy-name">${esc(p.name||pid)}</div>
+          <div class="puppy-name">${p.name||pid}</div>
           <div class="puppy-meta">${genderTxt(p.sex)} · 출생 ${fmt(l.birthB)}</div>
         </div>
         <div>${statusBadge(p.status)}</div>
       </div>`;
     }).join('');
     return `<div class="litter-group">
-      <div class="litter-label">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+      <div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
       <div class="puppy-list">${items}</div>
     </div>`;
   }).join('');
@@ -465,21 +292,13 @@ window.selectPuppy=(lid,pid)=>{
   document.querySelectorAll('.puppy-item').forEach(el=>el.classList.remove('selected'));
   document.getElementById(`pi-${lid}-${pid}`)?.classList.add('selected');
 
-  const selectedPhoto = p.photo
-    ? `<img src="${p.photo}" style="width:54px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid var(--gold);flex-shrink:0;">`
-    : `<div style="width:54px;height:54px;border-radius:8px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:24px;border:1.5px solid var(--gold);flex-shrink:0;">🐶</div>`;
-
   document.getElementById('selectedInfo').innerHTML=`
-    ${selectedPhoto}
-    <div style="flex:1;display:flex;flex-wrap:wrap;gap:6px 14px">
-      <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${esc(p.name||pid)}</span></div>
-      <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
-      <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
-      <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${esc(l.femaleCode||'—')}</span></div>
-      <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
-      <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>
-    </div>`;
-  document.getElementById('s_memo').value = '';
+    <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${p.name||pid}</span></div>
+    <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
+    <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
+    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${l.femaleCode||'—'}</span></div>
+    <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
+    <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
   document.getElementById('sendForm').style.display='block';
   document.getElementById('linkCard').style.display='none';
@@ -491,7 +310,6 @@ window.generateLink=()=>{
   if(!sel){toast('새끼를 먼저 선택해주세요.');return;}
   const price=document.getElementById('s_price').value;
   const saledate=document.getElementById('s_saledate').value;
-  const memo=document.getElementById('s_memo').value.trim();
   if(!price||!saledate){toast('분양가와 분양 예정일을 입력해주세요.');return;}
 
   const {litterId:lid,puppyId:pid,litter:l,puppy:p}=sel;
@@ -504,11 +322,12 @@ window.generateLink=()=>{
     deworm2:l.deworm2||'',
     femaleCode:l.femaleCode||'',
     maleCode:l.maleCode||'',
-    price, saledate,
-    memo
+    price, saledate
   });
-  const base=location.href.split('?')[0].replace(/\/goldi_admin(\.html)?$/i,'/goldi_contract_form.html');
-  const url=base+'?'+params.toString();
+  // 안전한 URL 생성 (hash/query 오염 방지)
+  const baseUrl=new URL('goldi_contract_form.html',location.href.split('?')[0].split('#')[0]);
+  baseUrl.search=params.toString();
+  const url=baseUrl.href;
   window._contractUrl=url;
 
   document.getElementById('contractLink').textContent=url;
@@ -518,28 +337,38 @@ window.generateLink=()=>{
   // QR 생성
   const target=document.getElementById('qrTarget');
   target.innerHTML='';
-  function makeQR(){try{new window.QRCode(target,{text:url,width:180,height:180});}catch(e){console.error('QR 생성 실패:',e);}}
-  const existScript=document.querySelector('script[src*="qrcode"]');
-  if(!existScript){
-    const script=document.createElement('script');
-    script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    script.onload=makeQR;
-    document.head.appendChild(script);
-  } else if(window.QRCode){
-    makeQR();
-  } else {
-    existScript.addEventListener('load',makeQR);
-  }
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  script.onload=()=>{ new window.QRCode(target,{text:url,width:180,height:180}); };
+  if(!document.querySelector('script[src*="qrcode"]')) document.head.appendChild(script);
+  else if(window.QRCode) new window.QRCode(target,{text:url,width:180,height:180});
 
   toast('링크가 생성됐습니다!');
 };
 
-window.copyLink=()=>{navigator.clipboard.writeText(window._contractUrl);toast('링크 복사됐습니다.');};
+// 클립보드 복사 (모바일/보안 컨텍스트 대응)
+async function safeCopy(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch(e){
+    // fallback: textarea 이용
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.cssText='position:fixed;left:-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');document.body.removeChild(ta);return true;}catch(e2){}
+    document.body.removeChild(ta);
+    // 최후 수단: prompt 창
+    prompt('아래 링크를 길게 눌러 복사해주세요:',text);
+    return false;
+  }
+}
+window.copyLink=async()=>{const ok=await safeCopy(window._contractUrl);toast(ok?'링크 복사됐습니다.':'위 창에서 직접 복사해주세요.');};
 window.toggleQR=()=>{const q=document.getElementById('qrWrap');q.style.display=q.style.display==='none'?'block':'none';};
-window.sendKakao=()=>{
+window.sendKakao=async()=>{
   const msg=`[골디쉼터] 분양 계약서 작성 안내\n\n아래 링크를 열어 계약서를 작성해주세요.\n${window._contractUrl}\n\n순서대로 따라주시면 됩니다 🐾`;
-  navigator.clipboard.writeText(msg);
-  toast('카카오 메시지 내용이 복사됐습니다. 카카오톡에 붙여넣어 전송해주세요.');
+  const ok=await safeCopy(msg);
+  toast(ok?'카카오 메시지 내용이 복사됐습니다. 카카오톡에 붙여넣어 전송해주세요.':'위 창에서 직접 복사해주세요.');
 };
 
 // ── TAB2: 새끼 관리
@@ -568,12 +397,12 @@ function renderManageList(){
   sorted.forEach(([lid,l])=>{
     const puppies=l.puppies||{};
     if(!Object.keys(puppies).length) return;
-    html+=`<div class="litter-group"><div class="litter-label">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+    html+=`<div class="litter-group"><div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span><button class="btn btn-gold btn-sm" onclick="openEditLitter('${lid}')">✏️ 수정</button></div>
     <table class="tbl"><thead><tr><th>이름</th><th>성별</th><th>상태 변경</th></tr></thead><tbody>`;
     Object.entries(puppies).forEach(([pid,p])=>{
       const st=p.status||'분양 전';
       html+=`<tr>
-        <td><strong>${esc(p.name||pid)}</strong></td>
+        <td><strong>${p.name||pid}</strong></td>
         <td>${genderKo(p.sex)}</td>
         <td><div class="status-sel">
           <button class="status-opt${st==='분양 전'?' so-avail':''}" onclick="setStatus('${lid}','${pid}','분양 전')">분양 전</button>
@@ -588,14 +417,76 @@ function renderManageList(){
 }
 
 window.setStatus=async(lid,pid,status)=>{
-  try{
-    await update(ref(db,`litters/${lid}/puppies/${pid}`),{status});
-    toast(`"${status}"로 변경됐습니다.`);
-  }catch(e){
-    console.error('상태 변경 실패:',e);
-    toast('⚠ 상태 변경에 실패했습니다. 다시 시도해주세요.');
-  }
+  await update(ref(db,`litters/${lid}/puppies/${pid}`),{status});
+  toast(`"${status}"로 변경됐습니다.`);
 };
+
+// ── 그룹 정보 수정 모달
+window.openEditLitter=(lid)=>{
+  const l=window._litters[lid];
+  if(!l) return;
+  const puppies=l.puppies||{};
+  let html=`<div class="stitle">그룹 정보</div>
+  <div class="fgrid" style="margin-bottom:16px">
+    <div class="ffield"><label>출산일 A (내부용)</label><input id="e_birthA" type="date" value="${l.birthA||''}"></div>
+    <div class="ffield"><label>출생일 B (계약서용)</label><input id="e_birthB" type="date" value="${l.birthB||''}"></div>
+    <div class="ffield"><label>모견 코드</label><input id="e_femaleCode" value="${l.femaleCode||''}"></div>
+    <div class="ffield"><label>부견 코드</label><input id="e_maleCode" value="${l.maleCode||''}"></div>
+    <div class="ffield"><label>구충 1차</label><input id="e_deworm1" type="date" value="${l.deworm1||''}"></div>
+    <div class="ffield"><label>구충 2차</label><input id="e_deworm2" type="date" value="${l.deworm2||''}"></div>
+    <div class="ffield"><label>백신 1차</label><input id="e_vax1" type="date" value="${l.vax1||''}"></div>
+    <div class="ffield"><label>백신 2차</label><input id="e_vax2" type="date" value="${l.vax2||''}"></div>
+    <div class="ffield"><label>백신 3차</label><input id="e_vax3" type="date" value="${l.vax3||''}"></div>
+    <div class="ffield"><label>새끼 수</label><input id="e_count" type="number" value="${l.count||Object.keys(puppies).length}"></div>
+  </div>
+  <div class="stitle">새끼 정보</div><div id="editPuppies">`;
+  Object.entries(puppies).forEach(([pid,p])=>{
+    html+=`<div class="edit-puppy" data-pid="${pid}">
+      <div class="ep-label">${pid} ${statusBadge(p.status)}</div>
+      <div class="fgrid">
+        <div class="ffield"><label>이름</label><input class="ep-name" value="${p.name||''}"></div>
+        <div class="ffield"><label>성별</label><select class="ep-sex">
+          <option value="female"${p.sex==='female'?' selected':''}>암컷 ♀</option>
+          <option value="male"${p.sex==='male'?' selected':''}>수컷 ♂</option>
+        </select></div>
+      </div></div>`;
+  });
+  html+=`</div>
+  <div class="btn-row" style="margin-top:20px">
+    <button class="btn btn-gray" onclick="closeEditModal()">취소</button>
+    <button class="btn btn-gold" onclick="saveLitterEdit('${lid}')">💾 저장</button>
+  </div>`;
+  document.getElementById('editModalTitle').textContent=`그룹 수정 — ♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'}`;
+  document.getElementById('editModalBody').innerHTML=html;
+  document.getElementById('editModal').classList.add('open');
+};
+
+window.saveLitterEdit=async(lid)=>{
+  const data={
+    birthA:document.getElementById('e_birthA').value,
+    birthB:document.getElementById('e_birthB').value,
+    femaleCode:document.getElementById('e_femaleCode').value,
+    maleCode:document.getElementById('e_maleCode').value,
+    deworm1:document.getElementById('e_deworm1').value,
+    deworm2:document.getElementById('e_deworm2').value,
+    vax1:document.getElementById('e_vax1').value,
+    vax2:document.getElementById('e_vax2').value,
+    vax3:document.getElementById('e_vax3').value,
+    count:Number(document.getElementById('e_count').value)||0
+  };
+  await update(ref(db,`litters/${lid}`),data);
+  const rows=document.querySelectorAll('#editPuppies .edit-puppy');
+  for(const row of rows){
+    const pid=row.dataset.pid;
+    const name=row.querySelector('.ep-name').value;
+    const sex=row.querySelector('.ep-sex').value;
+    await update(ref(db,`litters/${lid}/puppies/${pid}`),{name,sex});
+  }
+  closeEditModal();
+  toast('정보가 수정됐습니다!');
+};
+
+window.closeEditModal=()=>document.getElementById('editModal').classList.remove('open');
 
 // ── TAB3: 계약 DB
 window.renderDB=()=>{
@@ -606,16 +497,13 @@ window.renderDB=()=>{
   });
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
-  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>연락처</th><th>결제방법</th><th>분양가</th><th>상태</th><th></th></tr></thead><tbody>
+  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th></th></tr></thead><tbody>
     ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
     <tr>
       <td>${fmt(c.contract_date)}</td>
-      <td><strong>${esc(c.dogname||'—')}</strong></td>
-      <td>${esc(c.buyer_name||'—')}</td>
-      <td>${esc(c.buyer_phone||'—')}</td>
-      <td>${esc(c.payment||'—')}</td>
+      <td><strong>${c.dogname||'—'}</strong></td>
+      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
       <td>${c.price?numFmt(c.price):'—'}</td>
-      <td><span class="badge" style="background:var(--gray-ll);color:var(--br);border:1px solid var(--gray-l)">${esc(c.status||'분양 완료')}</span></td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
     </tr>`).join('')}
   </tbody></table>`;
@@ -628,80 +516,10 @@ window.showDetail=id=>{
     ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
     ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
   ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
-  
-  let html = rows.map(([k,v])=>`
-    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v)}</span></div>`).join('');
-  
-  // 상태 변경 셀렉터 UI 추가 (파양, 환불, 교환 등)
-  const st = c.status || '분양 완료';
-  html += `
-    <div class="detail-row" style="margin-top:14px;border-top:1.5px solid var(--gray-l);padding-top:14px;align-items:center">
-      <span class="detail-key" style="color:var(--gold);font-weight:800">계약 상태 변경</span>
-      <span class="detail-val">
-        <select id="m_status_${id}" onchange="updateContractStatus('${id}', this.value)" style="border:1.5px solid var(--gray-l);border-radius:6px;padding:6px 10px;font-size:13px;font-family:inherit;color:var(--br);outline:none;background:#fff">
-          <option value="분양 완료"${st==='분양 완료'?' selected':''}>분양 완료</option>
-          <option value="파양"${st==='파양'?' selected':''}>파양</option>
-          <option value="환불"${st==='환불'?' selected':''}>환불</option>
-          <option value="교환"${st==='교환'?' selected':''}>교환</option>
-        </select>
-      </span>
-    </div>
-  `;
-  
-  // PDF 다운로드 버튼
-  if (c.pdf_document) {
-    html += `
-      <div style="margin-top:16px">
-        <button class="btn btn-gold btn-sm" onclick="downloadStoredPDF('${id}')" style="width:100%;justify-content:center;padding:10px">📄 보관된 PDF 계약서 다운로드</button>
-      </div>
-    `;
-  } else {
-    html += `
-      <div style="margin-top:16px;text-align:center;font-size:12px;color:var(--gray)">
-        ⚠️ 이 계약건은 PDF가 DB에 보관되어 있지 않습니다.
-      </div>
-    `;
-  }
-  
-  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
+    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
   document.getElementById('detailModal').classList.add('open');
 };
-
-window.updateContractStatus=async(id,status)=>{
-  try {
-    await update(ref(db,`contracts/${id}`),{status});
-    const c=window._contracts[id];
-    if(c && c.litter && c.puppy) {
-      let puppyStatus = '분양 완료';
-      if(status === '파양' || status === '환불' || status === '교환') {
-        puppyStatus = '분양 전';
-      }
-      await update(ref(db,`litters/${c.litter}/puppies/${c.puppy}`),{status:puppyStatus});
-    }
-    toast(`계약 상태가 "${status}"로 변경되었습니다.`);
-  } catch (e) {
-    console.error('상태 변경 실패:',e);
-    toast('⚠️ 상태 변경에 실패했습니다. 다시 시도해주세요.');
-  }
-};
-
-window.downloadStoredPDF=(id)=>{
-  const c=window._contracts[id];
-  if(!c || !c.pdf_document) { toast('보관된 PDF 파일이 없습니다.'); return; }
-  try {
-    const link=document.createElement('a');
-    link.href=c.pdf_document;
-    link.download=`골디쉼터_계약서_${c.buyer_name||'고객'}_${c.dogname||'강아지'}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast('PDF 계약서 다운로드 완료!');
-  } catch(e) {
-    console.error('PDF 다운로드 실패:',e);
-    toast('⚠️ PDF 다운로드 중 오류가 발생했습니다.');
-  }
-};
-
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
 window.exportCSV=()=>{
