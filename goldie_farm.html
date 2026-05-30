@@ -497,6 +497,17 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
   </div>
 
+  <!-- 리터 그룹 수정 모달 -->
+  <div class="modal-overlay" id="litter-edit-modal" onclick="handleLitterEditOverlay(event)">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h2 id="litter-edit-title">그룹 정보 수정</h2>
+        <button class="modal-close" onclick="closeLitterEditModal()">✕</button>
+      </div>
+      <div id="litter-edit-body"></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 </div>
 
@@ -1080,6 +1091,7 @@ function renderPuppies(){
     card.innerHTML=`
       <div class="litter-header" onclick="toggleLitter(this)">
         <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; ${fmtDate(lt.birthA)}</h3>
+        <button class="btn-outline" onclick="event.stopPropagation(); openEditLitterModal('${lt._key}')" style="padding:4px 10px;font-size:.72rem;flex-shrink:0">✏️ 수정</button>
         <span class="litter-toggle">▼</span>
       </div>
       <div class="litter-body">
@@ -1246,6 +1258,66 @@ function checkVaxAlerts(){
 }
 window.closeVaxPopup=function(){document.getElementById('vax-popup-overlay').classList.add('hidden');};
 
+// ── 리터 그룹 수정 모달
+let litterEditKey = null;
+
+window.openEditLitterModal = function(key) {
+  litterEditKey = key;
+  const lt = litters.find(l => l._key === key);
+  if (!lt) return;
+  document.getElementById('litter-edit-title').textContent = `그룹 수정 — ${lt.femaleCode} × ${lt.maleCode}`;
+  document.getElementById('litter-edit-body').innerHTML = `
+    <div class="form-group"><label>모견 코드</label><input type="text" id="le-femaleCode" value="${esc(lt.femaleCode||'')}"></div>
+    <div class="form-group"><label>부견 코드</label><input type="text" id="le-maleCode" value="${esc(lt.maleCode||'')}"></div>
+    <div class="form-group"><label>출산일 A (실제)</label><input type="date" id="le-birthA" value="${lt.birthA||''}"></div>
+    <div class="form-group"><label>출산일 B (계약서용)</label><input type="date" id="le-birthB" value="${lt.birthB||''}"></div>
+    <div class="form-group"><label>새끼 수</label><input type="number" id="le-count" value="${lt.count||0}" min="1" max="20"></div>
+    <div style="border-top:2px solid var(--border);margin:14px 0 10px;padding-top:10px"></div>
+    <div class="form-group"><label>💉 1차 백신</label><input type="date" id="le-vax1" value="${lt.vax1||''}"></div>
+    <div class="form-group"><label>💉 2차 백신</label><input type="date" id="le-vax2" value="${lt.vax2||''}"></div>
+    <div class="form-group"><label>💉 3차 백신</label><input type="date" id="le-vax3" value="${lt.vax3||''}"></div>
+    <div class="form-group"><label>🪱 1차 구충</label><input type="date" id="le-deworm1" value="${lt.deworm1||''}"></div>
+    <div class="form-group"><label>🪱 2차 구충</label><input type="date" id="le-deworm2" value="${lt.deworm2||''}"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-cancel" onclick="closeLitterEditModal()">취소</button>
+      <button class="btn" id="le-save-btn" onclick="saveLitterEdit()">💾 저장</button>
+    </div>`;
+  document.getElementById('litter-edit-modal').classList.add('open');
+};
+
+window.saveLitterEdit = async function() {
+  const btn = document.getElementById('le-save-btn');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  try {
+    const data = {
+      femaleCode: document.getElementById('le-femaleCode').value.trim(),
+      maleCode: document.getElementById('le-maleCode').value.trim(),
+      birthA: document.getElementById('le-birthA').value,
+      birthB: document.getElementById('le-birthB').value,
+      count: Number(document.getElementById('le-count').value) || 0,
+      vax1: document.getElementById('le-vax1').value,
+      vax2: document.getElementById('le-vax2').value,
+      vax3: document.getElementById('le-vax3').value,
+      deworm1: document.getElementById('le-deworm1').value,
+      deworm2: document.getElementById('le-deworm2').value
+    };
+    await fbUpdate(`litters/${litterEditKey}`, data);
+    closeLitterEditModal();
+    showToast('✅ 그룹 정보가 수정됐습니다!');
+  } catch(e) {
+    showToast('⚠️ 저장 실패: ' + e.message);
+  } finally {
+    btn.textContent = '💾 저장'; btn.disabled = false;
+  }
+};
+
+window.closeLitterEditModal = function() {
+  document.getElementById('litter-edit-modal').classList.remove('open');
+};
+window.handleLitterEditOverlay = function(e) {
+  if (e.target === document.getElementById('litter-edit-modal')) closeLitterEditModal();
+};
+
 // ═══════════════════════════════════════
 //  이동 탭
 // ═══════════════════════════════════════
@@ -1326,3 +1398,4 @@ init();
 </script>
 </body>
 </html>
+
