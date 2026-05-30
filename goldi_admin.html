@@ -594,7 +594,10 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-foot" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px; border-top:1.5px solid var(--gray-l); background:var(--gray-ll); border-radius:0 0 12px 12px">
         <button class="btn btn-gray" id="btnDeleteContract" onclick="deleteContractFromAdmin()" style="font-size:12.5px; padding:8px 16px; color:var(--red); border-color:var(--red); background:#fff">🗑️ 계약 삭제</button>
-        <button class="btn btn-gold" id="btnDetailPdf" onclick="downloadContractPdfFromAdmin()" style="font-size:12.5px; padding:8px 16px">📄 PDF 보기 및 다운로드</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-green" id="btnMarkPaid" onclick="markContractAsPaid()" style="font-size:12.5px; padding:8px 16px; display:none; background:#27AE60; color:#fff; border:none; border-radius:6px; cursor:pointer;">💰 완납 처리</button>
+          <button class="btn btn-gold" id="btnDetailPdf" onclick="downloadContractPdfFromAdmin()" style="font-size:12.5px; padding:8px 16px">📄 PDF 보기 및 다운로드</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1231,6 +1234,12 @@ window.showDetail = id => {
   
   document.getElementById('modalBody').innerHTML = rows.map(([k, v]) => `
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
+  
+  const btnMarkPaid = document.getElementById('btnMarkPaid');
+  if (btnMarkPaid) {
+    btnMarkPaid.style.display = balance <= 0 ? 'none' : 'inline-block';
+  }
+
   document.getElementById('detailModal').classList.add('open');
 };
 
@@ -1496,6 +1505,47 @@ window.deleteContractFromAdmin = async () => {
 };
 
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
+
+window.markContractAsPaid = async () => {
+  const id = window._selectedContractId;
+  const c = window._contracts[id];
+  if (!c) return;
+
+  const balance = (c.price || 0) - (c.deposit || 0);
+  const msg = `💰 이 계약을 완납 처리하시겠습니까?\n\n[구매자]: ${c.buyer_name || ''}\n[남은 잔금]: ₩${balance.toLocaleString('ko-KR')}\n\n완납 처리 시 계약금액이 총액 분양가(₩${(c.price || 0).toLocaleString('ko-KR')})로 전액 입금 완료 처리되며, 매출 분석 및 수금 통계에 실시간 반영됩니다.`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnMarkPaid');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ 처리 중...';
+  btn.disabled = true;
+
+  try {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await update(ref(db, `contracts/${id}`), {
+      deposit: c.price || 0,
+      balance_date: todayStr
+    });
+
+    try {
+      const ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}');
+      if (ls[id]) {
+        ls[id].deposit = c.price || 0;
+        ls[id].balance_date = todayStr;
+        localStorage.setItem('goldi_contracts', JSON.stringify(ls));
+      }
+    } catch(e) {}
+
+    toast('💰 잔금이 완납 처리되어 정산이 완료되었습니다! 🐾');
+    closeModal();
+  } catch(e) {
+    console.error('Failed to mark contract as paid:', e);
+    toast('⚠ 완납 처리에 실패했습니다.');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+};
 
 window.exportCSV=()=>{
   const rows=[['계약일','강아지','성별','출생일','구매자','연락처','주소','분양가','계약금','결제방법']];
