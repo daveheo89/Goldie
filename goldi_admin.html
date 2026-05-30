@@ -649,6 +649,11 @@ const initPuppy = urlParams.get('puppy');
 
 // ── 유틸
 const fmt = d => d ? d.replace(/-/g,'.') : '—';
+const dewormShow = d => {
+  if (!d || d === '—') return '—';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return d > todayStr ? '예정' : d.replace(/-/g, '.');
+};
 const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
 function genderTxt(s){
   const v=String(s||'').toLowerCase();
@@ -1225,7 +1230,7 @@ window.showDetail = id => {
 
   const rows = [
     ['강아지', c.dogname], ['성별', genderTxt(c.sex)], ['출생일', fmt(c.birthB)], ['모견 코드', c.femaleCode], ['부견 코드', c.maleCode],
-    ['구충 1차 (생후 25일)', fmt(dw1)], ['구충 2차 (생후 40일)', fmt(dw2)], ['구충 3차 (생후 55일)', fmt(dw3)],
+    ['구충 1차 (생후 25일)', dewormShow(dw1)], ['구충 2차 (생후 40일)', dewormShow(dw2)], ['구충 3차 (생후 55일)', dewormShow(dw3)],
     ['구매자명', c.buyer_name], ['연락처', c.buyer_phone], ['주소', c.buyer_addr],
     ['분양가', c.price ? numFmt(c.price) : '—'], ['계약금', c.deposit ? numFmt(c.deposit) : '—'], ['잔금 정산 상태', payStatus],
     ['잔금납부일', fmt(c.balance_date)], ['결제방법', c.payment], ['이체자', c.transfer_name],
@@ -1342,7 +1347,7 @@ window.downloadContractPdfFromAdmin = async () => {
     <tr><th>동물등록번호</th><td colspan="3">분양 후 30일 이내 등록 의무 (동물보호법 제12조)</td></tr>
   </table>
 
-  <div class="cv-section">3. 수의사 구충 기록</div>
+  <div class="cv-section">3. 구충 기록</div>
   <table class="cv-table">
     <thead>
       <tr style="background:#F4F3EF">
@@ -1355,9 +1360,9 @@ window.downloadContractPdfFromAdmin = async () => {
     <tbody>
       <tr>
         <td>종합 구충제</td>
-        <td style="text-align:center">${fmt(computedDw1)}</td>
-        <td style="text-align:center">${fmt(computedDw2)}</td>
-        <td style="text-align:center">${fmt(computedDw3)}</td>
+        <td style="text-align:center">${dewormShow(computedDw1)}</td>
+        <td style="text-align:center">${dewormShow(computedDw2)}</td>
+        <td style="text-align:center">${dewormShow(computedDw3)}</td>
       </tr>
     </tbody>
   </table>
