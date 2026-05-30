@@ -207,8 +207,11 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <div class="ffield"><label>성별</label><input id="f_gender" readonly></div>
         <div class="ffield"><label>출생일</label><input id="f_birth" readonly></div>
         <div class="ffield"><label>모견 코드</label><input id="f_mother" readonly></div>
-        <div class="ffield"><label>구충 1차</label><input id="f_dw1" readonly></div>
-        <div class="ffield"><label>구충 2차</label><input id="f_dw2" readonly></div>
+        <div class="ffield" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 4px;">
+          <div class="ffield" style="gap:4px"><label>구충 1차 (생후 25일)</label><input id="f_dw1" readonly></div>
+          <div class="ffield" style="gap:4px"><label>구충 2차 (생후 40일)</label><input id="f_dw2" readonly></div>
+          <div class="ffield" style="gap:4px"><label>구충 3차 (생후 55일)</label><input id="f_dw3" readonly></div>
+        </div>
       </div>
     </div>
 
@@ -354,6 +357,7 @@ let G = {
   birthB:    P.get('birthB')||'',
   deworm1:   P.get('deworm1')||'',
   deworm2:   P.get('deworm2')||'',
+  deworm3:   P.get('deworm3')||'',
   femaleCode:P.get('femaleCode')||'',
   maleCode:  P.get('maleCode')||'',
   price:     P.get('price')||'',
@@ -375,6 +379,7 @@ if (!G.litter || !G.puppy) {
         birthB:    P2.get('birthB')||G.birthB,
         deworm1:   P2.get('deworm1')||G.deworm1,
         deworm2:   P2.get('deworm2')||G.deworm2,
+        deworm3:   P2.get('deworm3')||G.deworm3,
         femaleCode:P2.get('femaleCode')||G.femaleCode,
         maleCode:  P2.get('maleCode')||G.maleCode,
         price:     P2.get('price')||G.price,
@@ -390,6 +395,12 @@ if (!G.litter || !G.puppy) {
 // ── 유틸
 const fmt=d=>d?d.replace(/-/g,'.'):'—';
 const numFmt=n=>n?Number(n).toLocaleString('ko-KR')+'원':'—';
+function addDays(d,n){
+  if(!d) return '';
+  const dt=new Date(d+'T00:00:00');
+  dt.setDate(dt.getDate()+n);
+  return dt.toISOString().slice(0,10);
+}
 function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function genderKo(s){
   const v=String(s||'').toLowerCase();
@@ -440,6 +451,7 @@ async function init(){
         G.birthB     = litterData.birthB || '';
         G.deworm1    = litterData.deworm1 || '';
         G.deworm2    = litterData.deworm2 || '';
+        G.deworm3    = litterData.deworm3 || '';
         G.femaleCode = litterData.femaleCode || '';
         G.maleCode   = litterData.maleCode || '';
         // price와 saledate는 URL에만 존재하므로 복구 불가 → 빈 상태 유지
@@ -450,13 +462,19 @@ async function init(){
     }
   }
 
+  // 출생일 B 기준 25일, 40일, 55일 (보름 간격) 구충일 계산 적용
+  const calcDeworm1 = G.birthB ? addDays(G.birthB, 25) : (G.deworm1 || '');
+  const calcDeworm2 = G.birthB ? addDays(G.birthB, 40) : (G.deworm2 || '');
+  const calcDeworm3 = G.birthB ? addDays(G.birthB, 55) : (G.deworm3 || '');
+
   // 1. URL 파라미터로 즉시 0.01초 만에 강아지 정보 채우기 (Firebase 비동기 블로킹 락 방지)
   document.getElementById('f_dogname').value = G.dogname;
   document.getElementById('f_gender').value  = genderKo(G.sex);
   document.getElementById('f_birth').value   = fmt(G.birthB);
   document.getElementById('f_mother').value  = G.femaleCode||'—';
-  document.getElementById('f_dw1').value     = fmt(G.deworm1);
-  document.getElementById('f_dw2').value     = fmt(G.deworm2);
+  document.getElementById('f_dw1').value     = fmt(calcDeworm1);
+  document.getElementById('f_dw2').value     = fmt(calcDeworm2);
+  document.getElementById('f_dw3').value     = fmt(calcDeworm3);
   document.getElementById('f_price').value   = G.price?numFmt(G.price):'—';
   document.getElementById('f_saledate').value= fmt(G.saledate);
 
@@ -532,6 +550,10 @@ window.goStep2=()=>{
 
   const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
 
+  const calcDeworm1 = G.birthB ? addDays(G.birthB, 25) : (G.deworm1 || '');
+  const calcDeworm2 = G.birthB ? addDays(G.birthB, 40) : (G.deworm2 || '');
+  const calcDeworm3 = G.birthB ? addDays(G.birthB, 55) : (G.deworm3 || '');
+
   // 특이사항 합의서명 영역 분리
   const specialMemoSection = G.memo ? `
 <div class="cv-section">특별 합의 및 특이사항 조항</div>
@@ -569,8 +591,8 @@ window.goStep2=()=>{
 <div class="cv-section">3. 수의사 구충 기록</div>
 <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px">
 <table class="cv-table">
-  <tr><th>구분</th><th style="text-align:center">1차</th><th style="text-align:center">2차</th><th style="text-align:center">3차 이후</th></tr>
-  <tr><td>종합 구충제</td><td style="text-align:center">${fmt(G.deworm1)}</td><td style="text-align:center">${fmt(G.deworm2)}</td><td style="text-align:center;color:#888">추후 예정</td></tr>
+  <tr><th>구분</th><th style="text-align:center">1차 (생후 25일)</th><th style="text-align:center">2차 (생후 40일)</th><th style="text-align:center">3차 (생후 55일)</th></tr>
+  <tr><td>종합 구충제</td><td style="text-align:center">${fmt(calcDeworm1)}</td><td style="text-align:center">${fmt(calcDeworm2)}</td><td style="text-align:center">${fmt(calcDeworm3)}</td></tr>
 </table>
 </div>
 
@@ -844,6 +866,10 @@ window.submitContract=async()=>{
 
   const contractId='C'+Date.now();
   const dogid=`${G.litter}_${G.puppy}`;
+  const calcDeworm1 = G.birthB ? addDays(G.birthB, 25) : (G.deworm1 || '');
+  const calcDeworm2 = G.birthB ? addDays(G.birthB, 40) : (G.deworm2 || '');
+  const calcDeworm3 = G.birthB ? addDays(G.birthB, 55) : (G.deworm3 || '');
+
   const data={
     dogid,
     litter: G.litter,
@@ -853,8 +879,9 @@ window.submitContract=async()=>{
     birthB: G.birthB,
     femaleCode:G.femaleCode,
     maleCode:  G.maleCode,
-    deworm1:   G.deworm1,
-    deworm2:   G.deworm2,
+    deworm1:   calcDeworm1,
+    deworm2:   calcDeworm2,
+    deworm3:   calcDeworm3,
     price:     Number(G.price)||0,
     saledate:  G.saledate,
     buyer_name:    document.getElementById('b_name').value.trim(),
