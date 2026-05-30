@@ -110,19 +110,111 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .chip{display:flex;gap:5px}
 .chip-k{color:var(--gray);font-weight:600}
 .chip-v{color:var(--br);font-weight:700}
+
+/* ═══ 예약 캘린더 CSS ═══ */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.cal-nav-center{display:flex;align-items:center;gap:12px}
+.cal-nav-center h2{font-size:17px;font-weight:800;color:var(--br);white-space:nowrap}
+.cal-arrow{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gray-l);background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;color:var(--br)}
+.cal-arrow:hover{border-color:var(--gold);background:var(--gold-p);color:var(--gold)}
+.today-banner{background:linear-gradient(135deg,var(--br),#7a5230);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;color:#fff}
+.today-banner-title{font-size:12px;font-weight:700;opacity:.7;margin-bottom:6px;letter-spacing:1px}
+.today-banner-list{display:flex;flex-direction:column;gap:4px}
+.today-banner-item{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.today-banner-empty{font-size:13px;opacity:.6}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:18px}
+.cal-head{text-align:center;font-size:11px;font-weight:800;padding:8px 0;color:var(--gray)}
+.cal-head.sun{color:var(--red)}
+.cal-head.sat{color:var(--blue)}
+.cal-cell{min-height:52px;padding:4px;border-radius:7px;cursor:pointer;text-align:center;transition:.15s;border:2px solid transparent;position:relative;background:#fff}
+.cal-cell:hover{background:var(--gold-p);border-color:var(--gold-l)}
+.cal-cell.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-l)}
+.cal-cell.selected{background:var(--gold-p);border-color:var(--gold)}
+.cal-cell.other{opacity:.3;cursor:default}
+.cal-cell.other:hover{background:#fff;border-color:transparent}
+.cal-day{font-size:13px;font-weight:700;line-height:1}
+.cal-cell.sun .cal-day{color:var(--red)}
+.cal-cell.sat .cal-day{color:var(--blue)}
+.cal-dots{display:flex;gap:3px;justify-content:center;margin-top:4px;flex-wrap:wrap}
+.cal-dot{width:6px;height:6px;border-radius:50%}
+.cal-dot.dot-confirmed{background:#E67E22}
+.cal-dot.dot-completed{background:var(--green)}
+.cal-dot.dot-cancelled{background:#aaa}
+.cal-count{font-size:9px;font-weight:800;color:var(--gold);margin-top:2px}
+.day-panel{margin-bottom:18px}
+.day-panel-header{font-size:14px;font-weight:800;color:var(--br);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.day-panel-header .day-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--gold-p);color:var(--gold)}
+.rsv-card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:16px;margin-bottom:12px;border-left:4px solid #E67E22;transition:border-color .15s}
+.rsv-card.st-completed{border-left-color:var(--green)}
+.rsv-card.st-cancelled{border-left-color:#aaa;opacity:.65}
+.rsv-time{font-size:12px;font-weight:800;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.rsv-time .time-icon{font-size:14px}
+.rsv-visitor{font-size:15px;font-weight:800;color:var(--br);margin-bottom:6px}
+.rsv-contact{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--gray);margin-bottom:8px}
+.rsv-contact span{display:flex;align-items:center;gap:4px}
+.rsv-puppies{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.rsv-puppy-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--gold-p);color:var(--br);border:1px solid var(--gold-l)}
+.rsv-puppy-chip .p-sex{font-size:10px}
+.rsv-memo{font-size:12px;color:var(--gray);padding:8px 10px;background:var(--gray-ll);border-radius:6px;margin-bottom:10px;line-height:1.5}
+.rsv-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rsv-status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.rsv-sb-confirmed{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7}
+.rsv-sb-completed{background:#E8F8EF;color:var(--green);border:1px solid #A8DDB9}
+.rsv-sb-cancelled{background:#F0F0F0;color:#888;border:1px solid #CCC}
+.rsv-status-sel{border:1.5px solid var(--gray-l);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--br);outline:none;background:#fff;cursor:pointer}
+.month-stats{display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--gray-ll);border-radius:8px;font-size:12px;font-weight:700;color:var(--gray)}
+.month-stats span{color:var(--br)}
+.no-rsv{text-align:center;padding:30px;color:var(--gray);font-size:13px}
+
+/* 예약 모달 */
+.rsv-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;justify-content:center;align-items:flex-start;padding:16px;overflow-y:auto}
+.rsv-modal-bg.open{display:flex}
+.rsv-modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3);margin-top:40px}
+.rsv-modal-head{background:var(--br);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0}
+.rsv-modal-head h3{color:var(--gold-l);font-size:14px;font-weight:800}
+.rsv-modal-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer}
+.rsv-modal-body{padding:18px}
+.rsv-field{margin-bottom:14px}
+.rsv-field label{display:block;font-size:12px;font-weight:700;color:var(--br-l);margin-bottom:4px}
+.rsv-field input,.rsv-field textarea,.rsv-field select{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;transition:border-color .15s}
+.rsv-field input:focus,.rsv-field textarea:focus{border-color:var(--gold)}
+.rsv-field textarea{resize:vertical;min-height:56px}
+.rsv-time-row{display:flex;gap:8px;align-items:center}
+.rsv-time-row input{flex:1}
+.rsv-time-row .time-sep{font-size:14px;font-weight:700;color:var(--gray)}
+.rsv-overlap-warn{font-size:11px;color:var(--red);font-weight:700;margin-top:4px;display:none}
+
+/* 강아지 선택 카드 */
+.psel-search{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;margin-bottom:10px;transition:border-color .15s}
+.psel-search:focus{border-color:var(--gold)}
+.psel-groups{max-height:260px;overflow-y:auto;border:1.5px solid var(--gray-l);border-radius:8px;padding:8px}
+.psel-group-hdr{font-size:11px;font-weight:800;color:var(--br-l);padding:5px 8px;background:var(--gray-ll);border-radius:5px;margin-bottom:6px;margin-top:6px}
+.psel-group-hdr:first-child{margin-top:0}
+.psel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px}
+.psel-card{border:2px solid var(--gray-l);border-radius:8px;padding:6px;text-align:center;cursor:pointer;transition:.15s;background:#fff;position:relative}
+.psel-card:hover{border-color:var(--gold-l);background:var(--gold-p)}
+.psel-card.chosen{border-color:var(--gold);background:var(--gold-p);box-shadow:0 0 0 2px var(--gold-l)}
+.psel-card .psel-check{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:var(--gray-l);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:900}
+.psel-card.chosen .psel-check{background:var(--gold)}
+.psel-photo{width:100%;aspect-ratio:1;border-radius:6px;object-fit:cover;display:block;margin-bottom:4px;background:var(--gold-p)}
+.psel-placeholder{width:100%;aspect-ratio:1;border-radius:6px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:4px}
+.psel-name{font-size:11px;font-weight:700;color:var(--br);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.psel-sex{font-size:10px;color:var(--gray)}
+.psel-selected{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;min-height:22px}
+.psel-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:var(--gold);color:#fff}
+.psel-tag .tag-x{cursor:pointer;opacity:.7;margin-left:2px}
+.psel-tag .tag-x:hover{opacity:1}
+
 @media(max-width:560px){
   .fgrid{grid-template-columns:1fr}
   
-  /* 헤더 모바일 튜닝 */
   header{padding:10px 16px}
   .logo{font-size:16px}
   .logo span{font-size:10px;margin-left:4px}
   
-  /* 탭바 균등 정렬 및 터치 확보 */
-  .tab-bar{padding:0 8px;gap:2px}
-  .tab-btn{flex:1;padding:12px 4px;font-size:12px;text-align:center;justify-content:center}
+  .tab-bar{padding:0 4px;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab-btn{flex:1;padding:11px 2px;font-size:11px;text-align:center;justify-content:center;min-width:0}
   
-  /* 계약 DB 모바일 스크롤 지원 */
   #tab-db{padding:16px 12px}
   .search-row{gap:6px}
   .search-row input{font-size:13px;padding:8px 10px}
@@ -131,7 +223,6 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   .tbl{min-width:620px}
   .tbl th, .tbl td{padding:8px 10px;font-size:12px}
   
-  /* 카드 모바일 여백 축소 */
   .card{padding:14px 12px;margin-bottom:12px}
   .stitle{font-size:10px;margin-bottom:10px}
   .info-chips{padding:8px 10px;gap:4px 10px;font-size:11px;margin-bottom:12px}
@@ -145,6 +236,25 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   .modal{max-width:94%;margin:16px auto}
   .modal-head{padding:12px 16px}
   .modal-body{padding:14px 16px}
+
+  /* 캘린더 모바일 */
+  .cal-nav{gap:6px}
+  .cal-nav-center h2{font-size:14px}
+  .cal-arrow{width:30px;height:30px;font-size:14px}
+  .cal-cell{min-height:42px;padding:3px 2px}
+  .cal-day{font-size:11px}
+  .cal-count{font-size:8px}
+  .cal-dot{width:5px;height:5px}
+  .today-banner{padding:10px 14px}
+  .today-banner-item{font-size:12px}
+  .rsv-card{padding:12px;margin-bottom:10px}
+  .rsv-visitor{font-size:14px}
+  .rsv-actions{gap:6px}
+  .rsv-modal{max-width:96%;margin-top:16px}
+  .rsv-modal-body{padding:14px}
+  .psel-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:5px}
+  .psel-groups{max-height:200px}
+  .month-stats{font-size:11px;gap:6px;padding:10px}
 }
 </style>
 </head>
@@ -173,6 +283,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
     <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
     <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+    <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 예약</button>
   </div>
 
   <!-- TAB1 -->
@@ -231,6 +342,86 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
   </div>
 
+  <!-- TAB4: 예약 캘린더 -->
+  <div class="tab-panel" id="tab-calendar">
+    <!-- 오늘의 예약 요약 -->
+    <div class="today-banner" id="todayBanner">
+      <div class="today-banner-title">📋 오늘의 방문 예약</div>
+      <div class="today-banner-list" id="todayBannerList"><div class="today-banner-empty">로딩 중...</div></div>
+    </div>
+
+    <!-- 캘린더 네비게이션 -->
+    <div class="cal-nav">
+      <div class="cal-nav-center">
+        <button class="cal-arrow" onclick="calPrev()">◀</button>
+        <h2 id="calTitle">2026년 6월</h2>
+        <button class="cal-arrow" onclick="calNext()">▶</button>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="openRsvModal()">+ 예약 추가</button>
+    </div>
+
+    <!-- 캘린더 그리드 -->
+    <div class="cal-grid" id="calGrid"></div>
+
+    <!-- 선택된 날짜 예약 목록 -->
+    <div class="day-panel" id="dayPanel" style="display:none"></div>
+
+    <!-- 월별 통계 -->
+    <div class="month-stats" id="monthStats"></div>
+  </div>
+
+  <!-- 예약 등록/수정 모달 -->
+  <div class="rsv-modal-bg" id="rsvModal">
+    <div class="rsv-modal">
+      <div class="rsv-modal-head">
+        <h3 id="rsvModalTitle">📅 예약 등록</h3>
+        <button class="rsv-modal-close" onclick="closeRsvModal()">✕</button>
+      </div>
+      <div class="rsv-modal-body">
+        <input type="hidden" id="rsv_editId">
+        <div class="rsv-field">
+          <label>방문 날짜 *</label>
+          <input type="date" id="rsv_date">
+        </div>
+        <div class="rsv-field">
+          <label>방문 시간 (선택 — 비워두면 시간 미정)</label>
+          <div class="rsv-time-row">
+            <input type="time" id="rsv_timeStart" step="900">
+            <span class="time-sep">~</span>
+            <input type="time" id="rsv_timeEnd" step="900">
+          </div>
+          <div class="rsv-overlap-warn" id="rsvOverlapWarn">⚠ 해당 시간대에 기존 예약이 겹칩니다.</div>
+        </div>
+        <div class="rsv-field">
+          <label>방문자 이름 *</label>
+          <input type="text" id="rsv_name" placeholder="예: 홍길동">
+        </div>
+        <div class="rsv-field">
+          <label>📞 연락처 (선택)</label>
+          <input type="tel" id="rsv_phone" placeholder="예: 010-1234-5678">
+        </div>
+        <div class="rsv-field">
+          <label>💬 카카오 오픈채팅 ID (선택)</label>
+          <input type="text" id="rsv_kakao" placeholder="예: goldi_visitor">
+        </div>
+        <div class="rsv-field">
+          <label>🐶 보러 올 강아지 (복수 선택)</label>
+          <input type="text" class="psel-search" id="pselSearch" placeholder="🔍 이름 또는 모견코드 검색..." oninput="renderPuppySelector()">
+          <div class="psel-groups" id="pselGroups"></div>
+          <div class="psel-selected" id="pselSelected"></div>
+        </div>
+        <div class="rsv-field">
+          <label>특이사항 / 메모 (선택)</label>
+          <textarea id="rsv_memo" placeholder="예: 오후 방문, 아이 동반"></textarea>
+        </div>
+        <div class="btn-row" style="display:flex;gap:8px">
+          <button class="btn btn-gray" style="flex:1" onclick="closeRsvModal()">취소</button>
+          <button class="btn btn-gold" style="flex:1" onclick="saveReservation()">✅ 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-bg" id="detailModal">
     <div class="modal">
       <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -243,7 +434,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update, push, remove, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const FB = {
   apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -263,8 +454,13 @@ const initPuppy = P.get('puppy');
 
 window._litters={};
 window._contracts={};
+window._reservations={};
 window._selected=null;
 window._contractUrl='';
+window._calYear=new Date().getFullYear();
+window._calMonth=new Date().getMonth();
+window._calSelectedDate=new Date().toISOString().slice(0,10);
+window._rsvSelectedPuppies=[];
 
 // ── 유틸
 // ── 로그인 세션 보안 제어
@@ -352,6 +548,12 @@ window.switchTab=(btn,name)=>{
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
+  if(name==='calendar'){
+    renderCalendar();
+    renderTodaySummary();
+    renderDayReservations(window._calSelectedDate);
+    renderMonthStats();
+  }
 };
 
 // ── SWR 로컬 캐시 부스터 (체감 로딩 속도 0.01초 단축)
@@ -387,6 +589,10 @@ function restoreLocalCache() {
       window._contracts = JSON.parse(cachedContracts);
       setTimeout(renderDB, 50);
     }
+    const cachedReservations = localStorage.getItem('goldi_admin_cache_reservations');
+    if (cachedReservations) {
+      window._reservations = JSON.parse(cachedReservations);
+    }
   } catch(e) {
     console.error('[Admin Cache Restore Error]:', e);
   }
@@ -420,6 +626,19 @@ onValue(ref(db,'contracts'),snap=>{
   renderDB();
   
   saveLocalCache('contracts', window._contracts);
+});
+
+// ── Firebase 예약 구독
+onValue(ref(db,'reservations'),snap=>{
+  window._reservations=snap.val()||{};
+  saveLocalCache('reservations', window._reservations);
+  // 캘린더 탭이 활성화된 경우에만 렌더링
+  if(document.getElementById('tab-calendar')?.classList.contains('active')){
+    renderCalendar();
+    renderTodaySummary();
+    renderDayReservations(window._calSelectedDate);
+    renderMonthStats();
+  }
 });
 
 // ── TAB1: 새끼 선택
@@ -714,6 +933,392 @@ window.exportCSV=()=>{
   a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
   a.download='goldi_contracts_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
+};
+
+// ═══════════════════════════════════════════════
+//  TAB4: 예약 캘린더
+// ═══════════════════════════════════════════════
+
+const DAYS_KO=['일','월','화','수','목','금','토'];
+
+function getReservationsForDate(dateStr){
+  return Object.entries(window._reservations).filter(([,r])=>r.date===dateStr).sort(([,a],[,b])=>{
+    if(!a.timeStart&&!b.timeStart) return 0;
+    if(!a.timeStart) return 1;
+    if(!b.timeStart) return -1;
+    return a.timeStart.localeCompare(b.timeStart);
+  });
+}
+
+function getReservationsForMonth(y,m){
+  const prefix=`${y}-${String(m+1).padStart(2,'0')}`;
+  return Object.entries(window._reservations).filter(([,r])=>r.date&&r.date.startsWith(prefix));
+}
+
+// ── 캘린더 렌더링
+function renderCalendar(){
+  const y=window._calYear, m=window._calMonth;
+  document.getElementById('calTitle').textContent=`${y}년 ${m+1}월`;
+  const grid=document.getElementById('calGrid');
+  
+  // 요일 헤더
+  let html=DAYS_KO.map((d,i)=>`<div class="cal-head${i===0?' sun':''}${i===6?' sat':''}">${d}</div>`).join('');
+  
+  const firstDay=new Date(y,m,1).getDay();
+  const lastDate=new Date(y,m+1,0).getDate();
+  const prevLast=new Date(y,m,0).getDate();
+  const todayStr=new Date().toISOString().slice(0,10);
+  
+  // 이전 달 빈칸
+  for(let i=firstDay-1;i>=0;i--){
+    const d=prevLast-i;
+    html+=`<div class="cal-cell other"><div class="cal-day">${d}</div></div>`;
+  }
+  
+  // 이번 달
+  for(let d=1;d<=lastDate;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===todayStr;
+    const isSel=ds===window._calSelectedDate;
+    const dayOfWeek=new Date(y,m,d).getDay();
+    const rsvs=getReservationsForDate(ds);
+    
+    let dotHtml='';
+    if(rsvs.length){
+      const hasConfirmed=rsvs.some(([,r])=>r.status==='예약 확정');
+      const hasCompleted=rsvs.some(([,r])=>r.status==='방문 완료');
+      const hasCancelled=rsvs.some(([,r])=>r.status==='취소');
+      dotHtml='<div class="cal-dots">';
+      if(hasConfirmed) dotHtml+='<div class="cal-dot dot-confirmed"></div>';
+      if(hasCompleted) dotHtml+='<div class="cal-dot dot-completed"></div>';
+      if(hasCancelled) dotHtml+='<div class="cal-dot dot-cancelled"></div>';
+      dotHtml+=`</div><div class="cal-count">${rsvs.length}건</div>`;
+    }
+    
+    html+=`<div class="cal-cell${isToday?' today':''}${isSel?' selected':''}${dayOfWeek===0?' sun':''}${dayOfWeek===6?' sat':''}" onclick="selectCalDate('${ds}')">
+      <div class="cal-day">${d}</div>${dotHtml}</div>`;
+  }
+  
+  // 다음 달 빈칸
+  const totalCells=firstDay+lastDate;
+  const remaining=totalCells%7===0?0:7-totalCells%7;
+  for(let i=1;i<=remaining;i++){
+    html+=`<div class="cal-cell other"><div class="cal-day">${i}</div></div>`;
+  }
+  
+  grid.innerHTML=html;
+}
+
+window.calPrev=()=>{
+  window._calMonth--;
+  if(window._calMonth<0){window._calMonth=11;window._calYear--;}
+  renderCalendar();renderMonthStats();
+};
+window.calNext=()=>{
+  window._calMonth++;
+  if(window._calMonth>11){window._calMonth=0;window._calYear++;}
+  renderCalendar();renderMonthStats();
+};
+window.selectCalDate=(ds)=>{
+  window._calSelectedDate=ds;
+  renderCalendar();
+  renderDayReservations(ds);
+};
+
+// ── 오늘의 예약 요약
+function renderTodaySummary(){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const rsvs=getReservationsForDate(todayStr).filter(([,r])=>r.status!=='취소');
+  const el=document.getElementById('todayBannerList');
+  if(!rsvs.length){
+    el.innerHTML='<div class="today-banner-empty">오늘 예약 없음 🎉</div>';
+    return;
+  }
+  el.innerHTML=rsvs.map(([,r])=>{
+    const time=r.timeStart?`🕐 ${r.timeStart}${r.timeEnd?'~'+r.timeEnd:''}`:'🕐 시간 미정';
+    const pups=(r.puppies||[]).map(p=>p.puppyName).join(', ');
+    return `<div class="today-banner-item">${time} <strong>${esc(r.visitorName)}</strong>${pups?' · '+esc(pups):''}</div>`;
+  }).join('');
+}
+
+// ── 일별 예약 목록
+function renderDayReservations(dateStr){
+  const panel=document.getElementById('dayPanel');
+  const rsvs=getReservationsForDate(dateStr);
+  const dateObj=new Date(dateStr+'T00:00:00');
+  const dayName=DAYS_KO[dateObj.getDay()];
+  const [,mm,dd]=dateStr.split('-');
+  
+  let html=`<div class="day-panel-header">📅 ${parseInt(mm)}월 ${parseInt(dd)}일 (${dayName}) <span class="day-count">${rsvs.length}건</span></div>`;
+  
+  if(!rsvs.length){
+    html+='<div class="no-rsv">이 날짜에 예약이 없습니다.</div>';
+  } else {
+    rsvs.forEach(([id,r])=>{
+      const timeLabel=r.timeStart?`${r.timeStart}${r.timeEnd?' ~ '+r.timeEnd:''}`:'시간 미정';
+      const stClass=r.status==='방문 완료'?'st-completed':r.status==='취소'?'st-cancelled':'';
+      const stBadge=r.status==='방문 완료'?'rsv-sb-completed':r.status==='취소'?'rsv-sb-cancelled':'rsv-sb-confirmed';
+      
+      let contactHtml='';
+      if(r.visitorPhone) contactHtml+=`<span>📞 ${esc(r.visitorPhone)}</span>`;
+      if(r.visitorKakao) contactHtml+=`<span>💬 ${esc(r.visitorKakao)}</span>`;
+      
+      let puppyHtml='';
+      if(r.puppies&&r.puppies.length){
+        puppyHtml='<div class="rsv-puppies">'+r.puppies.map(p=>{
+          const litter=window._litters[p.litterId];
+          const parentInfo=litter?` (${esc(litter.femaleCode||'?')}×${esc(litter.maleCode||'?')})`:'';
+          const pData=litter?.puppies?.[p.puppyId];
+          const sexIcon=pData?(pData.sex==='female'?'♀':'♂'):'';
+          return `<span class="rsv-puppy-chip">🐶 ${esc(p.puppyName)} <span class="p-sex">${sexIcon}</span>${parentInfo}</span>`;
+        }).join('')+'</div>';
+      }
+      
+      let memoHtml='';
+      if(r.memo) memoHtml=`<div class="rsv-memo">📝 ${esc(r.memo)}</div>`;
+      
+      html+=`<div class="rsv-card ${stClass}">
+        <div class="rsv-time"><span class="time-icon">🕐</span> ${esc(timeLabel)}</div>
+        <div class="rsv-visitor">👤 ${esc(r.visitorName)}</div>
+        ${contactHtml?'<div class="rsv-contact">'+contactHtml+'</div>':''}
+        ${puppyHtml}
+        ${memoHtml}
+        <div class="rsv-actions">
+          <span class="rsv-status-badge ${stBadge}">${esc(r.status||'예약 확정')}</span>
+          <select class="rsv-status-sel" onchange="updateRsvStatus('${id}',this.value)">
+            <option value="예약 확정"${r.status==='예약 확정'||!r.status?' selected':''}>예약 확정</option>
+            <option value="방문 완료"${r.status==='방문 완료'?' selected':''}>방문 완료</option>
+            <option value="취소"${r.status==='취소'?' selected':''}>취소</option>
+          </select>
+          <button class="btn btn-gray btn-sm" onclick="copyRsvMessage('${id}')">📋 안내</button>
+          <button class="btn btn-gray btn-sm" onclick="openRsvModal('${dateStr}','${id}')">✏ 수정</button>
+          <button class="btn btn-gray btn-sm" style="color:var(--red)" onclick="deleteReservation('${id}')">🗑</button>
+        </div>
+      </div>`;
+    });
+  }
+  
+  panel.innerHTML=html;
+  panel.style.display='block';
+}
+
+// ── 월별 통계
+function renderMonthStats(){
+  const rsvs=getReservationsForMonth(window._calYear,window._calMonth);
+  const total=rsvs.length;
+  const confirmed=rsvs.filter(([,r])=>r.status==='예약 확정'||!r.status).length;
+  const completed=rsvs.filter(([,r])=>r.status==='방문 완료').length;
+  const cancelled=rsvs.filter(([,r])=>r.status==='취소').length;
+  document.getElementById('monthStats').innerHTML=
+    `📊 이번 달: <span>전체 ${total}건</span> · <span style="color:#E67E22">확정 ${confirmed}건</span> · <span style="color:var(--green)">완료 ${completed}건</span> · <span style="color:#888">취소 ${cancelled}건</span>`;
+}
+
+// ── 예약 모달
+window.openRsvModal=(dateStr,editId)=>{
+  window._rsvSelectedPuppies=[];
+  document.getElementById('rsv_editId').value=editId||'';
+  document.getElementById('rsvModalTitle').textContent=editId?'📅 예약 수정':'📅 예약 등록';
+  
+  if(editId&&window._reservations[editId]){
+    const r=window._reservations[editId];
+    document.getElementById('rsv_date').value=r.date||'';
+    document.getElementById('rsv_timeStart').value=r.timeStart||'';
+    document.getElementById('rsv_timeEnd').value=r.timeEnd||'';
+    document.getElementById('rsv_name').value=r.visitorName||'';
+    document.getElementById('rsv_phone').value=r.visitorPhone||'';
+    document.getElementById('rsv_kakao').value=r.visitorKakao||'';
+    document.getElementById('rsv_memo').value=r.memo||'';
+    window._rsvSelectedPuppies=(r.puppies||[]).map(p=>({...p}));
+  } else {
+    document.getElementById('rsv_date').value=dateStr||window._calSelectedDate||new Date().toISOString().slice(0,10);
+    document.getElementById('rsv_timeStart').value='';
+    document.getElementById('rsv_timeEnd').value='';
+    document.getElementById('rsv_name').value='';
+    document.getElementById('rsv_phone').value='';
+    document.getElementById('rsv_kakao').value='';
+    document.getElementById('rsv_memo').value='';
+  }
+  
+  document.getElementById('pselSearch').value='';
+  document.getElementById('rsvOverlapWarn').style.display='none';
+  renderPuppySelector();
+  renderSelectedPuppyTags();
+  document.getElementById('rsvModal').classList.add('open');
+};
+window.closeRsvModal=()=>document.getElementById('rsvModal').classList.remove('open');
+
+// ── 강아지 선택 카드 렌더링
+window.renderPuppySelector=()=>{
+  const kw=(document.getElementById('pselSearch')?.value||'').toLowerCase();
+  const litters=window._litters;
+  const container=document.getElementById('pselGroups');
+  if(!Object.keys(litters).length){container.innerHTML='<div class="no-rsv">등록된 강아지가 없습니다.</div>';return;}
+  
+  const sorted=Object.entries(litters).sort(([,a],[,b])=>(b.birthB||'').localeCompare(a.birthB||''));
+  let html='';
+  let hasResults=false;
+  
+  sorted.forEach(([lid,l])=>{
+    const puppies=Object.entries(l.puppies||{}).filter(([,p])=>{
+      if(p.status==='분양 완료') return false;
+      if(!kw) return true;
+      return (p.name||'').toLowerCase().includes(kw)||(l.femaleCode||'').toLowerCase().includes(kw)||(l.maleCode||'').toLowerCase().includes(kw);
+    });
+    if(!puppies.length) return;
+    hasResults=true;
+    
+    html+=`<div class="psel-group-hdr">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} · ${fmt(l.birthB)}</div>`;
+    html+='<div class="psel-grid">';
+    puppies.forEach(([pid,p])=>{
+      const chosen=window._rsvSelectedPuppies.some(sp=>sp.litterId===lid&&sp.puppyId===pid);
+      const photoEl=p.photo?`<img class="psel-photo" src="${p.photo}" alt="${esc(p.name||pid)}">`:`<div class="psel-placeholder">🐶</div>`;
+      const sexTxt=p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'—';
+      html+=`<div class="psel-card${chosen?' chosen':''}" onclick="togglePuppySel('${lid}','${pid}','${esc(p.name||pid)}')">
+        <div class="psel-check">${chosen?'✓':''}</div>
+        ${photoEl}
+        <div class="psel-name">${esc(p.name||pid)}</div>
+        <div class="psel-sex">${sexTxt}</div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  
+  if(!hasResults) html='<div class="no-rsv">검색 결과가 없습니다.</div>';
+  container.innerHTML=html;
+};
+
+window.togglePuppySel=(lid,pid,name)=>{
+  const idx=window._rsvSelectedPuppies.findIndex(p=>p.litterId===lid&&p.puppyId===pid);
+  if(idx>=0) window._rsvSelectedPuppies.splice(idx,1);
+  else window._rsvSelectedPuppies.push({litterId:lid,puppyId:pid,puppyName:name});
+  renderPuppySelector();
+  renderSelectedPuppyTags();
+};
+
+function renderSelectedPuppyTags(){
+  const el=document.getElementById('pselSelected');
+  if(!window._rsvSelectedPuppies.length){el.innerHTML='';return;}
+  el.innerHTML=window._rsvSelectedPuppies.map(p=>
+    `<span class="psel-tag">${esc(p.puppyName)} <span class="tag-x" onclick="togglePuppySel('${p.litterId}','${p.puppyId}','${esc(p.puppyName)}')">✕</span></span>`
+  ).join('');
+}
+
+// ── 시간 겹침 검사
+function checkTimeOverlap(dateStr,startTime,endTime,excludeId){
+  if(!startTime||!endTime) return false;
+  const rsvs=getReservationsForDate(dateStr);
+  return rsvs.some(([id,r])=>{
+    if(id===excludeId) return false;
+    if(r.status==='취소') return false;
+    if(!r.timeStart||!r.timeEnd) return false;
+    return startTime<r.timeEnd && endTime>r.timeStart;
+  });
+}
+
+// ── 예약 저장
+window.saveReservation=async()=>{
+  const editId=document.getElementById('rsv_editId').value;
+  const dateVal=document.getElementById('rsv_date').value;
+  const timeStart=document.getElementById('rsv_timeStart').value;
+  const timeEnd=document.getElementById('rsv_timeEnd').value;
+  const nameVal=document.getElementById('rsv_name').value.trim();
+  const phoneVal=document.getElementById('rsv_phone').value.trim();
+  const kakaoVal=document.getElementById('rsv_kakao').value.trim();
+  const memoVal=document.getElementById('rsv_memo').value.trim();
+  
+  if(!dateVal||!nameVal){toast('날짜와 방문자 이름은 필수입니다.');return;}
+  
+  // 시간 겹침 검사
+  if(timeStart&&timeEnd){
+    if(timeStart>=timeEnd){toast('종료 시간은 시작 시간보다 뒤여야 합니다.');return;}
+    if(checkTimeOverlap(dateVal,timeStart,timeEnd,editId||null)){
+      document.getElementById('rsvOverlapWarn').style.display='block';
+      toast('⚠ 해당 시간대에 기존 예약이 겹칩니다.');return;
+    }
+  }
+  document.getElementById('rsvOverlapWarn').style.display='none';
+  
+  const data={
+    date:dateVal,
+    timeStart:timeStart||'',
+    timeEnd:timeEnd||'',
+    visitorName:nameVal,
+    visitorPhone:phoneVal,
+    visitorKakao:kakaoVal,
+    memo:memoVal,
+    status:editId&&window._reservations[editId]?window._reservations[editId].status:'예약 확정',
+    puppies:window._rsvSelectedPuppies,
+    updatedAt:new Date().toISOString()
+  };
+  
+  try{
+    if(editId){
+      await update(ref(db,`reservations/${editId}`),data);
+      toast('예약이 수정되었습니다.');
+    } else {
+      data.createdAt=new Date().toISOString();
+      await push(ref(db,'reservations'),data);
+      toast('예약이 등록되었습니다!');
+    }
+    closeRsvModal();
+    window._calSelectedDate=dateVal;
+    const d=new Date(dateVal+'T00:00:00');
+    window._calYear=d.getFullYear();
+    window._calMonth=d.getMonth();
+    renderCalendar();renderTodaySummary();renderDayReservations(dateVal);renderMonthStats();
+  }catch(e){
+    console.error('예약 저장 실패:',e);
+    toast('⚠ 예약 저장에 실패했습니다.');
+  }
+};
+
+// ── 예약 삭제
+window.deleteReservation=async(id)=>{
+  if(!confirm('이 예약을 삭제하시겠습니까?')) return;
+  try{
+    await remove(ref(db,`reservations/${id}`));
+    toast('예약이 삭제되었습니다.');
+  }catch(e){
+    console.error('예약 삭제 실패:',e);
+    toast('⚠ 예약 삭제에 실패했습니다.');
+  }
+};
+
+// ── 예약 상태 변경
+window.updateRsvStatus=async(id,status)=>{
+  try{
+    await update(ref(db,`reservations/${id}`),{status,updatedAt:new Date().toISOString()});
+    toast(`"${status}"로 변경되었습니다.`);
+  }catch(e){
+    console.error('상태 변경 실패:',e);
+    toast('⚠ 상태 변경에 실패했습니다.');
+  }
+};
+
+// ── 카카오 안내 메시지 복사
+window.copyRsvMessage=(id)=>{
+  const r=window._reservations[id];
+  if(!r) return;
+  
+  const dateObj=new Date(r.date+'T00:00:00');
+  const dayName=DAYS_KO[dateObj.getDay()];
+  const [yy,mm,dd]=r.date.split('-');
+  
+  let timeInfo='';
+  if(r.timeStart&&r.timeEnd){
+    timeInfo=`🕐 시간: ${r.timeStart} ~ ${r.timeEnd}`;
+  } else if(r.timeStart){
+    timeInfo=`🕐 시간: ${r.timeStart}~`;
+  } else {
+    timeInfo='🕐 시간: 추후 안내';
+  }
+  
+  const puppyNames=(r.puppies||[]).map(p=>p.puppyName).join(', ');
+  
+  const msg=`[골디쉼터 방문 예약 안내] 🐾\n\n안녕하세요, 골디 쉼터입니다.\n방문 예약이 확정되어 안내드립니다.\n\n📅 방문일: ${yy}년 ${parseInt(mm)}월 ${parseInt(dd)}일 (${dayName})\n${timeInfo}\n${puppyNames?'🐶 보실 아이: '+puppyNames+'\n':''}\n⏰ 방문 시간은 약 1시간 30분 단위로 안내드리고 있습니다.\n정확한 시간에 맞춰 방문해 주시면 감사하겠습니다.\n\n❓ 문의: 010-6508-5901\n💬 카카오 상담: open.kakao.com/o/sxGtK0ri\n\n골디 쉼터 🐾\n소규모지만 윤리적으로 키운 아이들`;
+  
+  navigator.clipboard.writeText(msg);
+  toast('안내 메시지가 복사되었습니다. 카카오톡에 붙여넣기 하세요!');
 };
 </script>
 </body>
