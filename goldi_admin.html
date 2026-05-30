@@ -592,7 +592,8 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <div class="modal">
       <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
       <div class="modal-body" id="modalBody"></div>
-      <div class="modal-foot" style="display:flex; justify-content:flex-end; gap:8px; padding:14px; border-top:1.5px solid var(--gray-l); background:var(--gray-ll); border-radius:0 0 12px 12px">
+      <div class="modal-foot" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px; border-top:1.5px solid var(--gray-l); background:var(--gray-ll); border-radius:0 0 12px 12px">
+        <button class="btn btn-gray" id="btnDeleteContract" onclick="deleteContractFromAdmin()" style="font-size:12.5px; padding:8px 16px; color:var(--red); border-color:var(--red); background:#fff">🗑️ 계약 삭제</button>
         <button class="btn btn-gold" id="btnDetailPdf" onclick="downloadContractPdfFromAdmin()" style="font-size:12.5px; padding:8px 16px">📄 PDF 보기 및 다운로드</button>
       </div>
     </div>
@@ -1451,6 +1452,49 @@ function downloadBase64Pdf(dataUri, filename) {
   document.body.removeChild(a);
   toast('계약서 PDF가 기기에 저장되었습니다! 🐾');
 }
+
+window.deleteContractFromAdmin = async () => {
+  const id = window._selectedContractId;
+  const c = window._contracts[id];
+  if (!c) return;
+
+  const msg = `⚠ 정말로 이 계약을 삭제하시겠습니까?\n\n[구매자]: ${c.buyer_name || ''}\n[강아지]: ${c.dogname || ''}\n\n삭제 시 해당 강아지는 자동으로 '분양 전' 상태로 복구되며, 이번 달 매출 통계에서도 제외됩니다.`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnDeleteContract');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ 삭제 중...';
+  btn.disabled = true;
+
+  try {
+    // 1. Firebase에서 계약 삭제
+    await remove(ref(db, `contracts/${id}`));
+
+    // 2. localStorage 백업에서도 삭제
+    try {
+      const ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}');
+      if (ls[id]) {
+        delete ls[id];
+        localStorage.setItem('goldi_contracts', JSON.stringify(ls));
+      }
+    } catch(e) {}
+
+    // 3. 해당하는 새끼 강아지(puppy) 상태를 "분양 전"으로 자동 복구
+    if (c.litter && c.puppy) {
+      await update(ref(db, `litters/${c.litter}/puppies/${c.puppy}`), {status: '분양 전'});
+    }
+
+    toast('계약이 안전하게 삭제되었으며 강아지 상태가 복구되었습니다. 🐾');
+    closeModal();
+  } catch(e) {
+    console.error('Contract deletion failed:', e);
+    toast('⚠ 계약 삭제에 실패했습니다.');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+};
+
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
 window.exportCSV=()=>{
