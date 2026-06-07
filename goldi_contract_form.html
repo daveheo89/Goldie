@@ -515,6 +515,16 @@ async function init(){
       if(contract){
         window._alreadyCompleted=true;
         
+        // G 객체 파라미터 복원 (URL 파라미터가 유실되거나 생략되더라도 DB 데이터 우선)
+        G.dogname = contract.dogname || G.dogname;
+        G.sex = contract.sex || G.sex;
+        G.birthB = contract.birthB || G.birthB;
+        G.femaleCode = contract.femaleCode || G.femaleCode;
+        G.maleCode = contract.maleCode || G.maleCode;
+        G.price = contract.price || G.price;
+        G.saledate = contract.saledate || G.saledate;
+        G.memo = contract.special_memo || G.memo;
+        
         // 입력 폼에 기존 정보 채우기
         document.getElementById('b_name').value = contract.buyer_name || '';
         document.getElementById('b_phone').value = contract.buyer_phone || '';

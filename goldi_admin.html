@@ -435,6 +435,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
       <div id="qrWrap"><div id="qrTarget"></div></div>
       <div class="btn-row">
+        <button class="btn btn-gold btn-sm" onclick="previewLink()">🔍 미리보기</button>
         <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
         <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
         <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
@@ -920,6 +921,13 @@ async function safeCopy(text){
     return false;
   }
 }
+window.previewLink=()=>{
+  if(window._contractUrl){
+    window.open(window._contractUrl,'_blank');
+  }else{
+    toast('링크가 생성되지 않았습니다.');
+  }
+};
 window.copyLink=async()=>{const ok=await safeCopy(window._contractUrl);toast(ok?'링크 복사됐습니다.':'위 창에서 직접 복사해주세요.');};
 window.toggleQR=()=>{const q=document.getElementById('qrWrap');q.style.display=q.style.display==='none'?'block':'none';};
 window.sendKakao=async()=>{
