@@ -837,7 +837,8 @@ function selectDog(key){
   renderDogs();
   const panel=document.getElementById('dog-detail');
   panel.classList.add('show');
-  const age=Math.floor((new Date()-new Date(dog.birth))/86400000/365.25);
+  const age=dog.birth ? Math.floor((new Date()-new Date(dog.birth))/86400000/365.25) : null;
+  const ageTxt=age!==null ? `약 ${age}세` : '—';
   const dl=dog.dueDate?daysFrom(dog.dueDate):null;
   const dueTxt=dog.dueDate?(dl<0?`출산완료 (${fmtDate(dog.dueDate)})`:
     `${fmtDate(dog.dueDate)} (D-${dl})`):'-';
@@ -853,7 +854,7 @@ function selectDog(key){
     <div class="info-row">
       <div class="info-item"><div class="label">현재 견사</div><div class="value">${dog.kennel}</div></div>
       <div class="info-item"><div class="label">생년월일</div><div class="value">${fmtDate(dog.birth)}</div></div>
-      <div class="info-item"><div class="label">나이</div><div class="value">약 ${age}세</div></div>
+      <div class="info-item"><div class="label">나이</div><div class="value">${ageTxt}</div></div>
       ${dog.sex==='female'?`
       <div class="info-item"><div class="label">교배일</div><div class="value">${fmtDate(dog.breeding)||'-'}</div></div>
       <div class="info-item"><div class="label">교배 상대</div><div class="value">${dog.mateCode||'-'}</div></div>
@@ -910,13 +911,12 @@ window.saveDog=async function(){
   const kennel=document.getElementById('dm-kennel').value;
   const birth=document.getElementById('dm-birth').value;
   if(!code){showToast('번호를 입력해주세요');return;}
-  if(!birth){showToast('생년월일을 입력해주세요');return;}
   const saveBtn=document.getElementById('dm-save-btn');
   saveBtn.textContent='저장 중...'; saveBtn.disabled=true;
   try{
     if(dogModalMode==='add'){
       if(allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-      const newDog={code,sex:dogSelectedSex,kennel,birth,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null};
+      const newDog={code,sex:dogSelectedSex,kennel,birth:birth||null,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null};
       const path=dogSelectedSex==='female'?'females':'males';
       await fbPush(path,newDog);
       showToast(`✅ ${code} 추가 완료!`);
@@ -925,7 +925,7 @@ window.saveDog=async function(){
       if(!dog)return;
       if(code!==dog.code&&allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
       const path=dog.sex==='female'?'females':'males';
-      const updates={code,kennel,birth};
+      const updates={code,kennel,birth:birth||null};
       if(dogPendingPhoto!==null)updates.photo=dogPendingPhoto;
       await fbUpdate(`${path}/${dogEditCode}`,updates);
       showToast(`✅ ${dog.code} 수정 완료!`);
