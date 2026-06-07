@@ -2458,16 +2458,7 @@ window.openTMapSearch = function(address) {
     return;
   }
   const encoded = encodeURIComponent(address.trim());
-  const tmapUrl = `tmap://search?name=${encoded}`;
-  
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    window.location.href = tmapUrl;
-  } else {
-    if (confirm('티맵 앱은 모바일 기기에서만 실행 가능합니다.\n대신 네이버 지도에서 검색하시겠습니까?')) {
-      window.open(`https://map.naver.com/v5/search/${encoded}`, '_blank');
-    }
-  }
+  window.location.href = `tmap://search?name=${encoded}`;
 };
 </script>
 </body>
