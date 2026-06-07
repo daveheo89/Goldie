@@ -346,6 +346,7 @@ const FB={
 };
 const app=initializeApp(FB);
 const db=getDatabase(app);
+const EMAIL_NOTIFY_URL = ''; // 이메일 알림 전송용 구글 앱스 스크립트 웹앱 URL (설정 시 이메일 전송 가동)
 
 // ── URL 파라미터 수신 (표준 파서 우선)
 let P = new URLSearchParams(location.search);
@@ -959,6 +960,27 @@ window.submitContract=async()=>{
     await set(ref(db,`contracts/${contractId}`),data);
     // 분양 완료 처리
     await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
+
+    // 이메일 알림 발송 (구글 앱스 스크립트 웹앱 연동)
+    if (typeof EMAIL_NOTIFY_URL !== 'undefined' && EMAIL_NOTIFY_URL) {
+      try {
+        fetch(EMAIL_NOTIFY_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            buyer_name: data.buyer_name,
+            buyer_phone: data.buyer_phone,
+            dogname: data.dogname,
+            sex: data.sex,
+            price: data.price,
+            contract_date: data.contract_date
+          })
+        });
+      } catch(err) {
+        console.warn('이메일 알림 발송 실패:', err);
+      }
+    }
     // localStorage 백업
     try{
       const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
