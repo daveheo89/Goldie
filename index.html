@@ -60,6 +60,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .content{padding:18px 14px 70px;max-width:700px;margin:0 auto;}
 .sec-title{font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--gold);color:#fff;}
+.badge.badge-avail{background:#E8F8EF;color:#27AE60;border:1px solid #A8DDB9;}
+.badge.badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;}
+.badge.badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC;}
 
 .add-dog-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:16px;border:2.5px dashed var(--border);border-radius:var(--radius);background:var(--gold-pale);color:var(--text-muted);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
 .add-dog-btn:hover{border-color:var(--gold);color:var(--gold);}
@@ -162,6 +165,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
 .puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
 .puppy-card:hover{border-color:var(--puppy);}
+.puppy-card.reserved{background:#FFF4E0;opacity:0.85;color:#D35400;border-color:#FFE4A0;}
+.puppy-card.reserved .p-placeholder{background:#FFE4A0;color:#D35400;}
+.puppy-card.reserved .p-name{color:#D35400;}
+.puppy-card.reserved:hover{border-color:#FFC107;}
+
 .puppy-card.sold{background:#eaeaea;opacity:0.65;color:#999;border-color:#d5d5d5;}
 .puppy-card.sold .p-placeholder{background:#dbdbdb;color:#999;}
 .puppy-card.sold .p-name{color:#888;}
@@ -1138,15 +1146,21 @@ function renderPuppies(){
     function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
     const puppyEntries=lt.puppies?Object.entries(lt.puppies):[];
     const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
-      const aSold = a.status === '분양 완료' ? 1 : 0;
-      const bSold = b.status === '분양 완료' ? 1 : 0;
-      return aSold - bSold;
+      const getWeight = (status) => {
+        if (status === '예약') return 1;
+        if (status === '분양 완료') return 2;
+        return 0;
+      };
+      return getWeight(a.status) - getWeight(b.status);
     });
     const puppyCards=sortedPuppyEntries.map(([pid,p])=>{
       const status = p.status || '분양 전';
       let badgeClass = 'badge-avail';
       let cardClass = '';
-      if(status === '예약') badgeClass = 'badge-rsv';
+      if(status === '예약') {
+        badgeClass = 'badge-rsv';
+        cardClass = ' reserved';
+      }
       if(status === '분양 완료') {
         badgeClass = 'badge-sold';
         cardClass = ' sold';
