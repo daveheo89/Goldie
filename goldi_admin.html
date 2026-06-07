@@ -690,7 +690,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div class="modal-body">
         <div class="ffield" style="margin-bottom:12px;">
           <label>분양 계약건 *</label>
-          <select id="dev-contract" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:14px; width:100%;">
+          <select id="dev-contract" onchange="window.handleContractSelectChange(this.value)" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:14px; width:100%;">
             <option value="">-- 계약 선택 --</option>
           </select>
         </div>
@@ -705,10 +705,13 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <div class="ffield" style="margin-bottom:12px;">
           <label>배송 주소 *</label>
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
+            <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" style="flex:1">
             <button type="button" class="btn btn-gray btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
           </div>
-          <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
+          <div style="display:flex;gap:8px;">
+            <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요." style="flex:1">
+            <button type="button" class="btn btn-sm" onclick="window.openTMapSearch(document.getElementById('dev-addr').value + ' ' + document.getElementById('dev-addr-detail').value)" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;background:#1E6FBB;color:#fff;border:none;border-radius:6px;font-weight:700;">🚙 티맵 검색</button>
+          </div>
         </div>
         <div class="ffield" style="margin-bottom:12px;">
           <label>비고 (메모)</label>
@@ -2435,6 +2438,35 @@ window.deleteDelivery = async function() {
   } finally {
     delBtn.disabled = false;
     delBtn.textContent = '🗑️ 삭제';
+  }
+};
+
+window.handleContractSelectChange = function(contractId) {
+  if (!contractId) {
+    document.getElementById('dev-addr').value = '';
+    return;
+  }
+  const contract = window._contracts[contractId];
+  if (contract) {
+    document.getElementById('dev-addr').value = contract.buyer_addr || '';
+  }
+};
+
+window.openTMapSearch = function(address) {
+  if (!address || !address.trim()) {
+    toast('주소를 먼저 입력해주세요.');
+    return;
+  }
+  const encoded = encodeURIComponent(address.trim());
+  const tmapUrl = `tmap://search?name=${encoded}`;
+  
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = tmapUrl;
+  } else {
+    if (confirm('티맵 앱은 모바일 기기에서만 실행 가능합니다.\n대신 네이버 지도에서 검색하시겠습니까?')) {
+      window.open(`https://map.naver.com/v5/search/${encoded}`, '_blank');
+    }
   }
 };
 </script>
