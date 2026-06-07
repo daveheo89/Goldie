@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <style>
 :root {
   --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
@@ -311,6 +312,128 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   .form-group label{font-size:0.75rem;margin-bottom:3px}
   .form-group select, .form-group input{padding:8px 10px;font-size:0.85rem}
   .photo-upload-wrap{height:120px;border-radius:10px}
+  
+  /* 배송 캘린더 모바일 튜닝 */
+  .calendar-day {
+    min-height: 58px;
+    padding: 2px;
+  }
+  .calendar-day-num {
+    font-size: 0.65rem;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+  }
+  .delivery-chip {
+    font-size: 0.52rem;
+    padding: 1px 2px;
+    border-left-width: 2px;
+  }
+}
+
+/* 배송 캘린더 데스크톱 스타일 */
+.calendar-container {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-top: 14px;
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.calendar-header h2 {
+  font-size: 1.1rem;
+  color: var(--brown);
+  font-weight: 900;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+.calendar-day-header {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--gold-pale);
+  padding: 6px 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.calendar-day-header:nth-child(7n+1) { color: #e74c3c; } /* 일요일 */
+.calendar-day-header:nth-child(7n) { color: var(--male); } /* 토요일 */
+
+.calendar-day {
+  background: #fff;
+  min-height: 85px;
+  padding: 4px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.calendar-day:hover {
+  background: var(--gold-pale);
+}
+.calendar-day.empty {
+  background: #fafaf8;
+  cursor: default;
+}
+.calendar-day.today {
+  background: #FFFDF0;
+  border: 2px solid var(--gold);
+}
+.calendar-day-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  text-align: center;
+  line-height: 18px;
+}
+.calendar-day.today .calendar-day-num {
+  background: var(--gold);
+  color: #fff;
+  border-radius: 50%;
+}
+.calendar-day:nth-child(7n+1) .calendar-day-num { color: #e74c3c; } /* 일요일 */
+.calendar-day:nth-child(7n) .calendar-day-num { color: var(--male); } /* 토요일 */
+
+.calendar-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.delivery-chip {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--puppy-bg);
+  color: var(--puppy);
+  border-left: 3px solid var(--puppy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.delivery-chip:hover {
+  opacity: 0.8;
+}
+.delivery-chip.completed {
+  background: #eaeaea;
+  color: #888;
+  border-left-color: #aaa;
+  text-decoration: line-through;
 }
 </style>
 </head>
@@ -351,6 +474,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     <div class="tab" onclick="showTab('breeding')">🌸 번식</div>
     <div class="tab" onclick="showTab('puppies')">🐾 새끼</div>
     <div class="tab" onclick="showTab('move')">🔄 이동</div>
+    <div class="tab" onclick="showTab('delivery')">🚗 배송</div>
   </div>
 
   <div class="content">
@@ -402,6 +526,23 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       </div>
       <div class="sec-title">📋 이동 기록</div>
       <div class="move-log" id="move-log"></div>
+    </div>
+
+    <!-- 배송 캘린더 탭 -->
+    <div id="tab-delivery" class="hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="sec-title" style="margin-bottom:0;">🚗 배송 일정 관리</div>
+        <button class="btn btn-outline btn-sm" onclick="openAddDeliveryModal()" style="margin:0; width:auto; font-size:12px;">＋ 배송 일정 추가</button>
+      </div>
+      
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(-1)" style="padding:4px 8px; width:auto;">◀ 이전달</button>
+          <h2 id="calendar-month-year">YYYY년 MM월</h2>
+          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(1)" style="padding:4px 8px; width:auto;">다음달 ▶</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+      </div>
     </div>
   </div>
 
@@ -500,6 +641,54 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
   </div>
 
+  <!-- 배송 일정 등록/수정 모달 -->
+  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="delivery-modal-title">배송 일정 등록</h2>
+        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>분양 계약건 <span class="req">*</span></label>
+        <select id="dev-contract">
+          <option value="">-- 계약 선택 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>배송 예정 날짜 <span class="req">*</span></label>
+        <input type="date" id="dev-date">
+      </div>
+      <div class="form-group">
+        <label>배송 예정 시간 <span class="req">*</span></label>
+        <input type="time" id="dev-time">
+      </div>
+      <div class="form-group">
+        <label>배송 주소 <span class="req">*</span></label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
+          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
+        </div>
+        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
+      </div>
+      <div class="form-group">
+        <label>비고 (메모)</label>
+        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+      </div>
+      <div class="form-group" id="dev-status-group" style="display:none;">
+        <label>배송 상태</label>
+        <select id="dev-status">
+          <option value="예정">배송 예정</option>
+          <option value="완료">배송 완료</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
+        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
+        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 백신 알림 팝업 -->
   <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
     <div class="vax-popup">
@@ -543,6 +732,11 @@ let males=[];
 let breedingRecords=[];
 let litters=[];
 let moveLog=[];
+let deliveries=[];
+let contracts=[];
+let currentCalendarDate=new Date();
+let deliveryModalMode='add';
+let deliveryEditKey=null;
 let selectedDog=null;
 let openBreedingIdx=null;
 let dogModalMode='add';
@@ -802,6 +996,23 @@ function startListeners(){
   }, error => {
     showFirebaseError(error);
   });
+  // 계약 내역
+  onValue(ref(db,'contracts'), snap=>{
+    contracts=[];
+    snap.forEach(child=>{contracts.push({_key:child.key,...child.val()});});
+    saveLocalCache('contracts', contracts);
+  }, error => {
+    showFirebaseError(error);
+  });
+  // 배송 일정
+  onValue(ref(db,'deliveries'), snap=>{
+    deliveries=[];
+    snap.forEach(child=>{deliveries.push({_key:child.key,...child.val()});});
+    if(!document.getElementById('tab-delivery').classList.contains('hidden'))renderDeliveryCalendar();
+    saveLocalCache('deliveries', deliveries);
+  }, error => {
+    showFirebaseError(error);
+  });
 }
 
 // ═══════════════════════════════════════
@@ -837,14 +1048,15 @@ async function init(){
 //  탭
 // ═══════════════════════════════════════
 window.showTab=function(tab){
-  ['dogs','kennels','breeding','puppies','move'].forEach(t=>
+  ['dogs','kennels','breeding','puppies','move','delivery'].forEach(t=>
     document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
   document.querySelectorAll('.tab').forEach((el,i)=>
-    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move'][i]===tab));
+    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move','delivery'][i]===tab));
   if(tab==='kennels')renderKennels();
   if(tab==='breeding')renderBreeding();
   if(tab==='puppies')renderPuppies();
   if(tab==='move')renderMove();
+  if(tab==='delivery')renderDeliveryCalendar();
 };
 
 // ═══════════════════════════════════════
@@ -1517,6 +1729,253 @@ window.showToast=function(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
+};
+
+// ═══════════════════════════════════════
+//  배송 탭 및 캘린더
+// ═══════════════════════════════════════
+window.renderDeliveryCalendar = function() {
+  const grid = document.getElementById('calendar-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  const dateLabel = document.getElementById('calendar-month-year');
+  const year = currentCalendarDate.getFullYear();
+  const month = currentCalendarDate.getMonth();
+  
+  dateLabel.textContent = `${year}년 ${(month + 1).toString().padStart(2, '0')}월`;
+  
+  // 요일 헤더 추가
+  const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+  daysOfWeek.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'calendar-day-header';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  
+  // 해당 월의 첫 날 요일 및 총 일수 계산
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  
+  // 1일 전 빈 칸 채우기
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const el = document.createElement('div');
+    el.className = 'calendar-day empty';
+    grid.appendChild(el);
+  }
+  
+  const todayStr = today();
+  
+  // 날짜 채우기
+  for (let day = 1; day <= totalDays; day++) {
+    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    const isToday = dayDateStr === todayStr;
+    
+    const dayCell = document.createElement('div');
+    dayCell.className = `calendar-day${isToday ? ' today' : ''}`;
+    dayCell.onclick = () => openAddDeliveryModal(dayDateStr);
+    
+    // 날짜 번호 표시
+    const numEl = document.createElement('div');
+    numEl.className = 'calendar-day-num';
+    numEl.textContent = day;
+    dayCell.appendChild(numEl);
+    
+    // 이 날짜의 배송일정 필터링 및 오름차순 정렬 (시간순)
+    const dayDeliveries = deliveries
+      .filter(d => d.date === dayDateStr)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+      
+    const chipsContainer = document.createElement('div');
+    chipsContainer.className = 'calendar-chips';
+    
+    dayDeliveries.forEach(dev => {
+      const chip = document.createElement('div');
+      chip.className = `delivery-chip${dev.status === '완료' ? ' completed' : ''}`;
+      
+      const timeStr = dev.time ? `${dev.time} ` : '';
+      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'} (${dev.dogname || '강아지'})`;
+      
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        openEditDeliveryModal(dev._key);
+      };
+      chipsContainer.appendChild(chip);
+    });
+    
+    dayCell.appendChild(chipsContainer);
+    grid.appendChild(dayCell);
+  }
+  
+  // 마지막 주 빈 칸 채우기 (총 42칸 기준 남은 칸 채우기)
+  const totalGridCells = firstDayIndex + totalDays;
+  const remainingCells = (7 - (totalGridCells % 7)) % 7;
+  for (let i = 0; i < remainingCells; i++) {
+    const el = document.createElement('div');
+    el.className = 'calendar-day empty';
+    grid.appendChild(el);
+  }
+};
+
+window.changeCalendarMonth = function(offset) {
+  currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+  renderDeliveryCalendar();
+};
+
+window.closeDeliveryModal = function() {
+  document.getElementById('delivery-modal').classList.remove('open');
+};
+
+window.handleDeliveryModalOverlay = function(e) {
+  if (e.target === document.getElementById('delivery-modal')) closeDeliveryModal();
+};
+
+window.searchDeliveryAddress = function() {
+  new window.daum.Postcode({
+    oncomplete: function(data) {
+      let addr = '';
+      if (data.userSelectedType === 'R') {
+        addr = data.roadAddress;
+      } else {
+        addr = data.jibunAddress;
+      }
+      document.getElementById('dev-addr').value = addr;
+    }
+  }).open();
+};
+
+window.openAddDeliveryModal = function(dateStr) {
+  deliveryModalMode = 'add';
+  deliveryEditKey = null;
+  
+  document.getElementById('delivery-modal-title').textContent = '배송 일정 등록';
+  document.getElementById('dev-del-btn').style.display = 'none';
+  document.getElementById('dev-status-group').style.display = 'none';
+  document.getElementById('dev-status').value = '예정';
+  
+  // 완료된 계약건 목록 채우기 (최신순)
+  const sortedContracts = [...contracts].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  const select = document.getElementById('dev-contract');
+  select.innerHTML = '<option value="">-- 계약 선택 --</option>' + 
+    sortedContracts.map(c => `<option value="${c._key}">[강아지: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})] ${c.buyer_name} - ${c.buyer_phone}</option>`).join('');
+  select.disabled = false;
+  
+  document.getElementById('dev-date').value = dateStr || today();
+  document.getElementById('dev-time').value = '12:00';
+  document.getElementById('dev-addr').value = '';
+  document.getElementById('dev-addr-detail').value = '';
+  document.getElementById('dev-memo').value = '';
+  
+  document.getElementById('delivery-modal').classList.add('open');
+};
+
+window.openEditDeliveryModal = function(dKey) {
+  deliveryModalMode = 'edit';
+  deliveryEditKey = dKey;
+  
+  const dev = deliveries.find(d => d._key === dKey);
+  if (!dev) return;
+  
+  document.getElementById('delivery-modal-title').textContent = '배송 일정 수정';
+  document.getElementById('dev-del-btn').style.display = 'block';
+  document.getElementById('dev-status-group').style.display = 'block';
+  
+  const select = document.getElementById('dev-contract');
+  select.innerHTML = `<option value="${dev.contractId}">[강아지: ${dev.dogname} (계약완료)] ${dev.buyer_name} - ${dev.buyer_phone}</option>`;
+  select.value = dev.contractId;
+  select.disabled = true;
+  
+  document.getElementById('dev-date').value = dev.date || '';
+  document.getElementById('dev-time').value = dev.time || '';
+  document.getElementById('dev-addr').value = dev.address || '';
+  document.getElementById('dev-addr-detail').value = '';
+  document.getElementById('dev-memo').value = dev.memo || '';
+  document.getElementById('dev-status').value = dev.status || '예정';
+  
+  document.getElementById('delivery-modal').classList.add('open');
+};
+
+window.saveDelivery = async function() {
+  const contractId = document.getElementById('dev-contract').value;
+  const date = document.getElementById('dev-date').value;
+  const time = document.getElementById('dev-time').value;
+  const addr = document.getElementById('dev-addr').value.trim();
+  const addrDetail = document.getElementById('dev-addr-detail').value.trim();
+  const memo = document.getElementById('dev-memo').value.trim();
+  
+  if (!contractId) { showToast('분양 계약건을 선택해주세요.'); return; }
+  if (!date || !time) { showToast('배송 날짜와 시간을 입력해주세요.'); return; }
+  if (!addr) { showToast('배송 주소를 입력해주세요.'); return; }
+  
+  const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
+  const saveBtn = document.getElementById('dev-save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '저장 중...';
+  
+  try {
+    if (deliveryModalMode === 'add') {
+      const contract = contracts.find(c => c._key === contractId);
+      if (!contract) return;
+      
+      const newDev = {
+        contractId,
+        dogid: contract.dogid || '',
+        dogname: contract.dogname || '',
+        buyer_name: contract.buyer_name || '',
+        buyer_phone: contract.buyer_phone || '',
+        date,
+        time,
+        address: fullAddr,
+        memo,
+        status: '예정',
+        created_at: new Date().toISOString()
+      };
+      
+      await fbPush('deliveries', newDev);
+      showToast('✅ 배송 일정이 정상적으로 등록되었습니다!');
+    } else {
+      const updates = {
+        date,
+        time,
+        address: fullAddr,
+        memo,
+        status: document.getElementById('dev-status').value
+      };
+      await fbUpdate(`deliveries/${deliveryEditKey}`, updates);
+      showToast('✅ 배송 일정이 수정되었습니다!');
+    }
+    closeDeliveryModal();
+    renderDeliveryCalendar();
+  } catch(e) {
+    console.error('배송 일정 저장 실패:', e);
+    showToast('⚠ 저장 실패: ' + e.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '✅ 저장';
+  }
+};
+
+window.deleteDelivery = async function() {
+  if (!deliveryEditKey) return;
+  if (!confirm('정말로 이 배송 일정을 취소/삭제하시겠습니까?')) return;
+  
+  const delBtn = document.getElementById('dev-del-btn');
+  delBtn.disabled = true;
+  delBtn.textContent = '삭제 중...';
+  
+  try {
+    await fbRemove(`deliveries/${deliveryEditKey}`);
+    showToast('🗑️ 배송 일정이 취소되었습니다.');
+    closeDeliveryModal();
+    renderDeliveryCalendar();
+  } catch(e) {
+    console.error('배송 일정 삭제 실패:', e);
+    showToast('⚠ 삭제 실패: ' + e.message);
+  } finally {
+    delBtn.disabled = false;
+    delBtn.textContent = '🗑️ 삭제';
+  }
 };
 
 // ── 시작 ──
