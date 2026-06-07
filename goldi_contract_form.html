@@ -314,8 +314,8 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <div class="step-panel" id="step4">
     <div class="card complete-box">
       <div class="complete-icon">🎉</div>
-      <div class="complete-title">계약이 완료됐습니다!</div>
-      <div class="complete-sub">
+      <div class="complete-title" id="complete-title">계약이 완료됐습니다!</div>
+      <div class="complete-sub" id="complete-sub">
         골디쉼터를 선택해주셔서 감사합니다.<br>
         아래 버튼으로 계약서 PDF를 저장하고<br>
         가이드북도 확인해주세요 🐾
@@ -499,12 +499,62 @@ async function init(){
     <div class="chip"><span class="chip-k">출생일</span><span class="chip-v">${fmt(G.birthB)}</span></div>
     <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
 
-  // 2. 중복 계약 확인 (Firebase + localStorage)
+  // 2. 중복 계약 확인 및 기존 완료 계약 로드
   const dogid=`${G.litter}_${G.puppy}`;
   (async()=>{
     try{
       const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
       const fbStatus=fbSnap.val()?.status;
+      
+      if(fbStatus==='분양 완료'){
+        // Firebase에서 계약 데이터 로드
+        const contractsSnap=await get(ref(db,'contracts'));
+        let contract=null;
+        if(contractsSnap.exists()){
+          const contracts=contractsSnap.val();
+          contract=Object.values(contracts).find(c=>c.dogid===dogid);
+        }
+        
+        if(contract){
+          window._alreadyCompleted=true;
+          
+          // 입력 폼에 기존 정보 채우기
+          document.getElementById('b_name').value = contract.buyer_name || '';
+          document.getElementById('b_phone').value = contract.buyer_phone || '';
+          document.getElementById('b_addr').value = contract.buyer_addr || '';
+          document.getElementById('b_addr_detail').value = contract.buyer_addr_detail || '';
+          if(document.getElementById('b_payment')) document.getElementById('b_payment').value = contract.payment || '';
+          if(document.getElementById('b_transfer')) document.getElementById('b_transfer').value = contract.transfer_name || '';
+          if(document.getElementById('b_deposit')) document.getElementById('b_deposit').value = contract.deposit || 0;
+          if(document.getElementById('b_balance_date')) document.getElementById('b_balance_date').value = contract.balance_date || '';
+          
+          // 계약서 미리보기 HTML 빌드 생성
+          window.goStep2();
+          
+          // 서명 이미지 삽입
+          const signImg=document.getElementById('cv_sign_img');
+          if(signImg && contract.signature){
+            signImg.innerHTML=`<img src="${contract.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;
+          }
+          const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
+          if (cvMemoSignImg && contract.signature_memo) {
+            cvMemoSignImg.innerHTML = `<img src="${contract.signature_memo}" style="max-height:40px; border-radius:3px;">`;
+            cvMemoSignImg.style.border = 'none';
+            cvMemoSignImg.style.background = 'transparent';
+          }
+          
+          // Step 4(완료 화면)로 바로 보내고 가이드 다운로드 제공
+          document.getElementById('complete-title').textContent = '계약이 완료된 강아지입니다!';
+          document.getElementById('complete-sub').innerHTML = `
+            이미 분양 계약 및 서명이 완료되었습니다.<br>
+            아래 버튼을 통해 서명이 완료된 계약서를 다운로드하고<br>
+            가이드북도 함께 확인하실 수 있습니다. 🐾
+          `;
+          window.goStep(4);
+          return;
+        }
+      }
+      
       let lsDup=false;
       try{
         const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
