@@ -683,6 +683,17 @@ function hideLoaderIfReady(){
   }
 }
 
+function showFirebaseError(error) {
+  console.error("Firebase Database Error:", error);
+  const lsText = document.querySelector('#loading-screen .ls-text');
+  const lsSub = document.querySelector('#loading-screen .ls-sub');
+  if (lsText && lsSub) {
+    lsText.textContent = '데이터베이스 연결 실패 😢';
+    lsSub.textContent = 'Firebase 권한 만료 또는 오류. 어드민에서 Realtime DB 규칙 설정을 확인해주세요.';
+  }
+  showToast('⚠️ 데이터베이스 연결 오류가 발생했습니다.');
+}
+
 function startListeners(){
   // 모견
   onValue(ref(db,'females'), snap=>{
@@ -694,6 +705,8 @@ function startListeners(){
     saveLocalCache('females', females);
     isFemalesLoaded = true;
     hideLoaderIfReady();
+  }, error => {
+    showFirebaseError(error);
   });
   // 부견
   onValue(ref(db,'males'), snap=>{
@@ -704,6 +717,8 @@ function startListeners(){
     saveLocalCache('males', males);
     isMalesLoaded = true;
     hideLoaderIfReady();
+  }, error => {
+    showFirebaseError(error);
   });
   // 교배
   onValue(ref(db,'breeding'), snap=>{
@@ -711,6 +726,8 @@ function startListeners(){
     snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
     saveLocalCache('breeding', breedingRecords);
+  }, error => {
+    showFirebaseError(error);
   });
   // 출산
   onValue(ref(db,'litters'), snap=>{
@@ -719,6 +736,8 @@ function startListeners(){
     if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
     checkVaxAlerts();
     saveLocalCache('litters', litters);
+  }, error => {
+    showFirebaseError(error);
   });
   // 이동
   onValue(ref(db,'moveLog'), snap=>{
@@ -726,6 +745,8 @@ function startListeners(){
     snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
     saveLocalCache('moveLog', moveLog);
+  }, error => {
+    showFirebaseError(error);
   });
 }
 

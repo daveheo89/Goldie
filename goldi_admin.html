@@ -747,6 +747,23 @@ function restoreLocalCache() {
 // 스크립트 실행 즉시 캐시 복원
 restoreLocalCache();
 
+function showAdminFirebaseError(error) {
+  console.error("Firebase Database Error:", error);
+  const puppyLoading = document.getElementById('puppyLoading');
+  if (puppyLoading) {
+    puppyLoading.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터베이스 연결 실패 (권한 오류)<br><small>Firebase 권한 만료 또는 오류입니다. Realtime DB 규칙 설정을 확인해주세요.</small></div>`;
+  }
+  const manageList = document.getElementById('manageList');
+  if (manageList) {
+    manageList.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터 로드 실패</div>`;
+  }
+  const dbList = document.getElementById('dbList');
+  if (dbList) {
+    dbList.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터 로드 실패</div>`;
+  }
+  toast('⚠️ Firebase 권한 오류가 발생했습니다.');
+}
+
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
@@ -760,6 +777,8 @@ onValue(ref(db,'litters'),snap=>{
     window._autoSelectedTriggered = true;
     selectPuppy(initLitter, initPuppy);
   }
+}, error => {
+  showAdminFirebaseError(error);
 });
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};
@@ -768,6 +787,8 @@ onValue(ref(db,'contracts'),snap=>{
   window._contracts={...ls,...fb};
   saveLocalCache('contracts', window._contracts);
   renderDB();
+}, error => {
+  showAdminFirebaseError(error);
 });
 
 // ── Firebase 예약 구독
@@ -781,6 +802,8 @@ onValue(ref(db,'reservations'),snap=>{
     renderDayReservations(window._calSelectedDate);
     renderMonthStats();
   }
+}, error => {
+  showAdminFirebaseError(error);
 });
 
 // ── TAB1: 새끼 선택
