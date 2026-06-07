@@ -162,6 +162,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
 .puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
 .puppy-card:hover{border-color:var(--puppy);}
+.puppy-card.sold{background:#eaeaea;opacity:0.65;color:#999;border-color:#d5d5d5;}
+.puppy-card.sold .p-placeholder{background:#dbdbdb;color:#999;}
+.puppy-card.sold .p-name{color:#888;}
+.puppy-card.sold:hover{border-color:#ccc;}
 .puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:5px;}
 .puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:5px;}
 .puppy-card .p-name{font-size:.7rem;font-weight:700;color:var(--puppy);}
@@ -1088,13 +1092,22 @@ function renderPuppies(){
     function vc(d){if(!d)return'';const n=daysFrom(d);if(n<-1)return'done';if(n===0||n===-1)return'today-due';if(n<0)return'overdue';return'';}
     function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
     const puppyEntries=lt.puppies?Object.entries(lt.puppies):[];
-    const puppyCards=puppyEntries.map(([pid,p])=>{
+    const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
+      const aSold = a.status === '분양 완료' ? 1 : 0;
+      const bSold = b.status === '분양 완료' ? 1 : 0;
+      return aSold - bSold;
+    });
+    const puppyCards=sortedPuppyEntries.map(([pid,p])=>{
       const status = p.status || '분양 전';
       let badgeClass = 'badge-avail';
+      let cardClass = '';
       if(status === '예약') badgeClass = 'badge-rsv';
-      if(status === '분양 완료') badgeClass = 'badge-sold';
+      if(status === '분양 완료') {
+        badgeClass = 'badge-sold';
+        cardClass = ' sold';
+      }
       return `
-      <div class="puppy-card" onclick="goToAdminContract('${lt._key}','${pid}','${status}')" style="cursor:pointer; position:relative;">
+      <div class="puppy-card${cardClass}" onclick="goToAdminContract('${lt._key}','${pid}','${status}')" style="cursor:pointer; position:relative;">
         <span class="puppy-edit-btn" onclick="event.stopPropagation(); openEditPuppyModal('${lt._key}','${pid}')" style="position:absolute; top:4px; right:4px; font-size:10px; cursor:pointer; background:rgba(255,255,255,0.85); border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15); z-index:5;">✏️</span>
         ${p.photo?`<img class="p-photo" src="${p.photo}">`:`<div class="p-placeholder">🐶</div>`}
         <div class="p-name">${esc(p.name||pid)}</div>
