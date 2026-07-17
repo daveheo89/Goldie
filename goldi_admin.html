@@ -1463,7 +1463,7 @@ window.saveLitterEdit=async(lid)=>{
   const newMaleCode=data.maleCode;
   const codeChanged=oldFemaleCode!==newFemaleCode||oldMaleCode!==newMaleCode;
   await update(ref(db,`litters/${lid}`),data);
-  // 새끼 저장 + 이름 변경 시 contracts.dogname 동기화
+  // 새끼 저장 + 이름 변경 시 contracts.dogname 및 deliveries.dogname 동기화
   const rows=document.querySelectorAll('#editPuppies .edit-puppy');
   for(const row of rows){
     const pid=row.dataset.pid;
@@ -1471,9 +1471,16 @@ window.saveLitterEdit=async(lid)=>{
     const sex=row.querySelector('.ep-sex').value;
     await update(ref(db,`litters/${lid}/puppies/${pid}`),{name,sex});
     const oldName=(oldLitter.puppies?.[pid]?.name)||'';
-    if(oldName&&name&&oldName!==name){
+    if(name && oldName!==name){
       const mC=Object.entries(window._contracts).filter(([,c])=>c.litter===lid&&c.puppy===pid);
-      for(const [cid] of mC) await update(ref(db,`contracts/${cid}`),{dogname:name});
+      for(const [cid] of mC) {
+        await update(ref(db,`contracts/${cid}`),{dogname:name});
+        // deliveries 동기화
+        const matchingDeliveries = (window._deliveries || []).filter(d => d.contractId === cid);
+        for(const dev of matchingDeliveries) {
+          await update(ref(db, `deliveries/${dev._key}`), {dogname:name});
+        }
+      }
     }
   }
   // 모견/부견 코드 변경 시 contracts 전체 동기화
