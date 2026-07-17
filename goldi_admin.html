@@ -1463,7 +1463,7 @@ window.saveLitterEdit=async(lid)=>{
   const newMaleCode=data.maleCode;
   const codeChanged=oldFemaleCode!==newFemaleCode||oldMaleCode!==newMaleCode;
   await update(ref(db,`litters/${lid}`),data);
-  // 새끼 저장 + 이름 변경 시 contracts.dogname 및 deliveries.dogname 동기화
+  // 새끼 저장 + 이름 변경 시 contracts.dogname 및 deliveries.dogname 및 reservations.puppyName 동기화
   const rows=document.querySelectorAll('#editPuppies .edit-puppy');
   for(const row of rows){
     const pid=row.dataset.pid;
@@ -1471,14 +1471,42 @@ window.saveLitterEdit=async(lid)=>{
     const sex=row.querySelector('.ep-sex').value;
     await update(ref(db,`litters/${lid}/puppies/${pid}`),{name,sex});
     const oldName=(oldLitter.puppies?.[pid]?.name)||'';
-    if(name && oldName!==name){
+    const oldSex=(oldLitter.puppies?.[pid]?.sex)||'';
+    const nameChanged=name && oldName!==name;
+    const sexChanged=sex && oldSex!==sex;
+    if(nameChanged || sexChanged){
       const mC=Object.entries(window._contracts).filter(([,c])=>c.litter===lid&&c.puppy===pid);
       for(const [cid] of mC) {
-        await update(ref(db,`contracts/${cid}`),{dogname:name});
-        // deliveries 동기화
-        const matchingDeliveries = (window._deliveries || []).filter(d => d.contractId === cid);
-        for(const dev of matchingDeliveries) {
-          await update(ref(db, `deliveries/${dev._key}`), {dogname:name});
+        const updates={};
+        if(nameChanged) updates.dogname=name;
+        if(sexChanged) updates.sex=sex;
+        await update(ref(db,`contracts/${cid}`),updates);
+        if(nameChanged){
+          // deliveries 동기화
+          const matchingDeliveries = (window._deliveries || []).filter(d => d.contractId === cid);
+          for(const dev of matchingDeliveries) {
+            await update(ref(db, `deliveries/${dev._key}`), {dogname:name});
+          }
+        }
+      }
+      if(nameChanged){
+        // reservations 동기화
+        const reservations = window._reservations || {};
+        for(const [rid, r] of Object.entries(reservations)){
+          if(r.puppies && Array.isArray(r.puppies)){
+            let updated = false;
+            const updatedPuppies = r.puppies.map(p => {
+              if(p.litterId===lid && p.puppyId===pid){
+                const newP = { ...p, puppyName: name };
+                updated = true;
+                return newP;
+              }
+              return p;
+            });
+            if(updated){
+              await update(ref(db,`reservations/${rid}`),{puppies:updatedPuppies});
+            }
+          }
         }
       }
     }
