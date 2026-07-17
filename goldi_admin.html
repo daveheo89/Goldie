@@ -2970,33 +2970,26 @@ window.syncAllToGoogleCalendar = async function() {
   if (progressEl)  progressEl.style.display = 'block';
   if (syncBtn)     { syncBtn.disabled = true; syncBtn.textContent = '동기화 중...'; }
 
-  // 전체 이벤트 목록 생성
-  const events = [];
+  // 날짜별로 일정을 그룹화하기 위한 객체
+  const dateMap = {};
+
   for (const [, l] of entries) {
     const base  = l.birthA || l.birthB;
     const label = `${l.femaleCode||'?'}×${l.maleCode||'?'}`;
 
     // 백신 3회 (+25, +35, +45)
     [
-      { n: 1, days: 25, color: '5'  },
-      { n: 2, days: 35, color: '5'  },
-      { n: 3, days: 45, color: '11' }
+      { n: 1, days: 25 },
+      { n: 2, days: 35 },
+      { n: 3, days: 45 }
     ].forEach(v => {
       const d = dateToStr(addDaysDate(base, v.days));
       if (!d) return;
-      events.push({
-        summary: `💉 [골디] ${label} ${v.n}차 백신`,
-        description: `골디쉼터 백신 일정 (생후 ${v.days}일)\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n출산일(A): ${base}\n\n※ 골디쉼터 자동 등록`,
-        start: { date: d, timeZone: 'Asia/Seoul' },
-        end:   { date: d, timeZone: 'Asia/Seoul' },
-        colorId: v.color,
-        reminders: {
-          useDefault: false,
-          overrides: [
-            { method: 'popup', minutes: 540 },  // 오전 9시 알림 (00:00 기준 +9h)
-            { method: 'popup', minutes: 1440 }  // 하루 전
-          ]
-        }
+      if (!dateMap[d]) dateMap[d] = [];
+      dateMap[d].push({
+        type: 'vaccine',
+        text: `💉 ${label} ${v.n}차 백신 (생후 ${v.days}일)`,
+        detail: `모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'} (출산일: ${base})`
       });
     });
 
@@ -3005,18 +2998,56 @@ window.syncAllToGoogleCalendar = async function() {
       const d = dateToStr(addDaysDate(base, 30 + i));
       if (!d) continue;
       const isDewormer = i % 2 === 0;
-      events.push({
-        summary: `🪱 [골디] ${label} ${isDewormer ? '구충제' : '메트로니다졸'} (D+${30+i})`,
-        description: `골디쉼터 구충 일정 (D+${30+i}일)\n${isDewormer ? '🟢 구충제 (Drontal 계열)' : '💚 메트로니다졸 (Metronidazole)'}\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n출산일(A): ${base}\n\n※ 골디쉼터 자동 등록`,
-        start: { date: d, timeZone: 'Asia/Seoul' },
-        end:   { date: d, timeZone: 'Asia/Seoul' },
-        colorId: isDewormer ? '2' : '4',  // 세이지(초록)/플라밍고(핑크)
-        reminders: {
-          useDefault: false,
-          overrides: [{ method: 'popup', minutes: 540 }]
-        }
+      if (!dateMap[d]) dateMap[d] = [];
+      dateMap[d].push({
+        type: isDewormer ? 'dewormer' : 'metro',
+        text: `${isDewormer ? '🟢' : '💚'} ${label} ${isDewormer ? '구충제' : '메트로'} (D+${30+i})`,
+        detail: `모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'} (출산일: ${base})`
       });
     }
+  }
+
+  // 묶인 일정을 기반으로 최종 구글 캘린더 이벤트 객체 리스트 생성
+  const events = [];
+  const sortedDates = Object.keys(dateMap).sort();
+
+  for (const d of sortedDates) {
+    const items = dateMap[d];
+    if (!items || !items.length) continue;
+
+    // 제목 만들기
+    // 예: [골디] 💉 A x B 1차 백신 / 🟢 C x D 구충제
+    let summary = `📋 [골디] 방역 일정 (${items.length}건)`;
+    if (items.length === 1) {
+      summary = `📋 [골디] ${items[0].text}`;
+    } else if (items.length === 2) {
+      summary = `📋 [골디] ${items[0].text.split(' ')[0]} ${items[0].text.split(' ')[1]} 등 2건`;
+    }
+
+    // 본문 내용 만들기
+    const description = `★ 오늘의 골디쉼터 방역 일정 (${items.length}건) ★\n\n` + 
+      items.map((item, idx) => `${idx + 1}. ${item.text}\n   - ${item.detail}`).join('\n\n') +
+      `\n\n※ 골디쉼터 어드민에서 자동으로 취합되어 등록된 일정입니다.`;
+
+    // 날짜별 성격에 맞는 컬러 아이디 (백신이 있으면 노란색, 구충제만 있으면 세이지색 등)
+    let colorId = '2'; // 기본: 세이지 (초록)
+    if (items.some(item => item.type === 'vaccine')) {
+      colorId = '5'; // 백신 포함 시: 바나나 (노란색)
+    }
+
+    events.push({
+      summary,
+      description,
+      start: { date: d, timeZone: 'Asia/Seoul' },
+      end:   { date: d, timeZone: 'Asia/Seoul' },
+      colorId,
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 540 } // 오전 9시 알림
+        ]
+      }
+    });
   }
 
   // 순차 생성 (API rate limit 대응)
@@ -3044,7 +3075,7 @@ window.syncAllToGoogleCalendar = async function() {
     }
     const pct = Math.round((created + failed) / total * 100);
     if (progressBar) progressBar.style.width = pct + '%';
-    if (progressTxt) progressTxt.textContent = `동기화 중... ${created + failed}/${total}개 (${pct}%)`;
+    if (progressTxt) progressTxt.textContent = `동기화 중... ${created + failed}/${total}일 (${pct}%)`;
     await new Promise(r => setTimeout(r, 120)); // rate limit 방지
   }
 
@@ -3055,8 +3086,8 @@ window.syncAllToGoogleCalendar = async function() {
 
   if (!tokenExpired) {
     const msg = failed === 0
-      ? `✅ ${created}개 이벤트를 구글 캘린더에 등록 완료!`
-      : `✅ ${created}개 등록 완료 (실패 ${failed}개)`;
+      ? `✅ ${created}일의 방역 일정을 구글 캘린더에 통합 등록 완료!`
+      : `✅ ${created}일 등록 완료 (실패 ${failed}일)`;
     toast(msg);
   }
 };
