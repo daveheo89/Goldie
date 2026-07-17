@@ -777,32 +777,31 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
           <div style="font-size:13px;font-weight:800;color:var(--br);margin-bottom:2px;">📅 구글 캘린더 자동 동기화</div>
-          <div style="font-size:11px;color:var(--gray);" id="gcal-status-text">구글 계정에 연결하면 백신/구충제 일정이 자동으로 계립됩니다.</div>
+          <div style="font-size:11px;color:var(--gray);" id="gcal-status-text">매일 아침 6시경 구글 캘린더에 방역 일정이 자동으로 동기화됩니다. (웹사이트 로그인 불필요)</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <div id="gcal-user-info" style="display:none;font-size:11px;font-weight:700;color:var(--green);padding:4px 10px;background:#E8F8EF;border-radius:12px;border:1px solid #A8DDB9;"></div>
-          <button class="btn btn-gray btn-sm" id="gcal-setup-btn" onclick="toggleGcalSetup()" style="font-size:11px;">⚙️ 설정</button>
-          <button class="btn btn-br btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()">🔗 구글 연결</button>
-          <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="display:none;">📅 전체 동기화</button>
-          <button class="btn btn-gray btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="display:none;font-size:11px;color:var(--red);">연결 해제</button>
+        <div>
+          <button class="btn btn-gray btn-sm" id="gcal-toggle-setup-btn" onclick="toggleGcalManualArea()" style="font-size:11px;margin:0;">⚙️ 수동 동기화 설정</button>
         </div>
       </div>
 
-      <!-- Client ID 설정 영역 (토글) -->
-      <div id="gcal-setup-area" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-l);">
-        <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:8px;">⚠️ Google Cloud Console Client ID 설정 필요</div>
-        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;line-height:1.6;">
-          1. <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue);">console.cloud.google.com</a> 접속<br>
-          2. 프로젝트 생성 → “API 및 서비스” → “Google Calendar API” 활성화<br>
-          3. “사용자 인증 정보” → OAuth 2.0 클라이언트 ID 생성 (유형: 웹 애플리케이션)<br>
-          4. JavaScript 출체 URL에 <strong>http://localhost</strong> 추가<br>
-          5. 클라이언트 ID 복사 → 아래에 붙여넣기
+      <!-- 수동 동기화 및 상세 설정 영역 (기본 숨김) -->
+      <div id="gcal-manual-area" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-l);background:#fbfbfb;padding:12px;border-radius:6px;">
+        <div style="font-size:11.5px;font-weight:800;color:var(--br);margin-bottom:8px;">🛠️ 수동 강제 동기화 (필요한 경우만)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+          <div id="gcal-user-info" style="display:none;font-size:11px;font-weight:700;color:var(--green);padding:4px 10px;background:#E8F8EF;border-radius:12px;border:1px solid #A8DDB9;"></div>
+          <button class="btn btn-br btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()" style="font-size:11px;margin:0;">🔗 구글 로그인 연결</button>
+          <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="display:none;font-size:11px;margin:0;">📅 지금 즉시 전체 동기화</button>
+          <button class="btn btn-gray btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="display:none;font-size:11px;color:var(--red);margin:0;">연결 해제</button>
         </div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="gcal-client-id-input" placeholder="xxxxxx.apps.googleusercontent.com" style="flex:1;border:1.5px solid var(--gray-l);border-radius:7px;padding:8px 12px;font-size:12px;font-family:inherit;outline:none;">
-          <button class="btn btn-gold btn-sm" onclick="saveGcalClientId()">&#128190; 저장</button>
+
+        <div style="font-size:11px;font-weight:800;color:var(--gold);margin-top:14px;margin-bottom:6px;">⚙️ Google OAuth Client ID 설정</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <input type="text" id="gcal-client-id-input" placeholder="xxxxxx.apps.googleusercontent.com" style="flex:1;border:1.5px solid var(--gray-l);border-radius:7px;padding:8px 12px;font-size:12px;font-family:inherit;outline:none;background:#fff;">
+          <button class="btn btn-gold btn-sm" onclick="saveGcalClientId()" style="margin:0;">💾 ID 저장</button>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--gray);">&#9888; 파일을 <strong>http://localhost</strong> 에서 열어야 구글 로그인이 작동합니다 (file:// 불가)</div>
+        <div style="font-size:10.5px;color:var(--gray);line-height:1.5;">
+          ※ 수동 동기화를 이용하려면 Google Cloud Console에서 발급받은 웹 Client ID 설정이 필요합니다.
+        </div>
       </div>
 
       <!-- 동기화 진행 상태 -->
@@ -2834,11 +2833,10 @@ window.saveGcalClientId = function() {
   }
   localStorage.setItem('goldi_gcal_client_id', val);
   toast('✅ Client ID가 저장되었습니다!');
-  document.getElementById('gcal-setup-area').style.display = 'none';
   updateGcalPanelUI();
 };
-window.toggleGcalSetup = function() {
-  const area = document.getElementById('gcal-setup-area');
+window.toggleGcalManualArea = function() {
+  const area = document.getElementById('gcal-manual-area');
   if (!area) return;
   const isHidden = area.style.display === 'none' || !area.style.display;
   area.style.display = isHidden ? 'block' : 'none';
@@ -2866,15 +2864,11 @@ function updateGcalPanelUI() {
     disconnectBtn.style.display = 'inline-flex';
     userInfo.style.display      = 'inline-flex';
     userInfo.textContent        = '✅ ' + (gcalUserEmail || '연결됨');
-    if (statusText) statusText.textContent = '구글 연결 완료! "전체 동기화" 버튼을 눌러주세요.';
   } else {
     connectBtn.style.display    = 'inline-flex';
     syncBtn.style.display       = 'none';
     disconnectBtn.style.display = 'none';
     userInfo.style.display      = 'none';
-    if (statusText) statusText.textContent = hasClientId
-      ? '구글 계정에 연결하면 백신/구충제 일정이 자동으로 등록됩니다.'
-      : '⚠ Client ID를 먼저 설정해주세요 (⚙ 설정 버튼)';
   }
 }
 
