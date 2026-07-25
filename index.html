@@ -2269,6 +2269,51 @@ window.setTreatmentTargetType = function(type) {
   checkBaytrilWarning();
 };
 
+function getLitterLabel(l) {
+  if (!l) return '';
+  
+  // 1. 모견 식별/이름 파싱 (예: 4262/다미)
+  let fCode = (l.femaleCode || '?').trim();
+  const rawFemales = typeof females !== 'undefined' ? females : (window._females || []);
+  const femaleObj = Array.isArray(rawFemales)
+    ? rawFemales.find(f => f && (String(f.code).trim() === fCode || String(f._key) === fCode))
+    : null;
+  if (femaleObj) {
+    const c = (femaleObj.code || '').trim();
+    const n = (femaleObj.name || '').trim();
+    if (c && n && c !== n && !fCode.includes('/')) fCode = `${c}/${n}`;
+    else if (n && !fCode.includes('/')) fCode = n;
+    else if (c && !fCode.includes('/')) fCode = c;
+  }
+
+  // 2. 부견 식별/이름 파싱 (예: 늑구)
+  let mCode = (l.maleCode || '?').trim();
+  const rawMales = typeof males !== 'undefined' ? males : (window._males || []);
+  const maleObj = Array.isArray(rawMales)
+    ? rawMales.find(m => m && (String(m.code).trim() === mCode || String(m._key) === mCode))
+    : null;
+  if (maleObj) {
+    const c = (maleObj.code || '').trim();
+    const n = (maleObj.name || '').trim();
+    if (c && n && c !== n && !mCode.includes('/')) mCode = `${c}/${n}`;
+    else if (n && !mCode.includes('/')) mCode = n;
+    else if (c && !mCode.includes('/')) mCode = c;
+  }
+
+  // 3. 자견 수
+  const puppies = l.puppies || {};
+  const puppyCount = l.count || Object.keys(puppies).length || 1;
+
+  // 4. 생후 일수
+  const ageInDays = l.birthA 
+    ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) 
+    : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
+  
+  const ageStr = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
+
+  return `${fCode} × ${mCode} ${puppyCount}마리${ageStr}`;
+}
+
 function fillTreatmentSelects() {
   const puppySelect = document.getElementById('treat-puppy-select');
   if (puppySelect) {
@@ -2284,22 +2329,14 @@ function fillTreatmentSelects() {
     
     sortedLitters.forEach(l => {
       const lid = l._key || l.id;
-      const parentLabel = `${l.femaleCode || '?'} × ${l.maleCode || '?'}`;
+      const label = getLitterLabel(l);
       const puppies = l.puppies || {};
-      const count = Object.keys(puppies).length || l.count || 1;
-      
-      const ageInDays = l.birthA 
-        ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) 
-        : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
-      
-      const ageLabel = ageInDays !== null ? `생후 ${ageInDays}일` : '';
-      const birthLabel = l.birthA ? ` (${fmtDate(l.birthA)} 출산)` : '';
       
       let sampleWeight = '';
       Object.values(puppies).forEach(p => { if (p.weight && !sampleWeight) sampleWeight = p.weight; });
       const weightAttr = sampleWeight ? ` data-weight="${sampleWeight}"` : '';
 
-      options += `<option value="${lid}"${weightAttr}>[${parentLabel}] 자견 ${count}마리 그룹 - ${ageLabel}${birthLabel}</option>`;
+      options += `<option value="${lid}"${weightAttr}>${label}</option>`;
     });
     
     puppySelect.innerHTML = options;
