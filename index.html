@@ -567,9 +567,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
           <!-- 새끼 선택 필드 -->
           <div class="form-group" id="treat-target-puppy-wrap">
-            <label>새끼 지정 *</label>
+            <label>새끼 (형제 그룹) 지정 *</label>
             <select id="treat-puppy-select" onchange="onTreatmentPuppyChanged()">
-              <option value="">-- 새끼 선택 --</option>
+              <option value="">-- 새끼 (형제 그룹) 선택 --</option>
             </select>
           </div>
 
@@ -2273,23 +2273,35 @@ function fillTreatmentSelects() {
   const puppySelect = document.getElementById('treat-puppy-select');
   if (puppySelect) {
     const currentVal = puppySelect.value;
-    let options = '<option value="">-- 새끼 선택 --</option>';
-    const litterList = Array.isArray(litters) ? litters : Object.entries(litters || {}).map(([k, v]) => ({ _key: k, ...v }));
+    let options = '<option value="">-- 새끼 (형제 그룹) 선택 --</option>';
+    const rawLitters = typeof litters !== 'undefined' ? litters : (window._litters || {});
+    const litterList = Array.isArray(rawLitters) 
+      ? rawLitters 
+      : Object.entries(rawLitters || {}).map(([k, v]) => ({ _key: k, ...v }));
     
-    litterList.forEach(l => {
+    // 출산일(birthA) 최근순 정렬
+    const sortedLitters = [...litterList].sort((a, b) => (b.birthA || '').localeCompare(a.birthA || ''));
+    
+    sortedLitters.forEach(l => {
       const lid = l._key || l.id;
       const parentLabel = `${l.femaleCode || '?'} × ${l.maleCode || '?'}`;
       const puppies = l.puppies || {};
-      Object.entries(puppies).forEach(([pKey, p]) => {
-        const status = p.status || '분양 전';
-        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
-        const ageLabel = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
-        const pName = p.puppyName || p.name || '이름없음';
-        const pGender = genderTxt ? genderTxt(p.gender) : (p.gender || '미정');
-        const weightAttr = p.weight ? ` data-weight="${p.weight}"` : '';
-        options += `<option value="${lid}_${pKey}"${weightAttr}>[${parentLabel}] ${pName} (${pGender})${ageLabel} [${status}]</option>`;
-      });
+      const count = Object.keys(puppies).length || l.count || 1;
+      
+      const ageInDays = l.birthA 
+        ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) 
+        : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
+      
+      const ageLabel = ageInDays !== null ? `생후 ${ageInDays}일` : '';
+      const birthLabel = l.birthA ? ` (${fmtDate(l.birthA)} 출산)` : '';
+      
+      let sampleWeight = '';
+      Object.values(puppies).forEach(p => { if (p.weight && !sampleWeight) sampleWeight = p.weight; });
+      const weightAttr = sampleWeight ? ` data-weight="${sampleWeight}"` : '';
+
+      options += `<option value="${lid}"${weightAttr}>[${parentLabel}] 자견 ${count}마리 그룹 - ${ageLabel}${birthLabel}</option>`;
     });
+    
     puppySelect.innerHTML = options;
     if (currentVal) puppySelect.value = currentVal;
   }
@@ -2408,10 +2420,9 @@ window.checkBaytrilWarning = function() {
     isPregnant = document.getElementById('treat-pregnant-check').checked;
   }
   if (window._treatmentTargetType === 'puppy' && startDate) {
-    const sel = document.getElementById('treat-puppy-select').value;
-    if (sel) {
-      const [litterId] = sel.split('_');
-      const litter = Array.isArray(litters) ? litters.find(l => l._key === litterId) : litters[litterId];
+    const litterId = document.getElementById('treat-puppy-select').value;
+    if (litterId) {
+      const litter = Array.isArray(litters) ? litters.find(l => l._key === litterId) : (litters ? litters[litterId] : null);
       if (litter && litter.birthA) {
         const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
         const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
@@ -2466,10 +2477,10 @@ window.saveTreatment = async function() {
   
   if (type === 'puppy') {
     const sel = document.getElementById('treat-puppy-select').value;
-    if (!sel) { showToast('새끼 강아지를 선택해주세요.'); return; }
+    if (!sel) { showToast('새끼 (형제 그룹)을 선택해주세요.'); return; }
     targetId = sel;
     const selectEl = document.getElementById('treat-puppy-select');
-    targetName = selectEl.options[selectEl.selectedIndex].text.split(']')[1]?.trim() || selectEl.options[selectEl.selectedIndex].text;
+    targetName = selectEl.options[selectEl.selectedIndex].text;
   } else {
     const adultSelVal = document.getElementById('treat-adult-select')?.value.trim() || '';
     const adultInpVal = document.getElementById('treat-adult-input')?.value.trim() || '';
