@@ -3449,9 +3449,9 @@ const SYMPTOM_COMBINATIONS = {
   direct: [],
   cold_wet: ['danpron', 'baytril'],
   cold_dry: ['bromhexine', 'baytril'],
-  diarrhea_simple: ['kingbelin'],
-  diarrhea_anorexia: ['kingbelin', 'carasil'],
-  diarrhea_vomit: ['kingbelin', 'jeslong'],
+  diarrhea_simple: ['kingbelin', 'baytril'],
+  diarrhea_anorexia: ['kingbelin', 'baytril', 'carasil'],
+  diarrhea_vomit: ['kingbelin', 'baytril', 'jeslong'],
   diarrhea_fever: ['kingbelin', 'baytril', 'danpron'],
   wound_inflammation: ['dexasone', 'baytril'],
   anorexia_simple: ['carasil']
@@ -3668,12 +3668,12 @@ const RECOMMENDED_DURATIONS = {
   direct: 3,
   cold_wet: 5,           // 콧물 감기 (항생제 바이트릴 포함) -> 5일
   cold_dry: 5,           // 마른 기침 (항생제 바이트릴 포함) -> 5일
-  diarrhea_simple: 3,    // 단순 설사 (지사제 킹벨린) -> 3일
-  diarrhea_anorexia: 3,  // 설사+식욕부진 -> 3일
-  diarrhea_vomit: 3,     // 설사+구토 -> 3일
+  diarrhea_simple: 5,    // 단순 설사 (항생제 바이트릴 포함) -> 5일
+  diarrhea_anorexia: 5,  // 설사+식욕부진 (항생제 바이트릴 포함) -> 5일
+  diarrhea_vomit: 5,     // 설사+구토 (항생제 바이트릴 포함) -> 5일
   diarrhea_fever: 5,     // 설사+열/염증 (항생제 바이트릴 포함) -> 5일
   wound_inflammation: 5, // 외부상처/염증 (소염제 덱사손 + 바이트릴) -> 5일
-  anorexia_simple: 2     // 단순 식욕부진 (카라실) -> 2일
+  anorexia_simple: 2     // 단순 식욕부진 (카라실 영양) -> 2일
 };
 
 // 증상 템플릿 적용
