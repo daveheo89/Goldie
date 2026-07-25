@@ -2700,25 +2700,92 @@ window.renderDeliveryCalendar = function() {
     numEl.textContent = day;
     dayCell.appendChild(numEl);
     
-    const dayDeliveries = window._deliveries
+    // 1. 배송 일정 (🚗)
+    const dayDeliveries = (window._deliveries || [])
       .filter(d => d.date === dayDateStr)
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
       
-    const chipsContainer = document.createElement('div');
-    chipsContainer.className = 'calendar-chips';
-    
     dayDeliveries.forEach(dev => {
       const chip = document.createElement('div');
       chip.className = `delivery-chip${dev.status === '완료' ? ' completed' : ''}`;
-      
       const timeStr = dev.time ? `${dev.time} ` : '';
-      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'} (${dev.dogname || '강아지'})`;
-      
+      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'}`;
       chip.onclick = (e) => {
         e.stopPropagation();
         window.openEditDeliveryModal(dev._key);
       };
       chipsContainer.appendChild(chip);
+    });
+
+    // 2. 치료/투약 일정 (🩺)
+    const dayTreatments = (window._treatments || []).filter(t => {
+      if (!t || !t.startDate) return false;
+      const s = t.startDate;
+      const e = t.endDate || t.startDate;
+      return dayDateStr >= s && dayDateStr <= e;
+    });
+
+    dayTreatments.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = `delivery-chip${t.status === '완료' ? ' completed' : ''}`;
+      chip.style.background = '#FFFDF0';
+      chip.style.color = '#D35400';
+      chip.style.borderLeft = '3px solid #E67E22';
+      chip.textContent = `🩺 ${t.targetName || '치료'}`;
+      chip.title = `치료 메모: ${t.memo || ''}`;
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof showTab === 'function') showTab('health');
+      };
+      chipsContainer.appendChild(chip);
+    });
+
+    // 3. 방역(백신/구충) 일정 (💉 / 🪱)
+    const littersMap = window._litters || {};
+    Object.values(littersMap).forEach(lt => {
+      if (!lt || !lt.birthA) return;
+      const parentLabel = `${lt.femaleCode || '?'}×${lt.maleCode || '?'}`;
+      const vax1 = dateToStr(addDaysDate(lt.birthA, 25));
+      const vax2 = dateToStr(addDaysDate(lt.birthA, 35));
+      const vax3 = dateToStr(addDaysDate(lt.birthA, 45));
+      
+      let vaxText = '';
+      if (vax1 === dayDateStr) vaxText = '💉 1차백신';
+      else if (vax2 === dayDateStr) vaxText = '💉 2차백신';
+      else if (vax3 === dayDateStr) vaxText = '💉 3차백신';
+
+      if (vaxText) {
+        const chip = document.createElement('div');
+        chip.className = 'delivery-chip';
+        chip.style.background = '#EEF7E0';
+        chip.style.color = '#5A9E1A';
+        chip.style.borderLeft = '3px solid #8BC34A';
+        chip.textContent = `${vaxText} (${parentLabel})`;
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          if (typeof showTab === 'function') showTab('health');
+        };
+        chipsContainer.appendChild(chip);
+      }
+
+      // 구충일 (생후 30~43일 짝수날)
+      for (let i = 0; i < 14; i += 2) {
+        const dwDate = dateToStr(addDaysDate(lt.birthA, 30 + i));
+        if (dwDate === dayDateStr) {
+          const chip = document.createElement('div');
+          chip.className = 'delivery-chip';
+          chip.style.background = '#EEF7E0';
+          chip.style.color = '#5A9E1A';
+          chip.style.borderLeft = '3px solid #8BC34A';
+          chip.textContent = `🪱 구충 (${parentLabel})`;
+          chip.onclick = (e) => {
+            e.stopPropagation();
+            if (typeof showTab === 'function') showTab('health');
+          };
+          chipsContainer.appendChild(chip);
+          break;
+        }
+      }
     });
     
     dayCell.appendChild(chipsContainer);
@@ -3251,6 +3318,29 @@ window.syncAllToGoogleCalendar = async function() {
     }
   }
 
+  // 3. 치료 및 투약 일정 (startDate ~ endDate)
+  const treatmentList = window._treatments || [];
+  treatmentList.forEach(t => {
+    if (!t || !t.startDate) return;
+    const s = t.startDate;
+    const e = t.endDate || t.startDate;
+    const label = `🩺 치료: ${t.targetName || '자견'} (${t.symptom || '투약'})`;
+    
+    let curr = new Date(s + 'T00:00:00');
+    const endD = new Date(e + 'T00:00:00');
+    while (curr <= endD) {
+      const dStr = dateToStr(curr);
+      if (dStr) {
+        if (!dateMap[dStr]) dateMap[dStr] = [];
+        dateMap[dStr].push({
+          type: 'treatment',
+          text: label
+        });
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+  });
+
   // 묶인 일정을 기반으로 최종 구글 캘린더 이벤트 객체 리스트 생성
   const events = [];
   const sortedDates = Object.keys(dateMap).sort();
@@ -3259,15 +3349,17 @@ window.syncAllToGoogleCalendar = async function() {
     const items = dateMap[d];
     if (!items || !items.length) continue;
 
-    // 제목: 각 항목을 줄바꿈 없이 나열 (예: 6887 / 귀남이 6마리 백신 1차)
+    // 제목: 각 항목을 줄바꿈 없이 나열
     const summary = items.map(item => item.text).join('  |  ');
 
     // 본문: 제목 나열만
     const description = items.map(item => item.text).join('\n');
 
-    // 날짜별 성격에 맞는 컬러 아이디 (백신이 있으면 노란색, 구충제만 있으면 세이지색 등)
+    // 날짜별 성격에 맞는 컬러 아이디 (치료 포함 시 주황색, 백신이 있으면 노란색, 구충제만 있으면 초록색)
     let colorId = '2'; // 기본: 세이지 (초록)
-    if (items.some(item => item.type === 'vaccine')) {
+    if (items.some(item => item.type === 'treatment')) {
+      colorId = '6'; // 치료 포함 시: 탠저린 (주황색)
+    } else if (items.some(item => item.type === 'vaccine')) {
       colorId = '5'; // 백신 포함 시: 바나나 (노란색)
     }
 

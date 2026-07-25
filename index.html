@@ -435,6 +435,16 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   border-left-color: #aaa;
   text-decoration: line-through;
 }
+.delivery-chip.treatment-chip {
+  background: #FFFDF0;
+  color: #D35400;
+  border-left-color: #E67E22;
+}
+.delivery-chip.vax-chip-cal {
+  background: #EEF7E0;
+  color: #5A9E1A;
+  border-left-color: #8BC34A;
+}
 </style>
 </head>
 <body>
@@ -1954,7 +1964,6 @@ window.renderDeliveryCalendar = function() {
   
   dateLabel.textContent = `${year}년 ${(month + 1).toString().padStart(2, '0')}월`;
   
-  // 요일 헤더 추가
   const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
   daysOfWeek.forEach(d => {
     const el = document.createElement('div');
@@ -1963,11 +1972,9 @@ window.renderDeliveryCalendar = function() {
     grid.appendChild(el);
   });
   
-  // 해당 월의 첫 날 요일 및 총 일수 계산
   const firstDayIndex = new Date(year, month, 1).getDay();
   const totalDays = new Date(year, month + 1, 0).getDate();
   
-  // 1일 전 빈 칸 채우기
   for (let i = firstDayIndex - 1; i >= 0; i--) {
     const el = document.createElement('div');
     el.className = 'calendar-day empty';
@@ -1976,7 +1983,6 @@ window.renderDeliveryCalendar = function() {
   
   const todayStr = today();
   
-  // 날짜 채우기
   for (let day = 1; day <= totalDays; day++) {
     const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     const isToday = dayDateStr === todayStr;
@@ -1985,39 +1991,96 @@ window.renderDeliveryCalendar = function() {
     dayCell.className = `calendar-day${isToday ? ' today' : ''}`;
     dayCell.onclick = () => openAddDeliveryModal(dayDateStr);
     
-    // 날짜 번호 표시
     const numEl = document.createElement('div');
     numEl.className = 'calendar-day-num';
     numEl.textContent = day;
     dayCell.appendChild(numEl);
     
-    // 이 날짜의 배송일정 필터링 및 오름차순 정렬 (시간순)
-    const dayDeliveries = deliveries
-      .filter(d => d.date === dayDateStr)
-      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-      
     const chipsContainer = document.createElement('div');
     chipsContainer.className = 'calendar-chips';
     
+    // 1. 배송 일정 (🚗)
+    const dayDeliveries = (deliveries || [])
+      .filter(d => d.date === dayDateStr)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+      
     dayDeliveries.forEach(dev => {
       const chip = document.createElement('div');
       chip.className = `delivery-chip${dev.status === '완료' ? ' completed' : ''}`;
-      
       const timeStr = dev.time ? `${dev.time} ` : '';
-      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'} (${dev.dogname || '강아지'})`;
-      
+      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'}`;
       chip.onclick = (e) => {
         e.stopPropagation();
         openEditDeliveryModal(dev._key);
       };
       chipsContainer.appendChild(chip);
     });
-    
+
+    // 2. 치료/투약 일정 (🩺)
+    const dayTreatments = (window._treatments || []).filter(t => {
+      if (!t || !t.startDate) return false;
+      const s = t.startDate;
+      const e = t.endDate || t.startDate;
+      return dayDateStr >= s && dayDateStr <= e;
+    });
+
+    dayTreatments.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = `delivery-chip treatment-chip${t.status === '완료' ? ' completed' : ''}`;
+      chip.textContent = `🩺 ${t.targetName || '치료'}`;
+      chip.title = `치료 메모: ${t.memo || ''}`;
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        showTab('treatment');
+      };
+      chipsContainer.appendChild(chip);
+    });
+
+    // 3. 방역(백신/구충) 일정 (💉 / 🪱)
+    (litters || []).forEach(lt => {
+      if (!lt || !lt.birthA) return;
+      const parentLabel = `${lt.femaleCode || '?'}×${lt.maleCode || '?'}`;
+      const vax1 = dateToStr(addDaysDate(lt.birthA, 25));
+      const vax2 = dateToStr(addDaysDate(lt.birthA, 35));
+      const vax3 = dateToStr(addDaysDate(lt.birthA, 45));
+      
+      let vaxText = '';
+      if (vax1 === dayDateStr) vaxText = '💉 1차백신';
+      else if (vax2 === dayDateStr) vaxText = '💉 2차백신';
+      else if (vax3 === dayDateStr) vaxText = '💉 3차백신';
+
+      if (vaxText) {
+        const chip = document.createElement('div');
+        chip.className = 'delivery-chip vax-chip-cal';
+        chip.textContent = `${vaxText} (${parentLabel})`;
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          showTab('puppies');
+        };
+        chipsContainer.appendChild(chip);
+      }
+
+      // 구충일 (생후 30~43일 짝수날)
+      for (let i = 0; i < 14; i += 2) {
+        const dwDate = dateToStr(addDaysDate(lt.birthA, 30 + i));
+        if (dwDate === dayDateStr) {
+          const chip = document.createElement('div');
+          chip.className = 'delivery-chip vax-chip-cal';
+          chip.textContent = `🪱 구충 (${parentLabel})`;
+          chip.onclick = (e) => {
+            e.stopPropagation();
+            showTab('puppies');
+          };
+          chipsContainer.appendChild(chip);
+          break;
+        }
+      }
+    });
+
     dayCell.appendChild(chipsContainer);
     grid.appendChild(dayCell);
   }
   
-  // 마지막 주 빈 칸 채우기 (총 42칸 기준 남은 칸 채우기)
   const totalGridCells = firstDayIndex + totalDays;
   const remainingCells = (7 - (totalGridCells % 7)) % 7;
   for (let i = 0; i < remainingCells; i++) {
@@ -2614,7 +2677,9 @@ window.saveTreatment = async function() {
   
   try {
     await fbPush('treatments', payload);
-    showToast('✅ 치료 기록이 등록되었습니다!');
+    showToast('✅ 치료 기록이 등록되었습니다! 캘린더에 동기화되었습니다.');
+    renderTreatmentList();
+    renderDeliveryCalendar();
     
     document.getElementById('treat-weight').value = '';
     document.getElementById('treat-memo').value = '';
