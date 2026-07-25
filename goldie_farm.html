@@ -701,7 +701,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
               <input type="date" id="treat-start-date" onchange="onTreatmentDateChanged()">
             </div>
             <div class="form-group" style="flex:1;">
-              <label>기간 (일) *</label>
+              <label>기간 (일) * <span id="treat-duration-hint" style="font-size:11px; font-weight:700; color:var(--gold); margin-left:4px;">💡 추천: 3일</span></label>
               <input type="number" id="treat-duration" value="3" min="1" oninput="onTreatmentDateChanged()">
             </div>
           </div>
@@ -2412,6 +2412,18 @@ window.onTreatmentWeightChanged = function() {
   checkBaytrilWarning();
 };
 
+const RECOMMENDED_DURATIONS = {
+  direct: 3,
+  cold_wet: 5,           // 콧물 감기 (항생제 바이트릴 포함) -> 5일
+  cold_dry: 5,           // 마른 기침 (항생제 바이트릴 포함) -> 5일
+  diarrhea_simple: 3,    // 단순 설사 (지사제 킹벨린) -> 3일
+  diarrhea_anorexia: 3,  // 설사+식욕부진 -> 3일
+  diarrhea_vomit: 3,     // 설사+구토 -> 3일
+  diarrhea_fever: 5,     // 설사+열/염증 (항생제 바이트릴 포함) -> 5일
+  wound_inflammation: 5, // 외부상처/염증 (소염제 덱사손 + 바이트릴) -> 5일
+  anorexia_simple: 2     // 단순 식욕부진 (카라실) -> 2일
+};
+
 window.onTreatmentSymptomChanged = function(symptomKey) {
   const activeKeys = SYMPTOM_COMBINATIONS[symptomKey] || [];
   Object.keys(INJECTION_INFO).forEach(key => {
@@ -2423,6 +2435,11 @@ window.onTreatmentSymptomChanged = function(symptomKey) {
       if (val) val.disabled = !shouldCheck;
     }
   });
+  
+  const recDuration = RECOMMENDED_DURATIONS[symptomKey] || 3;
+  const durInput = document.getElementById('treat-duration');
+  if (durInput) durInput.value = recDuration;
+
   onTreatmentWeightChanged();
 };
 
@@ -2440,7 +2457,14 @@ window.onInjCheckChanged = function(key) {
     }
   }
   document.getElementById('treat-symptom-select').value = 'direct';
+  
+  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
+  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
+  const durInput = document.getElementById('treat-duration');
+  if (durInput) durInput.value = (hasBaytril || hasDexasone) ? 5 : 3;
+
   checkBaytrilWarning();
+  onTreatmentDateChanged();
 };
 
 window.checkBaytrilWarning = function() {
@@ -2485,6 +2509,22 @@ window.onTreatmentDateChanged = function() {
   const startDateVal = document.getElementById('treat-start-date').value;
   const durationVal = parseInt(document.getElementById('treat-duration').value);
   const display = document.getElementById('treat-end-date-display');
+  const hintEl = document.getElementById('treat-duration-hint');
+  
+  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
+  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
+  const symptomKey = document.getElementById('treat-symptom-select')?.value;
+
+  if (hintEl) {
+    if (hasBaytril || hasDexasone || symptomKey === 'cold_wet' || symptomKey === 'cold_dry' || symptomKey === 'diarrhea_fever' || symptomKey === 'wound_inflammation') {
+      hintEl.textContent = '💡 추천: 5일 (항생제/소염제)';
+    } else if (symptomKey === 'anorexia_simple') {
+      hintEl.textContent = '💡 추천: 2일 (대사 촉진)';
+    } else {
+      hintEl.textContent = '💡 추천: 3일 (기본 치료)';
+    }
+  }
+
   if (!display) return;
   if (startDateVal && !isNaN(durationVal) && durationVal > 0) {
     const end = addDaysDate(startDateVal, durationVal - 1);
