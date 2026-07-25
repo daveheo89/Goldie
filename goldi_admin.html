@@ -611,12 +611,12 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
   </header>
 
-  <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
     <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
     <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
     <button class="tab-btn" onclick="switchTab(this,'schedule')">📅 일정</button>
     <button class="tab-btn" onclick="switchTab(this,'health')">💉 방역 관리</button>
+    <button class="tab-btn" onclick="switchTab(this,'treatment')">🩺 치료 관리</button>
   </div>
 
   <!-- TAB1 -->
@@ -814,6 +814,194 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     </div>
 
     <div id="healthTabContent"><div class="loading"><div class="spinner"></div>로딩 중...</div></div>
+  </div>
+
+  <!-- TAB6: 치료 관리 -->
+  <div class="tab-panel" id="tab-treatment">
+    <div class="stitle">🩺 치료 관리</div>
+    
+    <div class="fgrid" style="grid-template-columns: 1fr 1.2fr; gap: 20px; align-items: start;">
+      <!-- 왼쪽: 치료 등록 폼 -->
+      <div class="card" style="margin-bottom:0;">
+        <div style="font-size: 13px; font-weight: 800; color: var(--br); margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+          📝 신규 치료 등록
+        </div>
+        
+        <div class="ffield" style="margin-bottom: 12px;">
+          <label>대상 구분 *</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="btn-treat-type-puppy" class="btn btn-gold btn-sm" onclick="setTreatmentTargetType('puppy')" style="flex:1; justify-content:center; margin:0;">🐶 새끼 (자견)</button>
+            <button type="button" id="btn-treat-type-adult" class="btn btn-gray btn-sm" onclick="setTreatmentTargetType('adult')" style="flex:1; justify-content:center; margin:0;">🐕 성견 (모/부견)</button>
+          </div>
+        </div>
+
+        <!-- 새끼 선택 필드 -->
+        <div class="ffield" id="treat-target-puppy-wrap" style="margin-bottom: 12px;">
+          <label>새끼 지정 *</label>
+          <select id="treat-puppy-select" onchange="onTreatmentPuppyChanged()">
+            <option value="">-- 새끼 선택 --</option>
+          </select>
+        </div>
+
+        <!-- 성견 선택 필드 -->
+        <div class="ffield" id="treat-target-adult-wrap" style="margin-bottom: 12px; display:none;">
+          <label>성견 지정 *</label>
+          <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="예: 6887, 귀남이 등 직접 입력 또는 선택" oninput="onTreatmentAdultChanged()">
+          <datalist id="treat-adult-suggestions"></datalist>
+          
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; font-weight: 700; color: var(--red); cursor: pointer;">
+            <input type="checkbox" id="treat-pregnant-check" onchange="checkBaytrilWarning()"> 🤰 현재 임신 중인 모견입니다.
+          </label>
+        </div>
+
+        <!-- 몸무게 입력 -->
+        <div class="ffield" style="margin-bottom: 12px;">
+          <label>몸무게 (kg) *</label>
+          <input type="number" id="treat-weight" step="0.1" min="0.1" placeholder="예: 3.5" oninput="onTreatmentWeightChanged()">
+        </div>
+
+        <!-- 증상 선택 -->
+        <div class="ffield" style="margin-bottom: 12px;">
+          <label>증상 / 질병 선택 *</label>
+          <select id="treat-symptom-select" onchange="onTreatmentSymptomChanged(this.value)">
+            <option value="direct">직접 약품 선택 (기타)</option>
+            <option value="cold_wet">콧물 감기 (단프론 + 바이트릴 + 아미톱)</option>
+            <option value="cold_dry">마른 기침 감기 [캑캑] (브롬신 + 바이트릴 + 아미톱)</option>
+            <option value="diarrhea_simple">설사 [식욕 정상/구토 없음] (킹벨린 + 아미톱)</option>
+            <option value="diarrhea_anorexia">설사 + 밥 안먹음 [식욕부진] (킹벨린 + 카라실 + 아미톱)</option>
+            <option value="diarrhea_vomit">설사 + 토함 [위장관] (킹벨린 + 제스롱 + 아미톱)</option>
+            <option value="diarrhea_fever">설사 + 열/염증 동반 (킹벨린 + 바이트릴 + 단프론 + 아미톱)</option>
+            <option value="wound_inflammation">외부 상처 염증 (덱사손 + 바이트릴 + 아미톱)</option>
+            <option value="anorexia_simple">단순 식욕 부진 [밥 안먹음] (카라실 + 아미톱)</option>
+          </select>
+        </div>
+
+        <!-- 주사제 조합 구성 -->
+        <div class="ffield" style="margin-bottom: 12px;">
+          <label>주사제 조합 및 투약량 (1kg당 0.1ml 계산) *</label>
+          <div style="background: var(--gray-ll); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; border: 1.5px solid var(--gray-l);">
+            <!-- 바이트릴 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-baytril" onchange="onInjCheckChanged('baytril')"> 바이트릴 (항생제)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-baytril" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 단프론 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-danpron" onchange="onInjCheckChanged('danpron')"> 단프론 (해열진통)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-danpron" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 브롬신 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-bromhexine" onchange="onInjCheckChanged('bromhexine')"> 브롬신 (마른기침)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-bromhexine" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 킹벨린 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-kingbelin" onchange="onInjCheckChanged('kingbelin')"> 킹벨린 (지사제)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-kingbelin" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 카라실 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-carasil" onchange="onInjCheckChanged('carasil')"> 카라실 (대사촉진)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-carasil" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 제스롱 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-jeslong" onchange="onInjCheckChanged('jeslong')"> 제스롱 (항구토제)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-jeslong" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 덱사손 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
+                <input type="checkbox" id="inj-check-dexasone" onchange="onInjCheckChanged('dexasone')"> 덱사손 (소염제)
+              </label>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" id="inj-val-dexasone" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
+              </div>
+            </div>
+            <!-- 아미톱 (상시 고정) -->
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; border-top: 1px dashed var(--gray-l); padding-top:6px; margin-top:2px;">
+              <label style="display:flex; align-items:center; gap:6px; font-weight:800; color:var(--green);">
+                🧪 아미톱 (영양제)
+              </label>
+              <div style="font-size: 11px; font-weight: 700; color: var(--green); background: #E8F8EF; padding: 2px 8px; border-radius: 4px;">
+                혼합 (주사기 끝까지)
+              </div>
+            </div>
+          </div>
+          <!-- 투약 경고판 -->
+          <div id="treat-warning-box" style="display:none; margin-top:8px; padding:8px 10px; background:#FFEBE8; border:1px solid #C0392B; border-radius:6px; font-size:11px; font-weight:800; color:var(--red); line-height:1.4;">
+            ⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다. 약품 조합을 다시 확인해 주세요.
+          </div>
+        </div>
+
+        <!-- 기간 및 날짜 설정 -->
+        <div class="fgrid" style="margin-bottom: 12px;">
+          <div class="ffield">
+            <label>시작일 *</label>
+            <input type="date" id="treat-start-date" onchange="onTreatmentDateChanged()">
+          </div>
+          <div class="ffield">
+            <label>기간 (일) *</label>
+            <input type="number" id="treat-duration" value="3" min="1" oninput="onTreatmentDateChanged()">
+          </div>
+        </div>
+        <div style="font-size: 11.5px; font-weight:700; color: var(--gray); margin-bottom: 14px; background:var(--gray-ll); padding:8px 10px; border-radius:6px;">
+          📅 투약 완료 예정일: <span id="treat-end-date-display" style="color:var(--br); font-weight:800;">-</span>
+        </div>
+
+        <div class="ffield" style="margin-bottom: 16px;">
+          <label>치료 메모 (특이사항)</label>
+          <textarea id="treat-memo" placeholder="예: 기침 소리가 심함, 식욕 저하 동반 등" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:13px; font-family:inherit; outline:none; resize:vertical; min-height:60px;"></textarea>
+        </div>
+
+        <button type="button" class="btn btn-gold" onclick="saveTreatment()" style="width: 100%; justify-content: center; height: 42px; margin:0;">🩺 치료 등록</button>
+      </div>
+
+      <!-- 오른쪽: 치료 현황 목록 -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- 목록 상단 헤더 및 필터 -->
+        <div class="card" style="margin-bottom:0; padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div style="font-size: 14px; font-weight: 800; color: var(--br);">📋 치료 및 처방 현황</div>
+            <!-- 필터 버튼 -->
+            <div style="display:flex; background:var(--gray-ll); padding:2px; border-radius:6px; gap:2px;">
+              <button type="button" id="filter-treat-all" class="btn btn-sm btn-gray" onclick="filterTreatments('all')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; background:#fff; font-weight:800;">전체</button>
+              <button type="button" id="filter-treat-active" class="btn btn-sm btn-gray" onclick="filterTreatments('active')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px;">진행중</button>
+              <button type="button" id="filter-treat-done" class="btn btn-sm btn-gray" onclick="filterTreatments('done')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px;">완료</button>
+            </div>
+          </div>
+          <!-- 치료 카드 목록 영역 -->
+          <div id="treatmentListContent" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="loading"><div class="spinner"></div>치료 내역을 불러오는 중...</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 배송 일정 등록/수정 모달 -->
@@ -1084,6 +1272,9 @@ window.switchTab=(btn,name)=>{
   if(name==='health'){
     renderHealthTab();
   }
+  if(name==='treatment'){
+    initTreatmentTab();
+  }
 };
 
 // ── SWR 로컬 캐시 부스터 (체감 로딩 속도 0.01초 단축)
@@ -1126,6 +1317,10 @@ function restoreLocalCache() {
     const cachedDeliveries = localStorage.getItem('goldi_admin_cache_deliveries');
     if (cachedDeliveries) {
       window._deliveries = JSON.parse(cachedDeliveries);
+    }
+    const cachedTreatments = localStorage.getItem('goldi_admin_cache_treatments');
+    if (cachedTreatments) {
+      window._treatments = JSON.parse(cachedTreatments);
     }
   } catch(e) {
     console.error('[Admin Cache Restore Error]:', e);
@@ -1210,7 +1405,20 @@ onValue(ref(db,'deliveries'),snap=>{
 }, error => {
   showAdminFirebaseError(error);
 });
-
+// ── Firebase 치료 기록 구독
+window._treatments = [];
+onValue(ref(db, 'treatments'), snap => {
+  window._treatments = [];
+  snap.forEach(child => {
+    window._treatments.push({ _key: child.key, ...child.val() });
+  });
+  saveLocalCache('treatments', window._treatments);
+  if (document.getElementById('tab-treatment')?.classList.contains('active')) {
+    renderTreatmentList();
+  }
+}, error => {
+  showAdminFirebaseError(error);
+});
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
   document.getElementById('puppyLoading').style.display='none';
@@ -3004,7 +3212,10 @@ window.syncAllToGoogleCalendar = async function() {
 
   for (const [, l] of entries) {
     const base  = l.birthA || l.birthB;
-    const label = `${l.femaleCode||'?'}×${l.maleCode||'?'}`;
+    const puppyCount = Object.keys(l.puppies || {}).length;
+    const fCode = l.femaleCode || '?';
+    const mCode = l.maleCode || '?';
+    const countLabel = puppyCount ? `${puppyCount}마리 ` : '';
 
     // 백신 3회 (+25, +35, +45)
     [
@@ -3017,8 +3228,7 @@ window.syncAllToGoogleCalendar = async function() {
       if (!dateMap[d]) dateMap[d] = [];
       dateMap[d].push({
         type: 'vaccine',
-        text: `💉 ${label} ${v.n}차 백신 (생후 ${v.days}일)`,
-        detail: `모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'} (출산일: ${base})`
+        text: `${fCode} / ${mCode} ${countLabel}백신 ${v.n}차`
       });
     });
 
@@ -3030,8 +3240,7 @@ window.syncAllToGoogleCalendar = async function() {
       if (!dateMap[d]) dateMap[d] = [];
       dateMap[d].push({
         type: isDewormer ? 'dewormer' : 'metro',
-        text: `${isDewormer ? '🟢' : '💚'} ${label} ${isDewormer ? '구충제' : '메트로'} (D+${30+i})`,
-        detail: `모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'} (출산일: ${base})`
+        text: `${fCode} / ${mCode} ${countLabel}${isDewormer ? '구충' : '메트로'}`
       });
     }
   }
@@ -3044,19 +3253,11 @@ window.syncAllToGoogleCalendar = async function() {
     const items = dateMap[d];
     if (!items || !items.length) continue;
 
-    // 제목 만들기
-    // 예: [골디] 💉 A x B 1차 백신 / 🟢 C x D 구충제
-    let summary = `📋 [골디] 방역 일정 (${items.length}건)`;
-    if (items.length === 1) {
-      summary = `📋 [골디] ${items[0].text}`;
-    } else if (items.length === 2) {
-      summary = `📋 [골디] ${items[0].text.split(' ')[0]} ${items[0].text.split(' ')[1]} 등 2건`;
-    }
+    // 제목: 각 항목을 줄바꿈 없이 나열 (예: 6887 / 귀남이 6마리 백신 1차)
+    const summary = items.map(item => item.text).join('  |  ');
 
-    // 본문 내용 만들기
-    const description = `★ 오늘의 골디쉼터 방역 일정 (${items.length}건) ★\n\n` + 
-      items.map((item, idx) => `${idx + 1}. ${item.text}\n   - ${item.detail}`).join('\n\n') +
-      `\n\n※ 골디쉼터 어드민에서 자동으로 취합되어 등록된 일정입니다.`;
+    // 본문: 제목 나열만
+    const description = items.map(item => item.text).join('\n');
 
     // 날짜별 성격에 맞는 컬러 아이디 (백신이 있으면 노란색, 구충제만 있으면 세이지색 등)
     let colorId = '2'; // 기본: 세이지 (초록)
@@ -3126,6 +3327,546 @@ const _origRenderHealth = window.renderHealthTab;
 window.renderHealthTab = function() {
   updateGcalPanelUI();
   if (_origRenderHealth) _origRenderHealth();
+};
+
+// ═══════════════════════════════════════════════
+//  치료 관리 탭 기능
+// ═══════════════════════════════════════════════
+window._treatmentTargetType = 'puppy';
+window._treatmentsFilter = 'all';
+
+// 주사제 매핑 정보 및 주의 메시지
+const INJECTION_INFO = {
+  baytril: { name: '바이트릴', defaultChecked: false },
+  danpron: { name: '단프론', defaultChecked: false },
+  bromhexine: { name: '브롬신', defaultChecked: false },
+  kingbelin: { name: '킹벨린', defaultChecked: false },
+  carasil: { name: '카라실', defaultChecked: false },
+  jeslong: { name: '제스롱', defaultChecked: false },
+  dexasone: { name: '덱사손', defaultChecked: false }
+};
+
+// 증상별 추천 조합
+const SYMPTOM_COMBINATIONS = {
+  direct: [],
+  cold_wet: ['danpron', 'baytril'],
+  cold_dry: ['bromhexine', 'baytril'],
+  diarrhea_simple: ['kingbelin'],
+  diarrhea_anorexia: ['kingbelin', 'carasil'],
+  diarrhea_vomit: ['kingbelin', 'jeslong'],
+  diarrhea_fever: ['kingbelin', 'baytril', 'danpron'],
+  wound_inflammation: ['dexasone', 'baytril'],
+  anorexia_simple: ['carasil']
+};
+
+window.initTreatmentTab = function() {
+  // 오늘 날짜로 시작일 세팅
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const startDateInput = document.getElementById('treat-start-date');
+  if (startDateInput && !startDateInput.value) {
+    startDateInput.value = todayStr;
+  }
+  
+  // 데이터 불러온 정보가 있으면 바인딩
+  fillTreatmentSelects();
+  onTreatmentDateChanged();
+  renderTreatmentList();
+};
+
+// 대상 구분 변경 (새끼 / 성견)
+window.setTreatmentTargetType = function(type) {
+  window._treatmentTargetType = type;
+  
+  const puppyBtn = document.getElementById('btn-treat-type-puppy');
+  const adultBtn = document.getElementById('btn-treat-type-adult');
+  const puppyWrap = document.getElementById('treat-target-puppy-wrap');
+  const adultWrap = document.getElementById('treat-target-adult-wrap');
+  
+  if (type === 'puppy') {
+    puppyBtn.className = 'btn btn-gold btn-sm';
+    adultBtn.className = 'btn btn-gray btn-sm';
+    puppyWrap.style.display = 'block';
+    adultWrap.style.display = 'none';
+  } else {
+    puppyBtn.className = 'btn btn-gray btn-sm';
+    adultBtn.className = 'btn btn-gold btn-sm';
+    puppyWrap.style.display = 'none';
+    adultWrap.style.display = 'block';
+  }
+  
+  // 데이터 클리어 및 리셋
+  document.getElementById('treat-puppy-select').value = '';
+  document.getElementById('treat-adult-input').value = '';
+  document.getElementById('treat-pregnant-check').checked = false;
+  document.getElementById('treat-weight').value = '';
+  document.getElementById('treat-symptom-select').value = 'direct';
+  
+  // 모든 체크박스 해제 및 활성화
+  Object.keys(INJECTION_INFO).forEach(key => {
+    const chk = document.getElementById(`inj-check-${key}`);
+    const val = document.getElementById(`inj-val-${key}`);
+    if (chk) chk.checked = false;
+    if (val) {
+      val.value = '';
+      val.disabled = true;
+    }
+  });
+  
+  checkBaytrilWarning();
+};
+
+// 드롭다운 및 자동완성 목록 로드
+function fillTreatmentSelects() {
+  const litters = window._litters || {};
+  
+  // 1. 새끼 셀렉트 박스 채우기
+  const puppySelect = document.getElementById('treat-puppy-select');
+  if (puppySelect) {
+    let options = '<option value="">-- 새끼 선택 --</option>';
+    
+    // 출산 그룹별로 새끼 목록 파싱
+    Object.entries(litters).forEach(([lid, l]) => {
+      const parentLabel = `${l.femaleCode || '?'} × ${l.maleCode || '?'}`;
+      const puppies = l.puppies || {};
+      
+      Object.entries(puppies).forEach(([pKey, p]) => {
+        // 분양가능/예약 상태인 새끼 위주로 표시
+        const status = p.status || '분양 전';
+        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : null;
+        const ageLabel = ageInDays ? ` (생후 ${ageInDays}일)` : '';
+        options += `<option value="${lid}_${pKey}" data-weight="${p.weight || ''}">[${parentLabel}] ${p.puppyName || '이름없음'} - ${genderTxt(p.gender)}${ageLabel} [${status}]</option>`;
+      });
+    });
+    puppySelect.innerHTML = options;
+  }
+  
+  // 2. 성견 자동완성 Datalist 채우기
+  const datalist = document.getElementById('treat-adult-suggestions');
+  if (datalist) {
+    const adultSet = new Set();
+    Object.values(litters).forEach(l => {
+      if (l.femaleCode) adultSet.add(l.femaleCode.trim());
+      if (l.maleCode) adultSet.add(l.maleCode.trim());
+    });
+    
+    let datalistHtml = '';
+    adultSet.forEach(code => {
+      datalistHtml += `<option value="${code}">`;
+    });
+    datalist.innerHTML = datalistHtml;
+  }
+}
+
+// 새끼 선택 변경 시
+window.onTreatmentPuppyChanged = function() {
+  const sel = document.getElementById('treat-puppy-select');
+  const selectedOption = sel.options[sel.selectedIndex];
+  if (selectedOption) {
+    // 저장된 몸무게가 있으면 자동으로 채워줌
+    const savedWeight = selectedOption.getAttribute('data-weight');
+    if (savedWeight) {
+      document.getElementById('treat-weight').value = savedWeight;
+      onTreatmentWeightChanged();
+    }
+  }
+  checkBaytrilWarning();
+};
+
+// 성견 입력 변경 시
+window.onTreatmentAdultChanged = function() {
+  checkBaytrilWarning();
+};
+
+// 몸무게 변경 시 용량 자동 계산
+window.onTreatmentWeightChanged = function() {
+  const weightVal = parseFloat(document.getElementById('treat-weight').value);
+  
+  Object.keys(INJECTION_INFO).forEach(key => {
+    const chk = document.getElementById(`inj-check-${key}`);
+    const val = document.getElementById(`inj-val-${key}`);
+    
+    if (chk && chk.checked && !isNaN(weightVal) && weightVal > 0) {
+      // 1kg당 0.1ml 계산 (소수점 둘째 자리까지 반올림)
+      const dose = Math.round(weightVal * 0.1 * 100) / 100;
+      if (val) val.value = dose;
+    } else if (val && (!chk || !chk.checked)) {
+      val.value = '';
+    }
+  });
+  
+  checkBaytrilWarning();
+};
+
+// 증상 템플릿 적용
+window.onTreatmentSymptomChanged = function(symptomKey) {
+  const activeKeys = SYMPTOM_COMBINATIONS[symptomKey] || [];
+  
+  Object.keys(INJECTION_INFO).forEach(key => {
+    const chk = document.getElementById(`inj-check-${key}`);
+    const val = document.getElementById(`inj-val-${key}`);
+    
+    if (chk) {
+      const shouldCheck = activeKeys.includes(key);
+      chk.checked = shouldCheck;
+      if (val) {
+        val.disabled = !shouldCheck;
+      }
+    }
+  });
+  
+  // 용량 자동 업데이트 및 경고 체크
+  onTreatmentWeightChanged();
+};
+
+// 개별 약품 체크 해제/선택 시
+window.onInjCheckChanged = function(key) {
+  const chk = document.getElementById(`inj-check-${key}`);
+  const val = document.getElementById(`inj-val-${key}`);
+  
+  if (chk && val) {
+    val.disabled = !chk.checked;
+    if (!chk.checked) {
+      val.value = '';
+    } else {
+      // 체크하면 몸무게 기반 계산된 값 대입
+      const weightVal = parseFloat(document.getElementById('treat-weight').value);
+      if (!isNaN(weightVal) && weightVal > 0) {
+        val.value = Math.round(weightVal * 0.1 * 100) / 100;
+      }
+    }
+  }
+  
+  // 증상 선택 드롭다운은 '직접 입력'으로 변경
+  document.getElementById('treat-symptom-select').value = 'direct';
+  checkBaytrilWarning();
+};
+
+// 바이트릴 경고 조건 실시간 체크
+window.checkBaytrilWarning = function() {
+  const baytrilChecked = document.getElementById('inj-check-baytril')?.checked;
+  const warnBox = document.getElementById('treat-warning-box');
+  if (!warnBox) return;
+  
+  if (!baytrilChecked) {
+    warnBox.style.display = 'none';
+    return false;
+  }
+  
+  let isPregnant = false;
+  let isVaccineDay = false;
+  
+  const startDate = document.getElementById('treat-start-date').value;
+  
+  // 1. 임신견 여부 체크
+  if (window._treatmentTargetType === 'adult') {
+    isPregnant = document.getElementById('treat-pregnant-check').checked;
+  }
+  
+  // 2. 백신 접종 당일 여부 체크
+  if (window._treatmentTargetType === 'puppy' && startDate) {
+    const sel = document.getElementById('treat-puppy-select').value;
+    if (sel) {
+      const [litterId] = sel.split('_');
+      const litter = window._litters[litterId];
+      if (litter && litter.birthA) {
+        // 백신 예정일 계산 (+25, +35, +45일)
+        const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
+        const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
+        const vax3 = dateToStr(addDaysDate(litter.birthA, 45));
+        
+        if (startDate === vax1 || startDate === vax2 || startDate === vax3) {
+          isVaccineDay = true;
+        }
+      }
+    }
+  }
+  
+  if (isPregnant || isVaccineDay) {
+    let reason = '';
+    if (isPregnant && isVaccineDay) reason = ' (임신 모견 및 백신 접종 당일)';
+    else if (isPregnant) reason = ' (임신 모견)';
+    else if (isVaccineDay) reason = ' (백신 접종 당일)';
+    
+    warnBox.innerHTML = `⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다.${reason}<br>약품 조합을 변경해 주세요.`;
+    warnBox.style.display = 'block';
+    return true;
+  } else {
+    warnBox.style.display = 'none';
+    return false;
+  }
+};
+
+// 투약 기간 기반 완료일 계산
+window.onTreatmentDateChanged = function() {
+  const startDateVal = document.getElementById('treat-start-date').value;
+  const durationVal = parseInt(document.getElementById('treat-duration').value);
+  const display = document.getElementById('treat-end-date-display');
+  
+  if (!display) return;
+  
+  if (startDateVal && !isNaN(durationVal) && durationVal > 0) {
+    // 시작일부터 N일 동안이므로 완료일은 시작일 + (N - 1)일
+    const end = addDaysDate(startDateVal, durationVal - 1);
+    display.textContent = fmtDate(end);
+  } else {
+    display.textContent = '-';
+  }
+  
+  checkBaytrilWarning();
+};
+
+// 필터링 적용
+window.filterTreatments = function(filter) {
+  window._treatmentsFilter = filter;
+  
+  const allBtn = document.getElementById('filter-treat-all');
+  const activeBtn = document.getElementById('filter-treat-active');
+  const doneBtn = document.getElementById('filter-treat-done');
+  
+  if (allBtn) allBtn.style.background = filter === 'all' ? '#fff' : 'transparent';
+  if (allBtn) allBtn.style.fontWeight = filter === 'all' ? '800' : '700';
+  if (activeBtn) activeBtn.style.background = filter === 'active' ? '#fff' : 'transparent';
+  if (activeBtn) activeBtn.style.fontWeight = filter === 'active' ? '800' : '700';
+  if (doneBtn) doneBtn.style.background = filter === 'done' ? '#fff' : 'transparent';
+  if (doneBtn) doneBtn.style.fontWeight = filter === 'done' ? '800' : '700';
+  
+  renderTreatmentList();
+};
+
+// 신규 치료 이력 Firebase 저장
+window.saveTreatment = async function() {
+  const type = window._treatmentTargetType;
+  let targetId = '';
+  let targetName = '';
+  
+  // 1. 강아지 대상 구분에 따른 데이터 가져오기
+  if (type === 'puppy') {
+    const sel = document.getElementById('treat-puppy-select').value;
+    if (!sel) { toast('새끼 강아지를 선택해주세요.'); return; }
+    
+    targetId = sel;
+    const selectEl = document.getElementById('treat-puppy-select');
+    targetName = selectEl.options[selectEl.selectedIndex].text.split(']')[1]?.trim() || selectEl.options[selectEl.selectedIndex].text;
+  } else {
+    const adultVal = document.getElementById('treat-adult-input').value.trim();
+    if (!adultVal) { toast('성견 코드를 입력하거나 선택해주세요.'); return; }
+    targetId = adultVal;
+    targetName = `🐕 성견: ${adultVal}`;
+  }
+  
+  // 2. 몸무게 확인
+  const weightVal = parseFloat(document.getElementById('treat-weight').value);
+  if (isNaN(weightVal) || weightVal <= 0) {
+    toast('올바른 몸무게를 입력해주세요.');
+    return;
+  }
+  
+  // 3. 날짜 및 기간 확인
+  const startDate = document.getElementById('treat-start-date').value;
+  const durationDays = parseInt(document.getElementById('treat-duration').value);
+  if (!startDate || isNaN(durationDays) || durationDays <= 0) {
+    toast('올바른 시작일과 투약 기간을 입력해주세요.');
+    return;
+  }
+  
+  // 4. 바이트릴 경고 상태 확인
+  if (checkBaytrilWarning()) {
+    toast('⚠️ 바이트릴 투약 금지 경고를 확인하고 약품을 조정해주세요.');
+    return;
+  }
+  
+  // 5. 약품 조합 추출
+  const injections = {};
+  let selectedCount = 0;
+  Object.entries(INJECTION_INFO).forEach(([key, info]) => {
+    const chk = document.getElementById(`inj-check-${key}`);
+    const val = document.getElementById(`inj-val-${key}`);
+    if (chk && chk.checked) {
+      const dose = parseFloat(val?.value) || 0;
+      injections[info.name] = dose;
+      selectedCount++;
+    }
+  });
+  
+  if (selectedCount === 0) {
+    toast('최소 하나 이상의 치료 주사제를 선택해주세요.');
+    return;
+  }
+  
+  // 아미톱 상시 필수 추가
+  injections['아미톱(영양제)'] = '끝까지 채움';
+  
+  const symptomSelect = document.getElementById('treat-symptom-select');
+  const symptomName = symptomSelect.options[symptomSelect.selectedIndex].text.split('(')[0].trim();
+  const endDate = dateToStr(addDaysDate(startDate, durationDays - 1));
+  
+  const memo = document.getElementById('treat-memo').value.trim();
+  
+  const isPregnant = type === 'adult' ? document.getElementById('treat-pregnant-check').checked : false;
+  
+  const payload = {
+    targetType: type,
+    targetId,
+    targetName,
+    weight: weightVal,
+    symptom: symptomName,
+    injections,
+    startDate,
+    durationDays,
+    endDate,
+    status: '진행중',
+    isPregnant,
+    memo,
+    createdAt: new Date().toISOString()
+  };
+  
+  try {
+    await push(ref(db, 'treatments'), payload);
+    toast('✅ 치료 기록이 등록되었습니다!');
+    
+    // 입력창 초기화
+    document.getElementById('treat-weight').value = '';
+    document.getElementById('treat-memo').value = '';
+    document.getElementById('treat-symptom-select').value = 'direct';
+    if (type === 'puppy') {
+      document.getElementById('treat-puppy-select').value = '';
+    } else {
+      document.getElementById('treat-adult-input').value = '';
+      document.getElementById('treat-pregnant-check').checked = false;
+    }
+    
+    // 약품 체크 초기화
+    Object.keys(INJECTION_INFO).forEach(key => {
+      const chk = document.getElementById(`inj-check-${key}`);
+      const val = document.getElementById(`inj-val-${key}`);
+      if (chk) chk.checked = false;
+      if (val) {
+        val.value = '';
+        val.disabled = true;
+      }
+    });
+    
+    onTreatmentDateChanged();
+  } catch(e) {
+    console.error('치료 기록 저장 실패:', e);
+    toast('⚠ 등록 실패: ' + e.message);
+  }
+};
+
+// 치료 이력 목록 렌더링
+window.renderTreatmentList = function() {
+  const container = document.getElementById('treatmentListContent');
+  if (!container) return;
+  
+  const list = window._treatments || [];
+  if (!list.length) {
+    container.innerHTML = '<div class="health-empty">등록된 치료 및 처방 내역이 없습니다.</div>';
+    return;
+  }
+  
+  // 종료일 날짜순 정렬 (최신 등록 및 진행중이 위로 오도록)
+  const sorted = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let html = '';
+  
+  sorted.forEach(t => {
+    // 필터링 적용
+    if (window._treatmentsFilter === 'active' && t.status !== '진행중') return;
+    if (window._treatmentsFilter === 'done' && t.status !== '완료') return;
+    
+    const isDone = t.status === '완료';
+    const isOverdue = !isDone && t.endDate < todayStr;
+    const cardBorderColor = isDone ? 'var(--gray-l)' : isOverdue ? 'var(--red)' : 'var(--blue)';
+    
+    // 약품 표시 텍스트 만들기
+    const injTextList = [];
+    Object.entries(t.injections || {}).forEach(([name, val]) => {
+      if (typeof val === 'number') {
+        injTextList.push(`${name} ${val}ml`);
+      } else {
+        injTextList.push(`${name}(${val})`);
+      }
+    });
+    
+    // 남은 기간 계산
+    let dDayText = '';
+    if (!isDone) {
+      const diff = Math.round((new Date(t.endDate + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+      if (diff < 0) {
+        dDayText = `<span style="color:var(--red); font-weight:800;">기간 경과 (완료 필요)</span>`;
+      } else if (diff === 0) {
+        dDayText = `<span style="color:var(--gold); font-weight:800;">오늘 완료!</span>`;
+      } else {
+        dDayText = `<span style="color:var(--blue); font-weight:800;">D-${diff}일 남음</span>`;
+      }
+    } else {
+      dDayText = `<span style="color:var(--green); font-weight:800;">치료 완료</span>`;
+    }
+    
+    const pregnantBadge = t.isPregnant ? '<span style="display:inline-block; font-size:10px; background:#FFEBE8; color:var(--red); padding:1px 6px; border-radius:10px; font-weight:800; margin-left:6px;">🤰 임신견</span>' : '';
+    
+    html += `
+      <div class="card" style="margin-bottom:0; border-left: 5px solid ${cardBorderColor}; padding:14px; position:relative; background:${isDone ? '#fbfbfb' : '#fff'};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:var(--br); display:flex; align-items:center;">
+              ${esc(t.targetName)}
+              ${pregnantBadge}
+            </div>
+            <div style="font-size:11px; color:var(--gray); margin-top:2px;">
+              ⚖️ 몸무게: <strong>${t.weight} kg</strong> &nbsp;|&nbsp; 📋 증상: <strong>${esc(t.symptom)}</strong>
+            </div>
+          </div>
+          <div style="font-size:11.5px; text-align:right;">
+            ${dDayText}
+          </div>
+        </div>
+        
+        <div style="font-size:12px; font-weight:700; color:var(--br); background:var(--gray-ll); padding:8px 10px; border-radius:6px; margin-bottom:8px; line-height:1.4;">
+          💊 처방: ${esc(injTextList.join(' + '))}
+        </div>
+        
+        ${t.memo ? `<div style="font-size:11.5px; color:var(--gray); margin-bottom:8px; padding-left:4px; border-left:2px solid var(--gray-l);">📝 ${esc(t.memo)}</div>` : ''}
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--gray); margin-top:10px; border-top:1px dashed var(--gray-l); padding-top:8px;">
+          <div>📅 기간: ${fmtDate(t.startDate)} ~ ${fmtDate(t.endDate)} (${t.durationDays}일간)</div>
+          <div style="display:flex; gap:6px;">
+            <button class="vax-check-btn ${isDone ? 'checked' : ''}" onclick="toggleTreatmentStatus('${t._key}', '${t.status}')" style="margin:0; padding:2px 8px; font-size:10.5px;">
+              ${isDone ? '✅ 치료 완료' : '⬜ 미완료'}
+            </button>
+            <button class="btn btn-gray btn-sm" onclick="deleteTreatment('${t._key}')" style="margin:0; padding:2px 6px; background:#FFEBE8; color:var(--red); border:1px solid #FFC1C1;">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html || `<div class="health-empty">${window._treatmentsFilter === 'active' ? '진행 중인 치료 내역이 없습니다.' : '완료된 치료 내역이 없습니다.'}</div>`;
+};
+
+// 치료 상태 전환 (완료/진행중)
+window.toggleTreatmentStatus = async function(key, currentStatus) {
+  const newStatus = currentStatus === '진행중' ? '완료' : '진행중';
+  try {
+    await update(ref(db, `treatments/${key}`), { status: newStatus });
+    toast(newStatus === '완료' ? '✅ 치료를 완료 처리했습니다!' : '치료를 진행중으로 변경했습니다.');
+  } catch(e) {
+    toast('⚠ 상태 변경 실패: ' + e.message);
+  }
+};
+
+// 치료 내역 삭제
+window.deleteTreatment = async function(key) {
+  if (!confirm('정말로 이 치료 기록을 삭제하시겠습니까? 삭제 시 복구할 수 없습니다.')) return;
+  try {
+    await remove(ref(db, `treatments/${key}`));
+    toast('🗑️ 치료 기록이 삭제되었습니다.');
+  } catch(e) {
+    toast('⚠ 삭제 실패: ' + e.message);
+  }
 };
 </script>
 
