@@ -576,7 +576,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
           <!-- 성견 선택 필드 -->
           <div class="form-group" id="treat-target-adult-wrap" style="display:none;">
             <label>성견 지정 *</label>
-            <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="예: F21, M06 등 직접 입력 또는 선택" oninput="onTreatmentAdultChanged()">
+            <div style="display:flex; gap:6px; margin-bottom:6px;">
+              <select id="treat-adult-select" onchange="onTreatmentAdultSelectChanged(this.value)" style="flex:1;">
+                <option value="">-- 성견 선택 --</option>
+              </select>
+              <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="직접 입력" oninput="onTreatmentAdultChanged()" style="flex:1;">
+            </div>
             <datalist id="treat-adult-suggestions"></datalist>
             
             <label style="display: flex; align-items: center; gap: 6px; font-size: .8rem; margin-top: 6px; font-weight: 700; color: #e74c3c; cursor: pointer;">
@@ -1095,6 +1100,8 @@ function restoreLocalCache() {
     const cachedTreatments = localStorage.getItem('goldie_cache_treatments');
     if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
 
+    fillTreatmentSelects();
+
     // 로컬 스토리지에 한 마리의 강아지 정보라도 캐싱되어 있다면 즉각 렌더링하고 로더 걷기!
     if (females.length || males.length) {
       const loader = document.getElementById('loading-screen');
@@ -1137,6 +1144,7 @@ function startListeners(){
     snap.forEach(child=>{females.push({_key:child.key,...child.val()});});
     renderDogs();
     if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
+    fillTreatmentSelects();
     
     saveLocalCache('females', females);
     isFemalesLoaded = true;
@@ -1149,6 +1157,7 @@ function startListeners(){
     males=[];
     snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
     renderDogs();
+    fillTreatmentSelects();
     
     saveLocalCache('males', males);
     isMalesLoaded = true;
@@ -1171,6 +1180,7 @@ function startListeners(){
     snap.forEach(child=>{litters.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
     checkVaxAlerts();
+    fillTreatmentSelects();
     saveLocalCache('litters', litters);
   }, error => {
     showFirebaseError(error);
@@ -2243,8 +2253,9 @@ window.setTreatmentTargetType = function(type) {
     adultWrap.style.display = 'block';
   }
   
-  document.getElementById('treat-puppy-select').value = '';
-  document.getElementById('treat-adult-input').value = '';
+  if (document.getElementById('treat-puppy-select')) document.getElementById('treat-puppy-select').value = '';
+  if (document.getElementById('treat-adult-select')) document.getElementById('treat-adult-select').value = '';
+  if (document.getElementById('treat-adult-input')) document.getElementById('treat-adult-input').value = '';
   document.getElementById('treat-pregnant-check').checked = false;
   document.getElementById('treat-weight').value = '';
   document.getElementById('treat-symptom-select').value = 'direct';
@@ -2261,31 +2272,65 @@ window.setTreatmentTargetType = function(type) {
 function fillTreatmentSelects() {
   const puppySelect = document.getElementById('treat-puppy-select');
   if (puppySelect) {
+    const currentVal = puppySelect.value;
     let options = '<option value="">-- 새끼 선택 --</option>';
-    litters.forEach(l => {
+    const litterList = Array.isArray(litters) ? litters : Object.entries(litters || {}).map(([k, v]) => ({ _key: k, ...v }));
+    
+    litterList.forEach(l => {
+      const lid = l._key || l.id;
       const parentLabel = `${l.femaleCode || '?'} × ${l.maleCode || '?'}`;
       const puppies = l.puppies || {};
       Object.entries(puppies).forEach(([pKey, p]) => {
         const status = p.status || '분양 전';
-        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : null;
-        const ageLabel = ageInDays ? ` (생후 ${ageInDays}일)` : '';
-        options += `<option value="${l._key}_${pKey}" data-weight="${p.weight || ''}">[${parentLabel}] ${p.puppyName || '이름없음'} - ${genderTxt(p.gender)}${ageLabel} [${status}]</option>`;
+        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
+        const ageLabel = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
+        const pName = p.puppyName || p.name || '이름없음';
+        const pGender = genderTxt ? genderTxt(p.gender) : (p.gender || '미정');
+        const weightAttr = p.weight ? ` data-weight="${p.weight}"` : '';
+        options += `<option value="${lid}_${pKey}"${weightAttr}>[${parentLabel}] ${pName} (${pGender})${ageLabel} [${status}]</option>`;
       });
     });
     puppySelect.innerHTML = options;
+    if (currentVal) puppySelect.value = currentVal;
   }
   
+  const adultSelect = document.getElementById('treat-adult-select');
   const datalist = document.getElementById('treat-adult-suggestions');
+  
+  const adultSet = new Set();
+  if (Array.isArray(females)) females.forEach(d => { if (d && d.code) adultSet.add(d.code.trim()); });
+  if (Array.isArray(males)) males.forEach(d => { if (d && d.code) adultSet.add(d.code.trim()); });
+  
+  const litterList = Array.isArray(litters) ? litters : Object.values(litters || {});
+  litterList.forEach(l => {
+    if (l && l.femaleCode) adultSet.add(l.femaleCode.trim());
+    if (l && l.maleCode) adultSet.add(l.maleCode.trim());
+  });
+  
+  const sortedAdults = Array.from(adultSet).sort();
+  
+  if (adultSelect) {
+    const currentAdultVal = adultSelect.value;
+    let selectHtml = '<option value="">-- 성견 선택 --</option>';
+    sortedAdults.forEach(code => {
+      selectHtml += `<option value="${code}">🐕 ${code}</option>`;
+    });
+    adultSelect.innerHTML = selectHtml;
+    if (currentAdultVal) adultSelect.value = currentAdultVal;
+  }
+  
   if (datalist) {
-    const adultSet = new Set();
-    females.forEach(d => { if (d.code) adultSet.add(d.code.trim()); });
-    males.forEach(d => { if (d.code) adultSet.add(d.code.trim()); });
-    
     let datalistHtml = '';
-    adultSet.forEach(code => { datalistHtml += `<option value="${code}">`; });
+    sortedAdults.forEach(code => { datalistHtml += `<option value="${code}">`; });
     datalist.innerHTML = datalistHtml;
   }
 }
+
+window.onTreatmentAdultSelectChanged = function(val) {
+  const input = document.getElementById('treat-adult-input');
+  if (input) input.value = val;
+  checkBaytrilWarning();
+};
 
 window.onTreatmentPuppyChanged = function() {
   const sel = document.getElementById('treat-puppy-select');
@@ -2366,7 +2411,7 @@ window.checkBaytrilWarning = function() {
     const sel = document.getElementById('treat-puppy-select').value;
     if (sel) {
       const [litterId] = sel.split('_');
-      const litter = litters.find(l => l._key === litterId);
+      const litter = Array.isArray(litters) ? litters.find(l => l._key === litterId) : litters[litterId];
       if (litter && litter.birthA) {
         const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
         const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
@@ -2426,8 +2471,10 @@ window.saveTreatment = async function() {
     const selectEl = document.getElementById('treat-puppy-select');
     targetName = selectEl.options[selectEl.selectedIndex].text.split(']')[1]?.trim() || selectEl.options[selectEl.selectedIndex].text;
   } else {
-    const adultVal = document.getElementById('treat-adult-input').value.trim();
-    if (!adultVal) { showToast('성견 코드를 입력하거나 선택해주세요.'); return; }
+    const adultSelVal = document.getElementById('treat-adult-select')?.value.trim() || '';
+    const adultInpVal = document.getElementById('treat-adult-input')?.value.trim() || '';
+    const adultVal = adultInpVal || adultSelVal;
+    if (!adultVal) { showToast('성견 코드를 선택하거나 입력해주세요.'); return; }
     targetId = adultVal;
     targetName = `🐕 성견: ${adultVal}`;
   }

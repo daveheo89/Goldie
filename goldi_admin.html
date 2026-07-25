@@ -846,7 +846,12 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <!-- 성견 선택 필드 -->
         <div class="ffield" id="treat-target-adult-wrap" style="margin-bottom: 12px; display:none;">
           <label>성견 지정 *</label>
-          <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="예: 6887, 귀남이 등 직접 입력 또는 선택" oninput="onTreatmentAdultChanged()">
+          <div style="display:flex; gap:6px; margin-bottom:6px;">
+            <select id="treat-adult-select" onchange="onTreatmentAdultSelectChanged(this.value)" style="flex:1;">
+              <option value="">-- 성견 선택 --</option>
+            </select>
+            <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="직접 입력" oninput="onTreatmentAdultChanged()" style="flex:1;">
+          </div>
           <datalist id="treat-adult-suggestions"></datalist>
           
           <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; font-weight: 700; color: var(--red); cursor: pointer;">
@@ -1354,6 +1359,7 @@ onValue(ref(db,'litters'),snap=>{
   renderPuppyGroups();
   renderManageList();
   updateStats();
+  fillTreatmentSelects();
   // health 탭 활성화 시 실시간 업데이트
   if(document.getElementById('tab-health')?.classList.contains('active')){
     renderHealthTab();
@@ -3422,6 +3428,7 @@ function fillTreatmentSelects() {
   // 1. 새끼 셀렉트 박스 채우기
   const puppySelect = document.getElementById('treat-puppy-select');
   if (puppySelect) {
+    const currentVal = puppySelect.value;
     let options = '<option value="">-- 새끼 선택 --</option>';
     
     // 출산 그룹별로 새끼 목록 파싱
@@ -3430,32 +3437,55 @@ function fillTreatmentSelects() {
       const puppies = l.puppies || {};
       
       Object.entries(puppies).forEach(([pKey, p]) => {
-        // 분양가능/예약 상태인 새끼 위주로 표시
         const status = p.status || '분양 전';
-        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : null;
-        const ageLabel = ageInDays ? ` (생후 ${ageInDays}일)` : '';
-        options += `<option value="${lid}_${pKey}" data-weight="${p.weight || ''}">[${parentLabel}] ${p.puppyName || '이름없음'} - ${genderTxt(p.gender)}${ageLabel} [${status}]</option>`;
+        const ageInDays = l.birthA ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
+        const ageLabel = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
+        const pName = p.puppyName || p.name || '이름없음';
+        const pGender = genderTxt ? genderTxt(p.gender) : (p.gender || '미정');
+        const weightAttr = p.weight ? ` data-weight="${p.weight}"` : '';
+        options += `<option value="${lid}_${pKey}"${weightAttr}>[${parentLabel}] ${pName} (${pGender})${ageLabel} [${status}]</option>`;
       });
     });
     puppySelect.innerHTML = options;
+    if (currentVal) puppySelect.value = currentVal;
   }
   
-  // 2. 성견 자동완성 Datalist 채우기
+  // 2. 성견 셀렉트 박스 & datalist 채우기
+  const adultSelect = document.getElementById('treat-adult-select');
   const datalist = document.getElementById('treat-adult-suggestions');
-  if (datalist) {
-    const adultSet = new Set();
-    Object.values(litters).forEach(l => {
-      if (l.femaleCode) adultSet.add(l.femaleCode.trim());
-      if (l.maleCode) adultSet.add(l.maleCode.trim());
+  
+  const adultSet = new Set();
+  Object.values(litters).forEach(l => {
+    if (l && l.femaleCode) adultSet.add(l.femaleCode.trim());
+    if (l && l.maleCode) adultSet.add(l.maleCode.trim());
+  });
+  
+  const sortedAdults = Array.from(adultSet).sort();
+  
+  if (adultSelect) {
+    const currentAdultVal = adultSelect.value;
+    let selectHtml = '<option value="">-- 성견 선택 --</option>';
+    sortedAdults.forEach(code => {
+      selectHtml += `<option value="${code}">🐕 ${code}</option>`;
     });
-    
+    adultSelect.innerHTML = selectHtml;
+    if (currentAdultVal) adultSelect.value = currentAdultVal;
+  }
+  
+  if (datalist) {
     let datalistHtml = '';
-    adultSet.forEach(code => {
+    sortedAdults.forEach(code => {
       datalistHtml += `<option value="${code}">`;
     });
     datalist.innerHTML = datalistHtml;
   }
 }
+
+window.onTreatmentAdultSelectChanged = function(val) {
+  const input = document.getElementById('treat-adult-input');
+  if (input) input.value = val;
+  checkBaytrilWarning();
+};
 
 // 새끼 선택 변경 시
 window.onTreatmentPuppyChanged = function() {
@@ -3648,8 +3678,10 @@ window.saveTreatment = async function() {
     const selectEl = document.getElementById('treat-puppy-select');
     targetName = selectEl.options[selectEl.selectedIndex].text.split(']')[1]?.trim() || selectEl.options[selectEl.selectedIndex].text;
   } else {
-    const adultVal = document.getElementById('treat-adult-input').value.trim();
-    if (!adultVal) { toast('성견 코드를 입력하거나 선택해주세요.'); return; }
+    const adultSelVal = document.getElementById('treat-adult-select')?.value.trim() || '';
+    const adultInpVal = document.getElementById('treat-adult-input')?.value.trim() || '';
+    const adultVal = adultInpVal || adultSelVal;
+    if (!adultVal) { toast('성견 코드를 선택하거나 입력해주세요.'); return; }
     targetId = adultVal;
     targetName = `🐕 성견: ${adultVal}`;
   }
