@@ -5778,11 +5778,10 @@ function renderPuppyDetailContent(){
     if(m.type === 'video') {
       return `
       <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'video')">
-        <video src="${m.src}"></video>
-        <span class="pd-media-type-badge">🎥 고화질 영상</span>
+        <video src="${m.src}" preload="metadata"></video>
+        <span class="pd-media-type-badge">🎥 영상</span>
         <div class="pd-video-play-icon">▶️</div>
         <button class="pd-media-kakao" title="카톡으로 영상 공유" onclick="event.stopPropagation(); shareVideoToKakao('${m.src}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
-        <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_video.mp4')">💾</button>
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
       </div>`;
     } else {
@@ -5824,8 +5823,9 @@ function renderPuppyDetailContent(){
           <div class="ai">📷</div><div class="at">기기에서 업로드</div>
           <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
         </div>
-        <div class="pd-media-add" title="영상 추가 (최대 10MB)">
-          <div class="ai">🎥</div><div class="at">영상 추가</div>
+        <div class="pd-media-add" title="영상 기기에서 업로드">
+          <div class="ai">🎥</div>
+          <div class="at">영상 업로드</div>
           <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
         </div>
       </div>
@@ -5883,37 +5883,37 @@ function renderPuppyDetailContent(){
   `;
 }
 
-// 미디어 파일 업로드 (사진 및 대용량 50MB~500MB+ 클라우드 무제한 동영상)
+// ── Cloudinary 영상/사진 업로드 설정 ──
+const CLOUDINARY_CLOUD = 'gsczj8iv';
+const CLOUDINARY_PRESET = 'snzpvjhz';
+
+// ── 미디어 업로드 (사진: 기기 직접 / 영상: Cloudinary 클라우드) ──
 window.addPuppyMedia = async function(e, litterKey, puppyId, type){
   const files = Array.from(e.target.files);
   if(!files.length) return;
 
   for(const file of files){
     if(type === 'video') {
-      showToast('⏳ 고화질 대용량 동영상을 클라우드로 업로드 중입니다... 잠시만 기다려주세요.');
+      // ── 영상: Cloudinary 무료 클라우드로 대용량 업로드 ──
+      showToast('⏳ 영상 업로드 중입니다... 용량에 따라 10~30초 소요됩니다.');
       try {
-        let videoUrl = '';
-        // 1. Cloudinary 미디어 클라우드 업로드 시도 (대용량 무제한 4K 동영상)
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'docs_upload_example_us_preset');
+        formData.append('upload_preset', CLOUDINARY_PRESET);
+        formData.append('resource_type', 'video');
 
-        const res = await fetch('https://api.cloudinary.com/v1_1/demo/video/upload', {
-          method: 'POST',
-          body: formData
-        });
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`,
+          { method: 'POST', body: formData }
+        );
 
-        if(res.ok) {
-          const data = await res.json();
-          videoUrl = data.secure_url;
-        } else {
-          // Fallback: FileReader 로컬 데이터 스트림
-          videoUrl = await new Promise(res => {
-            const r = new FileReader();
-            r.onload = ev => res(ev.target.result);
-            r.readAsDataURL(file);
-          });
+        if(!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `HTTP ${res.status}`);
         }
+
+        const data = await res.json();
+        const videoUrl = data.secure_url;
 
         const mediaObj = {
           type: 'video',
@@ -5922,13 +5922,14 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, type){
           createdAt: today()
         };
         await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, mediaObj);
-        showToast('✅ 고화질 동영상 업로드가 완료되었습니다!');
+        showToast('✅ 고화질 영상 업로드 완료!');
       } catch(err) {
-        console.error(err);
-        showToast('⚠ 동영상 업로드 중 오류 발생: ' + err.message);
+        console.error('[영상 업로드 오류]', err);
+        showToast('⚠ 영상 업로드 실패: ' + err.message);
       }
+
     } else {
-      // 사진 업로드
+      // ── 사진: 기존 방식 (기기에서 직접) ──
       await new Promise(resolve => {
         const r = new FileReader();
         r.onload = async ev => {
@@ -6249,15 +6250,19 @@ window.openLightbox = function(src, lbl='', type='image'){
   const imgEl = document.getElementById('lightbox-img');
   const videoEl = document.getElementById('lightbox-video');
   const lblEl = document.getElementById('lightbox-lbl');
-
   lblEl.textContent = lbl;
 
   if (type === 'video') {
     imgEl.style.display = 'none';
+    let iframeEl = document.getElementById('lightbox-iframe');
+    if(iframeEl) { iframeEl.src=''; iframeEl.style.display='none'; }
+    // Cloudinary / 일반 영상 URL: video 태그로 직접 재생
     videoEl.style.display = 'block';
     videoEl.src = src;
-    videoEl.play();
+    videoEl.play().catch(()=>{});
   } else {
+    let iframeEl = document.getElementById('lightbox-iframe');
+    if(iframeEl) { iframeEl.src=''; iframeEl.style.display='none'; }
     videoEl.style.display = 'none';
     videoEl.pause();
     imgEl.style.display = 'block';
@@ -6269,6 +6274,8 @@ window.openLightbox = function(src, lbl='', type='image'){
 window.closeLightbox = function(){
   const videoEl = document.getElementById('lightbox-video');
   if (videoEl) { videoEl.pause(); videoEl.src = ''; }
+  const iframeEl = document.getElementById('lightbox-iframe');
+  if (iframeEl) { iframeEl.src = ''; iframeEl.style.display = 'none'; }
   document.getElementById('lightbox').classList.remove('open');
 };
 
