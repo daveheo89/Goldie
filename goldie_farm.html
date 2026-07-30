@@ -5777,11 +5777,11 @@ function renderPuppyDetailContent(){
   const mediaCells = mediaList.map(m => {
     if(m.type === 'video') {
       return `
-      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'video')">
-        <video src="${m.src}" preload="metadata"></video>
-        <span class="pd-media-type-badge">🎥 영상</span>
-        <div class="pd-video-play-icon">▶️</div>
-        <button class="pd-media-kakao" title="카톡으로 영상 공유" onclick="event.stopPropagation(); shareVideoToKakao('${m.src}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
+      <div class="pd-media-cell" onclick="window.open('${m.src}', '_blank')" style="background:#2563EB; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; text-align:center;">
+        <div style="font-size:1.8rem; margin-bottom:2px;">🎬</div>
+        <span class="pd-media-type-badge" style="background:#1E40AF; color:#fff;">📸 구글 포토 영상</span>
+        <div style="font-size:10px; color:#fff; font-weight:800; margin-top:2px;">▶️ 영상 보기</div>
+        <button class="pd-media-kakao" title="카톡으로 영상 공유" onclick="event.stopPropagation(); shareVideoFileToKakao('${m.src}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
       </div>`;
     } else {
@@ -5823,10 +5823,9 @@ function renderPuppyDetailContent(){
           <div class="ai">📷</div><div class="at">기기에서 업로드</div>
           <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
         </div>
-        <div class="pd-media-add" title="영상 기기에서 업로드">
-          <div class="ai">🎥</div>
-          <div class="at">영상 업로드</div>
-          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
+        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
+          <div class="ai" style="font-size:1.5rem;">📸</div>
+          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 영상<br>링크 등록</div>
         </div>
       </div>
     </div>
@@ -5883,53 +5882,38 @@ function renderPuppyDetailContent(){
   `;
 }
 
-// ── Cloudinary 영상/사진 업로드 설정 ──
-const CLOUDINARY_CLOUD = 'gsczj8iv';
-const CLOUDINARY_PRESET = 'snzpvjhz';
+// ── 구글 포토 / 영상 공유 링크 등록 ──
+window.addGooglePhotosVideo = async function(litterKey, puppyId){
+  const raw = prompt('📎 구글 포토 또는 영상 공유 링크를 붙여넣어 주세요:\n\n(예: https://photos.app.goo.gl/... 구글드라이브, 유튜브 모두 가능)', '');
+  if(!raw || !raw.trim()) return;
 
-// ── 미디어 업로드 (사진: 기기 직접 / 영상: Cloudinary 클라우드) ──
+  const videoUrl = raw.trim();
+  const isGPhotos = videoUrl.includes('photos.app.goo.gl') || videoUrl.includes('photos.google.com');
+
+  const mediaObj = {
+    type: 'video',
+    src: videoUrl,
+    isGooglePhotos: isGPhotos,
+    label: isGPhotos ? '📸 구글 포토 고화질 영상' : '🎥 고화질 영상',
+    createdAt: today()
+  };
+
+  try {
+    await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, mediaObj);
+    showToast('✅ 구글 포토 영상 링크가 등록되었습니다!');
+    renderPuppyDetailContent();
+  } catch(err) {
+    showToast('⚠ 저장 실패: ' + err.message);
+  }
+};
+
+// ── 미디어 업로드 (사진: 기기에서 직접 업로드) ──
 window.addPuppyMedia = async function(e, litterKey, puppyId, type){
   const files = Array.from(e.target.files);
   if(!files.length) return;
 
   for(const file of files){
-    if(type === 'video') {
-      // ── 영상: Cloudinary 무료 클라우드로 대용량 업로드 ──
-      showToast('⏳ 영상 업로드 중입니다... 용량에 따라 10~30초 소요됩니다.');
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CLOUDINARY_PRESET);
-        formData.append('resource_type', 'video');
-
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`,
-          { method: 'POST', body: formData }
-        );
-
-        if(!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error?.message || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        const videoUrl = data.secure_url;
-
-        const mediaObj = {
-          type: 'video',
-          src: videoUrl,
-          label: '고화질 영상',
-          createdAt: today()
-        };
-        await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, mediaObj);
-        showToast('✅ 고화질 영상 업로드 완료!');
-      } catch(err) {
-        console.error('[영상 업로드 오류]', err);
-        showToast('⚠ 영상 업로드 실패: ' + err.message);
-      }
-
-    } else {
-      // ── 사진: 기존 방식 (기기에서 직접) ──
+    if(type === 'image') {
       await new Promise(resolve => {
         const r = new FileReader();
         r.onload = async ev => {
@@ -5950,25 +5934,31 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, type){
   renderPuppyDetailContent();
 };
 
-// 카카오톡 영상 즉시 전송 공유
-window.shareVideoToKakao = function(videoUrl, puppyName, motherName, sireName){
-  const shareText = `🐾 [골디쉼터] ${puppyName} 강아지 실물 고화질 동영상입니다!\n\n🐕‍🦺 모견: ${motherName} | 🐕 부견: ${sireName}\n\n👇 아래 링크를 누르시면 고화질 동영상을 짠! 하고 감상하실 수 있습니다:\n${videoUrl}`;
-  
+// 카카오톡 영상 파일 및 링크 전송 공유
+window.shareVideoFileToKakao = async function(videoUrl, puppyName, motherName, sireName){
+  const shareText = `🐾 [골디쉼터] ${puppyName} 강아지 고화질 실물 동영상입니다!\n\n🐕‍🦺 모견: ${motherName} | 🐕 부견: ${sireName}\n\n▶️ 동영상 보기:\n${videoUrl}`;
+
+  // 1. 모바일 기기(갤럭시/아이폰) 원클릭 카카오톡 전송
   if (navigator.share) {
-    navigator.share({
-      title: `[골디쉼터] ${puppyName} 강아지 동영상`,
-      text: shareText,
-      url: videoUrl
-    }).then(() => {
-      showToast('💬 카카오톡으로 동영상을 전송했습니다!');
-    }).catch(err => {
-      if (err.name !== 'AbortError') {
-        copyVideoShareText(shareText);
-      }
-    });
-  } else {
-    copyVideoShareText(shareText);
+    try {
+      await navigator.share({
+        title: `[골디쉼터] ${puppyName} 강아지 동영상`,
+        text: shareText,
+        url: videoUrl
+      });
+      showToast('💬 카카오톡으로 동영상이 성공적으로 공유되었습니다!');
+      return;
+    } catch(err) {
+      if (err.name === 'AbortError') return;
+    }
   }
+
+  // 2. PC 또는 지원되지 않는 브라우저: 클립보드 복사 후 안내
+  copyVideoShareText(shareText);
+};
+
+window.shareVideoToKakao = function(videoUrl, puppyName, motherName, sireName){
+  window.shareVideoFileToKakao(videoUrl, puppyName, motherName, sireName);
 };
 
 function copyVideoShareText(text) {
