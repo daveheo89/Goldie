@@ -5882,9 +5882,9 @@ window.generateProfileCard = async function(litterKey, puppyId){
   if (p.photo) photoSrcs.push(p.photo);
   mediaList.forEach(m => { if(m.src && !photoSrcs.includes(m.src)) photoSrcs.push(m.src); });
 
-  // 캔버스 크기 (부견 세로 긴 프레임 포함 최적 비율)
+  // 캔버스 크기 (정밀 배치 좌표)
   const W = 600;
-  const H = 1180;
+  const H = 1150;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -5920,8 +5920,8 @@ window.generateProfileCard = async function(litterKey, puppyId){
   const validPhotos = loadedPhotos.filter(img => img !== null);
   const sireImg = await loadImage(sireInfo.photo);
 
-  // 3. 동적 사진 레이아웃 그리기 (Y: 85 ~ 440)
-  const pX = 20, pY = 85, pW = 560, pH = 355;
+  // 3. 동적 강아지 사진 영역 (Y: 85 ~ 430)
+  const pX = 20, pY = 85, pW = 560, pH = 345;
 
   function drawRoundedImg(img, x, y, w, h, radius=12) {
     ctx.save();
@@ -6026,18 +6026,19 @@ window.generateProfileCard = async function(litterKey, puppyId){
     }
   }
 
-  // 4. 정보 카드 박스 (Y: 460 ~ 680)
-  const infoY = 460;
+  // 4. 정보 카드 박스 (Y: 445 ~ 665)
+  const infoY = 445;
+  const infoH = 220;
   ctx.fillStyle = '#FFFFFF';
   ctx.shadowColor = 'rgba(100,60,10,0.08)';
   ctx.shadowBlur = 15;
   ctx.shadowOffsetY = 4;
-  ctx.fillRect(pX, infoY, pW, 230);
+  ctx.fillRect(pX, infoY, pW, infoH);
   ctx.shadowColor = 'transparent';
 
   ctx.strokeStyle = '#E8D5A3';
   ctx.lineWidth = 2;
-  ctx.strokeRect(pX, infoY, pW, 230);
+  ctx.strokeRect(pX, infoY, pW, infoH);
 
   // 정보 행 구성
   const rows = [
@@ -6058,8 +6059,8 @@ window.generateProfileCard = async function(litterKey, puppyId){
     rows.push({ label: '🗓 분양시작일', val: `${startStr} (사전 예약 중)` });
   }
 
-  let rowY = infoY + 32;
-  const rowStep = Math.min(36, 210 / rows.length);
+  let rowY = infoY + 30;
+  const rowStep = Math.min(34, (infoH - 20) / rows.length);
 
   rows.forEach((r, idx) => {
     ctx.fillStyle = '#8B6A3A';
@@ -6074,27 +6075,27 @@ window.generateProfileCard = async function(litterKey, puppyId){
       ctx.strokeStyle = '#F5EAD0';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(pX + 15, rowY + 10);
-      ctx.lineTo(pX + pW - 15, rowY + 10);
+      ctx.moveTo(pX + 15, rowY + 9);
+      ctx.lineTo(pX + pW - 15, rowY + 9);
       ctx.stroke();
     }
     rowY += rowStep;
   });
 
-  // 5. 부견 사진 섹션 (세로 긴 대형 프레임 Y: 695 ~ 1100)
-  const sireY = 695;
+  // 5. 부견 사진 섹션 (여유 있는 여백 적용 Y: 695 ~ 1080)
+  const sireTitleY = 698;
   ctx.fillStyle = '#6B3F0E';
   ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
-  ctx.fillText(`🐕 부견 (${sireInfo.name}) 사진`, pX, sireY);
+  ctx.fillText(`🐕 부견 (${sireInfo.name}) 사진`, pX, sireTitleY);
 
-  // 부견 전용 세로 대형 프레임 (높이 370px)
-  drawRoundedImg(sireImg, pX, sireY + 12, pW, 370, 14);
+  // 부견 전용 세로 대형 프레임 (Y: 712, 높이 360px)
+  drawRoundedImg(sireImg, pX, 712, pW, 360, 14);
 
-  // 6. 푸터 (Y: 1145) - "한마리 한마리 정성을다해 키웠습니다."
+  // 6. 푸터 (Y: 1115) - "한마리 한마리 정성을다해 키웠습니다."
   ctx.fillStyle = '#A0632A';
   ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 1145);
+  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 1115);
   ctx.textAlign = 'left';
 
   // 7. 다운로드 처리
