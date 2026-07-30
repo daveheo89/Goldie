@@ -2232,17 +2232,59 @@ async function fbUpdate(path,data){
 // ═══════════════════════════════════════
 
 function saveLocalCache(key, data) {
-
   try {
-
-    localStorage.setItem('goldie_cache_' + key, JSON.stringify(data));
-
+    if (key === 'litters') {
+      // litters 캐시: 미디어 base64 src 데이터 제외 (localStorage 용량 최적화)
+      const lite = data.map(lt => {
+        const clone = {...lt};
+        if (clone.puppies) {
+          const pups = {};
+          Object.entries(clone.puppies).forEach(([pid, pval]) => {
+            const pClone = {...pval};
+            if (pClone.media) {
+              const mediaCopy = {};
+              Object.entries(pClone.media).forEach(([mk, mv]) => {
+                // src가 https:// URL이면 보존, base64면 제외 (용량 절약)
+                if (mv.src && mv.src.startsWith('http')) {
+                  mediaCopy[mk] = mv;
+                } else {
+                  mediaCopy[mk] = {...mv, src: ''};
+                }
+              });
+              pClone.media = mediaCopy;
+            }
+            // 대표 사진도 base64면 제외
+            if (pClone.photo && !pClone.photo.startsWith('http')) {
+              pClone.photo = '';
+            }
+            pups[pid] = pClone;
+          });
+          clone.puppies = pups;
+        }
+        return clone;
+      });
+      localStorage.setItem('goldie_cache_' + key, JSON.stringify(lite));
+    } else {
+      // 모견/부견 사진도 base64면 제외
+      if (key === 'females' || key === 'males') {
+        const lite = data.map(d => {
+          if (d.photo && !d.photo.startsWith('http')) {
+            return {...d, photo: ''};
+          }
+          return d;
+        });
+        localStorage.setItem('goldie_cache_' + key, JSON.stringify(lite));
+      } else {
+        localStorage.setItem('goldie_cache_' + key, JSON.stringify(data));
+      }
+    }
   } catch(e) {
-
     console.warn(`[Cache Limit] ${key} 로컬 캐싱 용량 제한 또는 실패:`, e);
-
+    // 용량 초과 시 해당 캐시 삭제 후 재시도
+    try {
+      localStorage.removeItem('goldie_cache_' + key);
+    } catch(e2) {}
   }
-
 }
 
 
@@ -2283,24 +2325,18 @@ function restoreLocalCache() {
 
 
 
-    // 로컬 스토리지에 한 마리의 강아지 정보라도 캐싱되어 있다면 즉각 렌더링하고 로더 걷기!
-
-    if (females.length || males.length) {
-
+    // 캐시된 데이터가 하나라도 있으면 즉시 로딩 화면 제거 & 전체 렌더링 (0.01초 체감)
+    if (females.length || males.length || litters.length) {
       const loader = document.getElementById('loading-screen');
-
       if (loader) loader.style.display = 'none';
-
       renderDogs();
-
+      // 새끼탭이 보이면 즉시 렌더링
+      if(document.getElementById('tab-puppies') && !document.getElementById('tab-puppies').classList.contains('hidden')) renderPuppies();
     }
 
   } catch(e) {
-
     console.error('[Cache Restore Error]:', e);
-
   }
-
 }
 
 
@@ -2555,21 +2591,13 @@ async function init(){
 
 
 
-    // 3. 초광속 강제 로딩 화면 제거 세이프티 가드 (최대 2.2초 대기 후 강제 해제)
-
+    // 3. 초고속 강제 로딩 화면 제거 (최대 0.8초 대기 후 강제 해제)
     setTimeout(() => {
-
       const loader = document.getElementById('loading-screen');
-
       if (loader && loader.style.display !== 'none') {
-
         loader.style.display = 'none';
-
-        showToast('ℹ️ 백그라운드에서 실시간 데이터를 안전하게 불러오고 있습니다.');
-
       }
-
-    }, 2200);
+    }, 800);
 
   }catch(e){
 
