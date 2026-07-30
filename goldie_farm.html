@@ -5727,20 +5727,40 @@ window.deleteTreatment = async function(key) {
 let pdLitterKey = null;
 let pdPuppyId = null;
 
+// 부모견 이름에서 4210, 0210 같은 코드 번호 전면 제거 및 순수 이름만 추출
+function cleanDogName(rawName, fallbackCode) {
+  if (!rawName) return fallbackCode || '';
+  let name = String(rawName).trim();
+
+  // "4210 / 해리" 또는 "4210/해리" 형태에서 슬래시 뒤의 순수 이름 우선 추출
+  if (name.includes('/')) {
+    const parts = name.split('/');
+    const secondPart = parts[1].trim();
+    if (secondPart) name = secondPart;
+    else name = parts[0].trim();
+  }
+
+  // "F01 - 순심" 또는 "4210 해리" 또는 "0210 순심" 등 앞쪽 숫자/영어 코드 제거
+  name = name.replace(/^[A-Za-z0-9_-]+\s*[\/\-]?\s*/, '').trim() || name;
+  return name;
+}
+
 function getSireInfo(maleCode){
   const dog = males.find(m => m.code === maleCode);
+  const rawName = (dog && dog.name) ? dog.name : maleCode;
   return {
     code: maleCode,
-    name: (dog && dog.name) ? dog.name : maleCode,
+    name: cleanDogName(rawName, maleCode),
     photo: (dog && dog.photo) ? dog.photo : null
   };
 }
 
 function getMotherInfo(femaleCode){
   const dog = females.find(f => f.code === femaleCode);
+  const rawName = (dog && dog.name) ? dog.name : femaleCode;
   return {
     code: femaleCode,
-    name: (dog && dog.name) ? dog.name : femaleCode,
+    name: cleanDogName(rawName, femaleCode),
     photo: (dog && dog.photo) ? dog.photo : null
   };
 }
