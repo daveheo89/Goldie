@@ -939,11 +939,47 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 </style>
 
+<!-- Firebase SDK 프리로드 (HTML 파싱과 동시에 다운로드 시작) -->
+<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" as="script" crossorigin>
+<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js" as="script" crossorigin>
+
 </head>
 
 <body>
 
+<!-- 🚀 초고속 인라인 부팅 (Firebase SDK 로드 전에 즉시 실행) -->
+<script>
+(function(){
+  var isAuth = sessionStorage.getItem('goldi_auth') === 'authenticated';
+  if (!isAuth) return; // 미인증 상태면 기존 로그인 흐름 유지
 
+  // 이미 인증된 세션: 로그인 화면 제거 & 메인 화면 즉시 표시
+  document.addEventListener('DOMContentLoaded', function(){
+    var login = document.getElementById('login-overlay');
+    var main = document.getElementById('main-content');
+    var loader = document.getElementById('loading-screen');
+
+    if (login) login.style.display = 'none';
+    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
+
+    // 캐시 데이터가 있으면 로딩 화면도 즉시 제거 (0.01초 체감)
+    try {
+      var cf = localStorage.getItem('goldie_cache_females');
+      var cm = localStorage.getItem('goldie_cache_males');
+      if ((cf && JSON.parse(cf).length > 0) || (cm && JSON.parse(cm).length > 0)) {
+        if (loader) loader.style.display = 'none';
+      }
+    } catch(e) {}
+
+    // 캐시 없어도 최대 0.5초 후 로딩 화면 강제 제거
+    setTimeout(function(){
+      if (loader && loader.style.display !== 'none') {
+        loader.style.display = 'none';
+      }
+    }, 500);
+  });
+})();
+</script>
 
 <!-- 로그인 오버레이 -->
 
@@ -981,9 +1017,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
     <div class="ls-icon">🐕</div>
 
-    <div class="ls-text">골디쉼터 불러오는 중...</div>
-
-    <div class="ls-sub">Firebase에 연결하고 있어요</div>
+    <div class="ls-text">불러오는 중...</div>
+    <div class="ls-sub">잠시만 기다려주세요</div>
 
   </div>
 
