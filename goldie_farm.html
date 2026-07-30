@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -12,7 +12,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <style>
 :root {
   --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
@@ -61,9 +60,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .content{padding:18px 14px 70px;max-width:700px;margin:0 auto;}
 .sec-title{font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--gold);color:#fff;}
-.badge.badge-avail{background:#E8F8EF;color:#27AE60;border:1px solid #A8DDB9;}
-.badge.badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;}
-.badge.badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC;}
 
 .add-dog-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:16px;border:2.5px dashed var(--border);border-radius:var(--radius);background:var(--gold-pale);color:var(--text-muted);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
 .add-dog-btn:hover{border-color:var(--gold);color:var(--gold);}
@@ -166,15 +162,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
 .puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
 .puppy-card:hover{border-color:var(--puppy);}
-.puppy-card.reserved{background:#FFF4E0;opacity:0.85;color:#D35400;border-color:#FFE4A0;}
-.puppy-card.reserved .p-placeholder{background:#FFE4A0;color:#D35400;}
-.puppy-card.reserved .p-name{color:#D35400;}
-.puppy-card.reserved:hover{border-color:#FFC107;}
-
-.puppy-card.sold{background:#eaeaea;opacity:0.65;color:#999;border-color:#d5d5d5;}
-.puppy-card.sold .p-placeholder{background:#dbdbdb;color:#999;}
-.puppy-card.sold .p-name{color:#888;}
-.puppy-card.sold:hover{border-color:#ccc;}
 .puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:5px;}
 .puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:5px;}
 .puppy-card .p-name{font-size:.7rem;font-weight:700;color:var(--puppy);}
@@ -312,138 +299,56 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   .form-group label{font-size:0.75rem;margin-bottom:3px}
   .form-group select, .form-group input{padding:8px 10px;font-size:0.85rem}
   .photo-upload-wrap{height:120px;border-radius:10px}
-  
-  /* 배송 캘린더 모바일 튜닝 */
-  .calendar-day {
-    min-height: 58px;
-    padding: 2px;
-  }
-  .calendar-day-num {
-    font-size: 0.65rem;
-    width: 14px;
-    height: 14px;
-    line-height: 14px;
-  }
-  .delivery-chip {
-    font-size: 0.52rem;
-    padding: 1px 2px;
-    border-left-width: 2px;
-  }
 }
 
-/* 배송 캘린더 데스크톱 스타일 */
-.calendar-container {
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  margin-top: 14px;
-}
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-.calendar-header h2 {
-  font-size: 1.1rem;
-  color: var(--brown);
-  font-weight: 900;
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  border-top: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-}
-.calendar-day-header {
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  background: var(--gold-pale);
-  padding: 6px 0;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.calendar-day-header:nth-child(7n+1) { color: #e74c3c; } /* 일요일 */
-.calendar-day-header:nth-child(7n) { color: var(--male); } /* 토요일 */
-
-.calendar-day {
-  background: #fff;
-  min-height: 85px;
-  padding: 4px;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.calendar-day:hover {
-  background: var(--gold-pale);
-}
-.calendar-day.empty {
-  background: #fafaf8;
-  cursor: default;
-}
-.calendar-day.today {
-  background: #FFFDF0;
-  border: 2px solid var(--gold);
-}
-.calendar-day-num {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 4px;
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  text-align: center;
-  line-height: 18px;
-}
-.calendar-day.today .calendar-day-num {
-  background: var(--gold);
-  color: #fff;
-  border-radius: 50%;
-}
-.calendar-day:nth-child(7n+1) .calendar-day-num { color: #e74c3c; } /* 일요일 */
-.calendar-day:nth-child(7n) .calendar-day-num { color: var(--male); } /* 토요일 */
-
-.calendar-chips {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.delivery-chip {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: var(--puppy-bg);
-  color: var(--puppy);
-  border-left: 3px solid var(--puppy);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.delivery-chip:hover {
-  opacity: 0.8;
-}
-.delivery-chip.completed {
-  background: #eaeaea;
-  color: #888;
-  border-left-color: #aaa;
-  text-decoration: line-through;
-}
-.delivery-chip.treatment-chip {
-  background: #FFFDF0;
-  color: #D35400;
-  border-left-color: #E67E22;
-}
-.delivery-chip.vax-chip-cal {
-  background: #EEF7E0;
-  color: #5A9E1A;
-  border-left-color: #8BC34A;
+/* ═══════════════════════════════════════
+   새끼 상세 모달 (미디어 갤러리 + 프로필 카드)
+   ═══════════════════════════════════════ */
+.puppy-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:700;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.puppy-detail-overlay.open{opacity:1;pointer-events:all;}
+.puppy-detail-modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:0 0 30px;transform:translateY(40px);transition:transform .25s;box-shadow:0 -8px 40px rgba(0,0,0,.18);}
+.puppy-detail-overlay.open .puppy-detail-modal{transform:translateY(0);}
+.pd-handle{width:38px;height:4px;background:#ddd;border-radius:99px;margin:12px auto 4px;}
+.pd-header{padding:12px 18px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.pd-header h2{font-size:1rem;font-weight:900;color:var(--brown);}
+.pd-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted);}
+.pd-section{padding:14px 18px;}
+.pd-section-title{font-size:.78rem;font-weight:900;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.pd-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:4px;}
+.pd-media-cell{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid var(--border);background:var(--gold-pale);cursor:pointer;transition:transform .15s;}
+.pd-media-cell:hover{transform:scale(1.03);}
+.pd-media-cell img,.pd-media-cell video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+.pd-media-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,.65);border-radius:50%;border:none;color:#fff;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;}
+.pd-media-dl{position:absolute;bottom:4px;right:4px;width:22px;height:22px;background:rgba(200,134,10,.85);border-radius:50%;border:none;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;}
+.pd-media-type-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:.55rem;padding:2px 5px;border-radius:4px;font-weight:700;pointer-events:none;}
+.pd-video-play-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.8rem;pointer-events:none;}
+.pd-media-add{border-radius:10px;aspect-ratio:1;border:2.5px dashed var(--border);background:var(--gold-pale);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;position:relative;transition:border-color .2s;}
+.pd-media-add:hover{border-color:var(--gold);}
+.pd-media-add .ai{font-size:1.5rem;}
+.pd-media-add .at{font-size:.58rem;color:var(--text-muted);font-weight:700;}
+.pd-media-add input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.pd-info-table{width:100%;border-collapse:collapse;}
+.pd-info-table tr{border-bottom:1px solid var(--border);}
+.pd-info-table tr:last-child{border-bottom:none;}
+.pd-info-table td{padding:9px 4px;font-size:.88rem;vertical-align:middle;}
+.td-label{color:var(--text-muted);font-weight:700;width:95px;font-size:.76rem;white-space:nowrap;}
+.td-value{font-weight:700;color:var(--text);}
+.pd-reserve-badge{display:inline-block;background:#FFF3CD;color:#B8860B;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:5px;}
+.pd-sire-photo{width:100%;border-radius:12px;object-fit:cover;display:block;border:2px solid var(--border);max-height:220px;}
+.pd-sire-placeholder{width:100%;height:120px;border-radius:12px;background:var(--gold-pale);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:3rem;}
+.pd-profile-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--brown-light));color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;transition:opacity .2s;margin-bottom:8px;}
+.pd-profile-btn:hover{opacity:.88;}
+.pd-edit-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px;background:none;border:2px solid var(--border);color:var(--text-muted);border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:8px;}
+.pd-edit-btn:hover{border-color:var(--gold);color:var(--gold);}
+.pd-contract-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:none;border:2px solid var(--puppy);color:var(--puppy);border-radius:12px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.pd-contract-btn:hover{background:var(--puppy);color:#fff;}
+.lightbox video{max-width:100%;max-height:80vh;border-radius:12px;}
+@media(max-width:560px){
+  .pd-gallery{gap:5px;}
+  .pd-section{padding:10px 14px;}
+  .td-label{width:76px;font-size:.7rem;}
+  .pd-info-table td{padding:7px 3px;font-size:.82rem;}
+  .pd-profile-btn{font-size:.88rem;padding:12px;}
 }
 </style>
 </head>
@@ -484,8 +389,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     <div class="tab" onclick="showTab('breeding')">🌸 번식</div>
     <div class="tab" onclick="showTab('puppies')">🐾 새끼</div>
     <div class="tab" onclick="showTab('move')">🔄 이동</div>
-    <div class="tab" onclick="showTab('delivery')">🚗 배송</div>
-    <div class="tab" onclick="showTab('treatment')">🩺 치료</div>
   </div>
 
   <div class="content">
@@ -538,219 +441,13 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div class="sec-title">📋 이동 기록</div>
       <div class="move-log" id="move-log"></div>
     </div>
-
-    <!-- 배송 캘린더 탭 -->
-    <div id="tab-delivery" class="hidden">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div class="sec-title" style="margin-bottom:0;">🚗 배송 일정 관리</div>
-        <button class="btn btn-outline btn-sm" onclick="openAddDeliveryModal()" style="margin:0; width:auto; font-size:12px;">＋ 배송 일정 추가</button>
-      </div>
-      
-      <div class="calendar-container">
-        <div class="calendar-header">
-          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(-1)" style="padding:4px 8px; width:auto;">◀ 이전달</button>
-          <h2 id="calendar-month-year">YYYY년 MM월</h2>
-          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(1)" style="padding:4px 8px; width:auto;">다음달 ▶</button>
-        </div>
-        <div class="calendar-grid" id="calendar-grid"></div>
-      </div>
-    </div>
-
-    <!-- 치료 탭 -->
-    <div id="tab-treatment" class="hidden">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div class="sec-title" style="margin-bottom:0;">🩺 치료 관리</div>
-      </div>
-      
-      <div style="display:flex; flex-direction:column; gap:16px;">
-        <!-- 치료 등록 폼 -->
-        <div class="form-card">
-          <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">📝 신규 치료 등록</h3>
-          
-          <div class="form-group">
-            <label>대상 구분 *</label>
-            <div style="display: flex; gap: 8px;">
-              <button type="button" id="btn-treat-type-puppy" class="sex-btn female active" onclick="setTreatmentTargetType('puppy')" style="flex:1; margin:0; border-radius:9px; height:38px;">🐶 새끼 (자견)</button>
-              <button type="button" id="btn-treat-type-adult" class="sex-btn male" onclick="setTreatmentTargetType('adult')" style="flex:1; margin:0; border-radius:9px; height:38px;">🐕 성견 (모/부견)</button>
-            </div>
-          </div>
-
-          <!-- 새끼 선택 필드 -->
-          <div class="form-group" id="treat-target-puppy-wrap">
-            <label>새끼 (형제 그룹) 지정 *</label>
-            <select id="treat-puppy-select" onchange="onTreatmentPuppyChanged()">
-              <option value="">-- 새끼 (형제 그룹) 선택 --</option>
-            </select>
-          </div>
-
-          <!-- 성견 선택 필드 -->
-          <div class="form-group" id="treat-target-adult-wrap" style="display:none;">
-            <label>성견 지정 *</label>
-            <div style="display:flex; gap:6px; margin-bottom:6px;">
-              <select id="treat-adult-select" onchange="onTreatmentAdultSelectChanged(this.value)" style="flex:1;">
-                <option value="">-- 성견 선택 --</option>
-              </select>
-              <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="직접 입력" oninput="onTreatmentAdultChanged()" style="flex:1;">
-            </div>
-            <datalist id="treat-adult-suggestions"></datalist>
-            
-            <label style="display: flex; align-items: center; gap: 6px; font-size: .8rem; margin-top: 6px; font-weight: 700; color: #e74c3c; cursor: pointer;">
-              <input type="checkbox" id="treat-pregnant-check" onchange="checkBaytrilWarning()"> 🤰 현재 임신 중인 모견입니다.
-            </label>
-          </div>
-
-          <!-- 몸무게 입력 -->
-          <div class="form-group">
-            <label>몸무게 (kg) *</label>
-            <input type="number" id="treat-weight" step="0.1" min="0.1" placeholder="예: 3.5" oninput="onTreatmentWeightChanged()">
-          </div>
-
-          <!-- 증상 선택 -->
-          <div class="form-group">
-            <label>증상 / 질병 선택 *</label>
-            <select id="treat-symptom-select" onchange="onTreatmentSymptomChanged(this.value)">
-              <option value="direct">직접 약품 선택 (기타)</option>
-              <option value="cold_wet">콧물 감기 (단프론 + 바이트릴 + 아미톱)</option>
-              <option value="cold_dry">마른 기침 감기 [캑캑] (브롬신 + 바이트릴 + 아미톱)</option>
-              <option value="diarrhea_simple">설사 [식욕 정상/구토 없음] (킹벨린 + 아미톱)</option>
-              <option value="diarrhea_anorexia">설사 + 밥 안먹음 [식욕부진] (킹벨린 + 카라실 + 아미톱)</option>
-              <option value="diarrhea_vomit">설사 + 토함 [위장관] (킹벨린 + 제스롱 + 아미톱)</option>
-              <option value="diarrhea_fever">설사 + 열/염증 동반 (킹벨린 + 바이트릴 + 단프론 + 아미톱)</option>
-              <option value="wound_inflammation">외부 상처 염증 (덱사손 + 바이트릴 + 아미톱)</option>
-              <option value="anorexia_simple">단순 식욕 부진 [밥 안먹음] (카라실 + 아미톱)</option>
-            </select>
-          </div>
-
-          <!-- 주사제 조합 구성 -->
-          <div class="form-group">
-            <label>주사제 조합 및 투약량 (1kg당 0.1ml 계산) *</label>
-            <div style="background: var(--gold-pale); border-radius: 9px; padding: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; border: 2px solid var(--border);">
-              <!-- 바이트릴 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-baytril" onchange="onInjCheckChanged('baytril')"> 바이트릴 (항생제)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-baytril" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 단프론 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-danpron" onchange="onInjCheckChanged('danpron')"> 단프론 (해열진통)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-danpron" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 브롬신 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-bromhexine" onchange="onInjCheckChanged('bromhexine')"> 브롬신 (마른기침)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-bromhexine" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 킹벨린 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-kingbelin" onchange="onInjCheckChanged('kingbelin')"> 킹벨린 (지사제)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-kingbelin" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 카라실 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-carasil" onchange="onInjCheckChanged('carasil')"> 카라실 (대사촉진)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-carasil" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 제스롱 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-jeslong" onchange="onInjCheckChanged('jeslong')"> 제스롱 (항구토제)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-jeslong" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 덱사손 -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
-                  <input type="checkbox" id="inj-check-dexasone" onchange="onInjCheckChanged('dexasone')"> 덱사손 (소염제)
-                </label>
-                <div style="display:flex; align-items:center; gap:4px;">
-                  <input type="number" id="inj-val-dexasone" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
-                </div>
-              </div>
-              <!-- 아미톱 (상시 고정) -->
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem; border-top: 1px dashed var(--border); padding-top:6px; margin-top:2px;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:800; color:#27AE60;">
-                  🧪 아미톱 (영양제)
-                </label>
-                <div style="font-size: .72rem; font-weight: 700; color: #27AE60; background: #EEF7E0; padding: 2px 8px; border-radius: 4px;">
-                  혼합 (주사기 끝까지)
-                </div>
-              </div>
-            </div>
-            <!-- 투약 경고판 -->
-            <div id="treat-warning-box" style="display:none; margin-top:8px; padding:8px 10px; background:#FFEDE5; border:2px solid #FF6B35; border-radius:9px; font-size:.78rem; font-weight:800; color:#FF6B35; line-height:1.4;">
-              ⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다. 약품 조합을 다시 확인해 주세요.
-            </div>
-          </div>
-
-          <!-- 기간 및 날짜 설정 -->
-          <div style="display:flex; gap:8px;">
-            <div class="form-group" style="flex:1;">
-              <label>시작일 *</label>
-              <input type="date" id="treat-start-date" onchange="onTreatmentDateChanged()">
-            </div>
-            <div class="form-group" style="flex:1;">
-              <label>기간 (일) * <span id="treat-duration-hint" style="font-size:11px; font-weight:700; color:var(--gold); margin-left:4px;">💡 추천: 3일</span></label>
-              <input type="number" id="treat-duration" value="3" min="1" oninput="onTreatmentDateChanged()">
-            </div>
-          </div>
-          <div style="font-size: .8rem; font-weight:700; color: var(--text-muted); margin-bottom: 14px; background:var(--gold-pale); padding:8px 10px; border-radius:9px;">
-            📅 투약 완료 예정일: <span id="treat-end-date-display" style="color:var(--text); font-weight:900;">-</span>
-          </div>
-
-          <div class="form-group">
-            <label>치료 메모 (특이사항)</label>
-            <textarea id="treat-memo" placeholder="예: 기침 소리가 심함, 식욕 저하 동반 등" style="width:100%; border:2px solid var(--border); border-radius:9px; padding:9px 12px; font-size:.9rem; font-family:inherit; outline:none; resize:vertical; min-height:60px; background:var(--gold-pale); color:var(--text);"></textarea>
-          </div>
-
-          <button type="button" class="btn" onclick="saveTreatment()" style="height: 42px; margin-top: 8px;">🩺 치료 등록</button>
-        </div>
-
-        <!-- 치료 현황 목록 -->
-        <div class="form-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
-            <h3 style="margin-bottom:0;">📋 치료 및 처방 현황</h3>
-            <!-- 필터 버튼 -->
-            <div style="display:flex; background:var(--gold-pale); padding:2px; border-radius:6px; gap:2px; border: 1.5px solid var(--border);">
-              <button type="button" id="filter-treat-all" class="btn-outline btn-sm" onclick="filterTreatments('all')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; background:#fff; font-weight:800; border:none; height:auto;">전체</button>
-              <button type="button" id="filter-treat-active" class="btn-outline btn-sm" onclick="filterTreatments('active')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; border:none; height:auto; background:transparent; color:var(--text-muted); font-weight:700;">진행중</button>
-              <button type="button" id="filter-treat-done" class="btn-outline btn-sm" onclick="filterTreatments('done')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; border:none; height:auto; background:transparent; color:var(--text-muted); font-weight:700;">완료</button>
-            </div>
-          </div>
-          <!-- 치료 카드 목록 영역 -->
-          <div id="treatmentListContent" style="display:flex; flex-direction:column; gap:12px;">
-            <div class="loading"><div class="spinner"></div>치료 내역을 불러오는 중...</div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- 라이트박스 -->
   <div class="lightbox" id="lightbox" onclick="closeLightbox()">
     <button class="lightbox-close">✕</button>
     <img id="lightbox-img" src="" alt="">
+    <video id="lightbox-video" src="" controls style="display:none;max-width:100%;max-height:80vh;border-radius:12px;" onclick="event.stopPropagation()"></video>
     <div class="lightbox-lbl" id="lightbox-lbl"></div>
   </div>
 
@@ -774,6 +471,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </div>
       </div>
       <div class="form-group"><label>번호 / 코드</label><input type="text" id="dm-code" placeholder="예: F21, M06"></div>
+      <div class="form-group"><label>이름 (선택)</label><input type="text" id="dm-name" placeholder="예: 순심, 대박이"></div>
       <div class="form-group"><label>견사</label><select id="dm-kennel"></select></div>
       <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
       <div class="modal-actions">
@@ -787,7 +485,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   <div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
     <div class="modal">
       <div class="modal-header">
-        <h2 id="litter-modal-title">출산 기록 추가</h2>
+        <h2>출산 기록 추가</h2>
         <button class="modal-close" onclick="closeLitterModal()">✕</button>
       </div>
       <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
@@ -795,10 +493,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
       <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
       <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
-      <div class="modal-actions" style="display:flex; gap:8px;">
-        <button class="btn btn-danger" id="lm-delete-btn" onclick="deleteLitter()" style="display:none; flex:1;">🗑️ 삭제</button>
-        <button class="btn btn-cancel" onclick="closeLitterModal()" style="flex:1;">취소</button>
-        <button class="btn" onclick="saveLitter()" style="flex:1;" id="lm-save-btn">✅ 저장</button>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
+        <button class="btn" onclick="saveLitter()">✅ 저장</button>
       </div>
     </div>
   </div>
@@ -842,54 +539,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
   </div>
 
-  <!-- 배송 일정 등록/수정 모달 -->
-  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="delivery-modal-title">배송 일정 등록</h2>
-        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
-      </div>
-      <div class="form-group">
-        <label>분양 계약건 <span class="req">*</span></label>
-        <select id="dev-contract">
-          <option value="">-- 계약 선택 --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>배송 예정 날짜 <span class="req">*</span></label>
-        <input type="date" id="dev-date">
-      </div>
-      <div class="form-group">
-        <label>배송 예정 시간 <span class="req">*</span></label>
-        <input type="time" id="dev-time">
-      </div>
-      <div class="form-group">
-        <label>배송 주소 <span class="req">*</span></label>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
-          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
-        </div>
-        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
-      </div>
-      <div class="form-group">
-        <label>비고 (메모)</label>
-        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
-      </div>
-      <div class="form-group" id="dev-status-group" style="display:none;">
-        <label>배송 상태</label>
-        <select id="dev-status">
-          <option value="예정">배송 예정</option>
-          <option value="완료">배송 완료</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
-        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
-        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
-      </div>
-    </div>
-  </div>
-
   <!-- 백신 알림 팝업 -->
   <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
     <div class="vax-popup">
@@ -897,6 +546,18 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <p class="vp-sub">오늘 또는 놓친 일정이 있어요!</p>
       <div id="vax-popup-list"></div>
       <button class="btn" style="margin-top:8px;" onclick="closeVaxPopup()">확인했어요 ✓</button>
+    </div>
+  </div>
+
+    <!-- 새끼 상세 모달 (미디어 갤러리 + 프로필 카드) -->
+  <div class="puppy-detail-overlay" id="puppy-detail-overlay" onclick="handlePuppyDetailOverlay(event)">
+    <div class="puppy-detail-modal">
+      <div class="pd-handle"></div>
+      <div class="pd-header">
+        <h2 id="pd-title">🐾 새끼 상세 정보</h2>
+        <button class="pd-close" onclick="closePuppyDetail()">✕</button>
+      </div>
+      <div id="pd-content"></div>
     </div>
   </div>
 
@@ -933,19 +594,12 @@ let males=[];
 let breedingRecords=[];
 let litters=[];
 let moveLog=[];
-let deliveries=[];
-let contracts=[];
-let currentCalendarDate=new Date();
-let deliveryModalMode='add';
-let deliveryEditKey=null;
 let selectedDog=null;
 let openBreedingIdx=null;
 let dogModalMode='add';
 let dogEditCode=null;
 let dogPendingPhoto=null;
 let dogSelectedSex='female';
-let litterModalMode='add';
-let litterEditKey=null;
 
 // ── 유틸 ──
 // ── 로그인 세션 보안 제어 ──
@@ -1011,52 +665,13 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().slice(0,10);}
-function daysFrom(d){if(!d)return 0;const t1=new Date(d+'T00:00:00');const t2=new Date();t2.setHours(0,0,0,0);return Math.round((t1-t2)/86400000);}
+function daysFrom(d){return Math.ceil((new Date(d)-new Date())/86400000);}
 function fmtDate(d){return d?d.replace(/-/g,'.'):'−';}
 function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function today(){return new Date().toISOString().slice(0,10);}
 function setSyncing(state){
   const dot=document.getElementById('sync-dot');
   dot.className='sync-dot'+(state==='syncing'?' syncing':state==='error'?' error':'');
-}
-
-function compressImage(file, maxWidth = 1024, maxHeight = 1024, quality = 0.7) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(dataUrl);
-      };
-      img.onerror = function(err) {
-        reject(new Error('이미지를 불러오지 못했습니다.'));
-      };
-      img.src = e.target.result;
-    };
-    reader.onerror = function(err) {
-      reject(new Error('파일을 읽지 못했습니다.'));
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 // ═══════════════════════════════════════
@@ -1107,10 +722,6 @@ function restoreLocalCache() {
     if (cachedBreeding) breedingRecords = JSON.parse(cachedBreeding);
     if (cachedLitters) litters = JSON.parse(cachedLitters);
     if (cachedMoveLog) moveLog = JSON.parse(cachedMoveLog);
-    const cachedTreatments = localStorage.getItem('goldie_cache_treatments');
-    if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
-
-    fillTreatmentSelects();
 
     // 로컬 스토리지에 한 마리의 강아지 정보라도 캐싱되어 있다면 즉각 렌더링하고 로더 걷기!
     if (females.length || males.length) {
@@ -1136,17 +747,6 @@ function hideLoaderIfReady(){
   }
 }
 
-function showFirebaseError(error) {
-  console.error("Firebase Database Error:", error);
-  const lsText = document.querySelector('#loading-screen .ls-text');
-  const lsSub = document.querySelector('#loading-screen .ls-sub');
-  if (lsText && lsSub) {
-    lsText.textContent = '데이터베이스 연결 실패 😢';
-    lsSub.textContent = 'Firebase 권한 만료 또는 오류. 어드민에서 Realtime DB 규칙 설정을 확인해주세요.';
-  }
-  showToast('⚠️ 데이터베이스 연결 오류가 발생했습니다.');
-}
-
 function startListeners(){
   // 모견
   onValue(ref(db,'females'), snap=>{
@@ -1154,26 +754,20 @@ function startListeners(){
     snap.forEach(child=>{females.push({_key:child.key,...child.val()});});
     renderDogs();
     if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
-    fillTreatmentSelects();
     
     saveLocalCache('females', females);
     isFemalesLoaded = true;
     hideLoaderIfReady();
-  }, error => {
-    showFirebaseError(error);
   });
   // 부견
   onValue(ref(db,'males'), snap=>{
     males=[];
     snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
     renderDogs();
-    fillTreatmentSelects();
     
     saveLocalCache('males', males);
     isMalesLoaded = true;
     hideLoaderIfReady();
-  }, error => {
-    showFirebaseError(error);
   });
   // 교배
   onValue(ref(db,'breeding'), snap=>{
@@ -1181,8 +775,6 @@ function startListeners(){
     snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
     saveLocalCache('breeding', breedingRecords);
-  }, error => {
-    showFirebaseError(error);
   });
   // 출산
   onValue(ref(db,'litters'), snap=>{
@@ -1190,10 +782,7 @@ function startListeners(){
     snap.forEach(child=>{litters.push({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
     checkVaxAlerts();
-    fillTreatmentSelects();
     saveLocalCache('litters', litters);
-  }, error => {
-    showFirebaseError(error);
   });
   // 이동
   onValue(ref(db,'moveLog'), snap=>{
@@ -1201,35 +790,6 @@ function startListeners(){
     snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
     if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
     saveLocalCache('moveLog', moveLog);
-  }, error => {
-    showFirebaseError(error);
-  });
-  // 계약 내역
-  onValue(ref(db,'contracts'), snap=>{
-    contracts=[];
-    snap.forEach(child=>{contracts.push({_key:child.key,...child.val()});});
-    saveLocalCache('contracts', contracts);
-  }, error => {
-    showFirebaseError(error);
-  });
-  // 배송 일정
-  onValue(ref(db,'deliveries'), snap=>{
-    deliveries=[];
-    snap.forEach(child=>{deliveries.push({_key:child.key,...child.val()});});
-    if(!document.getElementById('tab-delivery').classList.contains('hidden'))renderDeliveryCalendar();
-    saveLocalCache('deliveries', deliveries);
-  }, error => {
-    showFirebaseError(error);
-  });
-  // 치료 이력
-  window._treatments=[];
-  onValue(ref(db,'treatments'), snap=>{
-    window._treatments=[];
-    snap.forEach(child=>{window._treatments.push({_key:child.key,...child.val()});});
-    if(document.getElementById('tab-treatment') && !document.getElementById('tab-treatment').classList.contains('hidden'))renderTreatmentList();
-    saveLocalCache('treatments', window._treatments);
-  }, error => {
-    showFirebaseError(error);
   });
 }
 
@@ -1266,16 +826,14 @@ async function init(){
 //  탭
 // ═══════════════════════════════════════
 window.showTab=function(tab){
-  ['dogs','kennels','breeding','puppies','move','delivery','treatment'].forEach(t=>
+  ['dogs','kennels','breeding','puppies','move'].forEach(t=>
     document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
   document.querySelectorAll('.tab').forEach((el,i)=>
-    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move','delivery','treatment'][i]===tab));
+    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move'][i]===tab));
   if(tab==='kennels')renderKennels();
   if(tab==='breeding')renderBreeding();
   if(tab==='puppies')renderPuppies();
   if(tab==='move')renderMove();
-  if(tab==='delivery')renderDeliveryCalendar();
-  if(tab==='treatment')initTreatmentTab();
 };
 
 // ═══════════════════════════════════════
@@ -1319,8 +877,7 @@ function selectDog(key){
   renderDogs();
   const panel=document.getElementById('dog-detail');
   panel.classList.add('show');
-  const age=dog.birth ? Math.floor((new Date()-new Date(dog.birth))/86400000/365.25) : null;
-  const ageTxt=age!==null ? `약 ${age}세` : '—';
+  const age=Math.floor((new Date()-new Date(dog.birth))/86400000/365.25);
   const dl=dog.dueDate?daysFrom(dog.dueDate):null;
   const dueTxt=dog.dueDate?(dl<0?`출산완료 (${fmtDate(dog.dueDate)})`:
     `${fmtDate(dog.dueDate)} (D-${dl})`):'-';
@@ -1336,7 +893,7 @@ function selectDog(key){
     <div class="info-row">
       <div class="info-item"><div class="label">현재 견사</div><div class="value">${dog.kennel}</div></div>
       <div class="info-item"><div class="label">생년월일</div><div class="value">${fmtDate(dog.birth)}</div></div>
-      <div class="info-item"><div class="label">나이</div><div class="value">${ageTxt}</div></div>
+      <div class="info-item"><div class="label">나이</div><div class="value">약 ${age}세</div></div>
       ${dog.sex==='female'?`
       <div class="info-item"><div class="label">교배일</div><div class="value">${fmtDate(dog.breeding)||'-'}</div></div>
       <div class="info-item"><div class="label">교배 상대</div><div class="value">${dog.mateCode||'-'}</div></div>
@@ -1381,16 +938,11 @@ window.selectSex=function(sex){
 window.handleDogModalOverlay=function(e){if(e.target===document.getElementById('dog-modal'))closeDogModal();};
 window.closeDogModal=function(){document.getElementById('dog-modal').classList.remove('open');};
 
-window.handleDogPhoto=async function(e){
+window.handleDogPhoto=function(e){
   const file=e.target.files[0];if(!file)return;
-  try {
-    const compressed = await compressImage(file, 1024, 1024, 0.7);
-    dogPendingPhoto = compressed;
-    setPhotoPreview(dogPendingPhoto);
-  } catch(err) {
-    console.error('이미지 압축 실패:', err);
-    showToast('⚠ 이미지 압축에 실패했습니다.');
-  }
+  const r=new FileReader();
+  r.onload=ev=>{dogPendingPhoto=ev.target.result;setPhotoPreview(dogPendingPhoto);};
+  r.readAsDataURL(file);
 };
 
 window.saveDog=async function(){
@@ -1398,12 +950,14 @@ window.saveDog=async function(){
   const kennel=document.getElementById('dm-kennel').value;
   const birth=document.getElementById('dm-birth').value;
   if(!code){showToast('번호를 입력해주세요');return;}
+  if(!birth){showToast('생년월일을 입력해주세요');return;}
   const saveBtn=document.getElementById('dm-save-btn');
   saveBtn.textContent='저장 중...'; saveBtn.disabled=true;
   try{
     if(dogModalMode==='add'){
       if(allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-      const newDog={code,sex:dogSelectedSex,kennel,birth:birth||null,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null};
+      const nameVal = document.getElementById('dm-name') ? document.getElementById('dm-name').value.trim() : '';
+      const newDog={code,name:nameVal||null,sex:dogSelectedSex,kennel,birth,photo:dogPendingPhoto||null,breeding:null,dueDate:null,mateCode:null};
       const path=dogSelectedSex==='female'?'females':'males';
       await fbPush(path,newDog);
       showToast(`✅ ${code} 추가 완료!`);
@@ -1412,7 +966,7 @@ window.saveDog=async function(){
       if(!dog)return;
       if(code!==dog.code&&allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
       const path=dog.sex==='female'?'females':'males';
-      const updates={code,kennel,birth:birth||null};
+      const updates={code,kennel,birth};
       if(dogPendingPhoto!==null)updates.photo=dogPendingPhoto;
       await fbUpdate(`${path}/${dogEditCode}`,updates);
       showToast(`✅ ${dog.code} 수정 완료!`);
@@ -1517,18 +1071,17 @@ window.toggleBreedingDetail=function(key){
 window.addBreedingPhotos=async function(e,bKey,matingDate){
   const files=Array.from(e.target.files);if(!files.length)return;
   let loaded=0;
-  try {
-    for(const file of files){
-      const compressed = await compressImage(file, 1024, 1024, 0.7);
-      const elapsed=Math.abs(daysFrom(matingDate));
-      await fbPush(`breeding/${bKey}/photos`,{src:compressed,label:`D+${elapsed}`});
-      loaded++;
-    }
-    showToast(`📷 사진 ${loaded}장 추가됐어요!`);
-  } catch(err) {
-    console.error('이미지 업로드/압축 실패:', err);
-    showToast('⚠ 사진 저장 실패: ' + err.message);
+  for(const file of files){
+    await new Promise(resolve=>{
+      const r=new FileReader();
+      r.onload=async ev=>{
+        const elapsed=Math.abs(daysFrom(matingDate));
+        await fbPush(`breeding/${bKey}/photos`,{src:ev.target.result,label:`D+${elapsed}`});
+        loaded++;resolve();
+      };r.readAsDataURL(file);
+    });
   }
+  showToast(`📷 사진 ${files.length}장 추가됐어요!`);
 };
 
 window.deleteBreedingPhoto=async function(bKey,photoKey){
@@ -1576,28 +1129,13 @@ function renderPuppies(){
     function vc(d){if(!d)return'';const n=daysFrom(d);if(n<-1)return'done';if(n===0||n===-1)return'today-due';if(n<0)return'overdue';return'';}
     function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
     const puppyEntries=lt.puppies?Object.entries(lt.puppies):[];
-    const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
-      const getWeight = (status) => {
-        if (status === '예약') return 1;
-        if (status === '분양 완료') return 2;
-        return 0;
-      };
-      return getWeight(a.status) - getWeight(b.status);
-    });
-    const puppyCards=sortedPuppyEntries.map(([pid,p])=>{
+    const puppyCards=puppyEntries.map(([pid,p])=>{
       const status = p.status || '분양 전';
       let badgeClass = 'badge-avail';
-      let cardClass = '';
-      if(status === '예약') {
-        badgeClass = 'badge-rsv';
-        cardClass = ' reserved';
-      }
-      if(status === '분양 완료') {
-        badgeClass = 'badge-sold';
-        cardClass = ' sold';
-      }
+      if(status === '예약') badgeClass = 'badge-rsv';
+      if(status === '분양 완료') badgeClass = 'badge-sold';
       return `
-      <div class="puppy-card${cardClass}" onclick="goToAdminContract('${lt._key}','${pid}','${status}')" style="cursor:pointer; position:relative;">
+      <div class="puppy-card" onclick="openPuppyDetail('${lt._key}','${pid}')" style="cursor:pointer; position:relative;">
         <span class="puppy-edit-btn" onclick="event.stopPropagation(); openEditPuppyModal('${lt._key}','${pid}')" style="position:absolute; top:4px; right:4px; font-size:10px; cursor:pointer; background:rgba(255,255,255,0.85); border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15); z-index:5;">✏️</span>
         ${p.photo?`<img class="p-photo" src="${p.photo}">`:`<div class="p-placeholder">🐶</div>`}
         <div class="p-name">${esc(p.name||pid)}</div>
@@ -1606,7 +1144,7 @@ function renderPuppies(){
       </div>`;}).join('');
     card.innerHTML=`
       <div class="litter-header" onclick="toggleLitter(this)">
-        <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; 출산 A: ${fmtDate(lt.birthA)} &nbsp;|&nbsp; 출생 B: ${fmtDate(lt.birthB)||'−'}</h3>
+        <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; ${fmtDate(lt.birthA)}</h3>
         <span class="litter-toggle">▼</span>
       </div>
       <div class="litter-body">
@@ -1618,12 +1156,9 @@ function renderPuppies(){
         <div class="vax-row">
           <div class="vax-chip ${vc(lt.deworm1)}"><div class="vc-label">🪱 1차 구충</div><div class="vc-date">${vl(lt.deworm1)}</div></div>
           <div class="vax-chip ${vc(lt.deworm2)}"><div class="vc-label">🪱 2차 구충</div><div class="vc-date">${vl(lt.deworm2)}</div></div>
-          <div class="vax-chip ${vc(lt.deworm3)}"><div class="vc-label">🪱 3차 구충</div><div class="vc-date">${vl(lt.deworm3)}</div></div>
+          <div class="vax-chip"><div class="vc-label">출산일 B</div><div class="vc-date">${fmtDate(lt.birthB)||'−'}</div></div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:.8rem; font-weight:700; color:var(--text-muted); margin:10px 0 6px;">
-          <span>🐶 새끼 ${lt.count}마리</span>
-          <button class="btn-outline" onclick="openEditLitterModal('${lt._key}')" style="font-size:11px; padding:3px 8px; width:auto;">✏️ 형제 정보 수정</button>
-        </div>
+        <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);margin:10px 0 6px;">🐶 새끼 ${lt.count}마리</div>
         <div class="litter-puppies">${puppyCards}</div>
       </div>`;
     list.appendChild(card);
@@ -1639,38 +1174,11 @@ window.toggleLitter=function(header){
 };
 
 window.openAddLitter=function(){
-  litterModalMode='add';
-  litterEditKey=null;
-  document.getElementById('litter-modal-title').textContent='출산 기록 추가';
-  document.getElementById('lm-delete-btn').style.display='none';
   document.getElementById('lm-birth-a').value=today();
   document.getElementById('lm-birth-b').value='';
   document.getElementById('lm-count').value=1;
   document.getElementById('litter-modal').classList.add('open');
 };
-
-window.openEditLitterModal=function(litterKey){
-  litterModalMode='edit';
-  litterEditKey=litterKey;
-  const lt = litters.find(l => l._key === litterKey);
-  if (!lt) return;
-  
-  document.getElementById('litter-modal-title').textContent='출산 기록 수정';
-  document.getElementById('lm-delete-btn').style.display='block';
-  
-  // 모견/부견 셀렉트박스 매핑
-  const female = females.find(f => f.code === lt.femaleCode);
-  if (female) document.getElementById('lm-female').value = female._key;
-  const male = males.find(m => m.code === lt.maleCode);
-  if (male) document.getElementById('lm-male').value = male._key;
-  
-  document.getElementById('lm-birth-a').value = lt.birthA || '';
-  document.getElementById('lm-birth-b').value = lt.birthB || '';
-  document.getElementById('lm-count').value = lt.count || 1;
-  
-  document.getElementById('litter-modal').classList.add('open');
-};
-
 window.handleLitterModalOverlay=function(e){if(e.target===document.getElementById('litter-modal'))closeLitterModal();};
 window.closeLitterModal=function(){document.getElementById('litter-modal').classList.remove('open');};
 
@@ -1684,85 +1192,16 @@ window.saveLitter=async function(){
   const fDog=females.find(f=>f._key===fKey);
   const mDog=males.find(m=>m._key===mKey);
   if(!fDog||!mDog){showToast('모견/부견을 선택해주세요');return;}
-
-  const saveBtn = document.getElementById('lm-save-btn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = '저장 중...';
-
-  try {
-    if (litterModalMode === 'add') {
-      const litter={
-        femaleCode:fDog.code, maleCode:mDog.code,
-        birthA, birthB, count,
-        vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
-        deworm1:birthB ? addDays(birthB,25) : addDays(birthA,25),
-        deworm2:birthB ? addDays(birthB,40) : addDays(birthA,40),
-        deworm3:birthB ? addDays(birthB,55) : addDays(birthA,55),
-        puppies:Object.fromEntries(Array.from({length:count},(_,i)=>[`p${i+1}`,{name:`새끼${i+1}`,sex:'unknown',photo:null}]))
-      };
-      await fbPush('litters',litter);
-      showToast(`✅ ${fDog.code} 출산 기록 등록됐어요!`);
-    } else {
-      const lt = litters.find(l => l._key === litterEditKey);
-      if (!lt) return;
-      
-      const puppies = { ...(lt.puppies || {}) };
-      const currentPuppiesCount = Object.keys(puppies).length;
-      
-      if (count > currentPuppiesCount) {
-        // 개수가 늘어난 경우: 새끼 카드 추가
-        for (let i = currentPuppiesCount + 1; i <= count; i++) {
-          puppies[`p${i}`] = { name: `새끼${i}`, sex: 'unknown', photo: null };
-        }
-      } else if (count < currentPuppiesCount) {
-        // 개수가 줄어든 경우: 뒷번호 새끼 삭제
-        for (let i = currentPuppiesCount; i > count; i--) {
-          delete puppies[`p${i}`];
-        }
-      }
-
-      const litterUpdates = {
-        femaleCode: fDog.code,
-        maleCode: mDog.code,
-        birthA,
-        birthB,
-        count,
-        vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
-        deworm1:birthB ? addDays(birthB,25) : addDays(birthA,25),
-        deworm2:birthB ? addDays(birthB,40) : addDays(birthA,40),
-        deworm3:birthB ? addDays(birthB,55) : addDays(birthA,55),
-        puppies
-      };
-      await fbUpdate(`litters/${litterEditKey}`, litterUpdates);
-      showToast(`✅ ${fDog.code} 출산 기록이 수정되었습니다!`);
-    }
-    closeLitterModal();
-  } catch (e) {
-    console.error('출산 기록 저장 실패:', e);
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = '✅ 저장';
-  }
-};
-
-window.deleteLitter=async function(){
-  if (!litterEditKey) return;
-  if (!confirm('정말로 이 출산 기록(형제 전체)을 삭제하시겠습니까?\n이 형제의 새끼 정보 및 계약 연동에 문제가 발생할 수 있습니다.')) return;
-  
-  const deleteBtn = document.getElementById('lm-delete-btn');
-  deleteBtn.disabled = true;
-  deleteBtn.textContent = '삭제 중...';
-  
-  try {
-    await fbRemove(`litters/${litterEditKey}`);
-    showToast('🗑️ 출산 기록이 삭제되었습니다.');
-    closeLitterModal();
-  } catch (e) {
-    console.error('출산 기록 삭제 실패:', e);
-  } finally {
-    deleteBtn.disabled = false;
-    deleteBtn.textContent = '🗑️ 삭제';
-  }
+  const litter={
+    femaleCode:fDog.code, maleCode:mDog.code,
+    birthA, birthB, count,
+    vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
+    deworm1:addDays(birthA,14), deworm2:addDays(birthA,28),
+    puppies:Object.fromEntries(Array.from({length:count},(_,i)=>[`p${i+1}`,{name:`새끼${i+1}`,sex:'unknown',photo:null}]))
+  };
+  await fbPush('litters',litter);
+  closeLitterModal();
+  showToast(`✅ ${fDog.code} 출산 기록 등록됐어요!`);
 };
 
 // ── 새끼 정보 수정 모달 제어
@@ -1797,16 +1236,14 @@ window.handlePuppyModalOverlay = function(e) {
   if (e.target === document.getElementById('puppy-modal')) closePuppyModal();
 };
 
-window.handlePuppyPhoto = async function(e) {
+window.handlePuppyPhoto = function(e) {
   const file = e.target.files[0]; if (!file) return;
-  try {
-    const compressed = await compressImage(file, 1024, 1024, 0.7);
-    puppyPendingPhoto = compressed;
+  const r = new FileReader();
+  r.onload = ev => {
+    puppyPendingPhoto = ev.target.result;
     setPuppyPhotoPreview(puppyPendingPhoto);
-  } catch(err) {
-    console.error('이미지 압축 실패:', err);
-    showToast('⚠ 이미지 압축에 실패했습니다.');
-  }
+  };
+  r.readAsDataURL(file);
 };
 
 function setPuppyPhotoPreview(src) {
@@ -1838,7 +1275,7 @@ window.savePuppy = async function() {
     renderPuppies();
   } catch(e) {
     console.error('새끼 정보 수정 실패:', e);
-    showToast('⚠ 정보 저장에 실패했습니다: ' + e.message);
+    showToast('⚠ 정보 저장에 실패했습니다.');
   } finally {
     saveBtn.textContent = '✅ 저장'; saveBtn.disabled = false;
   }
@@ -1855,7 +1292,6 @@ function checkVaxAlerts(){
      {date:lt.vax3,label:`${lt.femaleCode}×${lt.maleCode} 💉3차 백신`},
      {date:lt.deworm1,label:`${lt.femaleCode}×${lt.maleCode} 🪱1차 구충`},
      {date:lt.deworm2,label:`${lt.femaleCode}×${lt.maleCode} 🪱2차 구충`},
-     {date:lt.deworm3,label:`${lt.femaleCode}×${lt.maleCode} 🪱3차 구충`},
     ].forEach(c=>{
       if(!c.date)return;
       const d=daysFrom(c.date);
@@ -1911,12 +1347,480 @@ function renderMoveLog(){
 // ═══════════════════════════════════════
 //  라이트박스
 // ═══════════════════════════════════════
-window.openLightbox=function(src,lbl=''){
-  document.getElementById('lightbox-img').src=src;
-  document.getElementById('lightbox-lbl').textContent=lbl;
+// ═══════════════════════════════════════
+//  새끼 상세 모달 & 프로필 카드 생성 로직
+// ═══════════════════════════════════════
+let pdLitterKey = null;
+let pdPuppyId = null;
+
+function getDogDisplayName(code, type='male'){
+  const list = type==='female' ? females : males;
+  const dog = list.find(d => d.code === code);
+  if (dog && dog.name) return dog.name;
+  return code || '-';
+}
+
+function getSireInfo(maleCode){
+  const dog = males.find(m => m.code === maleCode);
+  return {
+    code: maleCode,
+    name: (dog && dog.name) ? dog.name : maleCode,
+    photo: (dog && dog.photo) ? dog.photo : null
+  };
+}
+
+function getMotherInfo(femaleCode){
+  const dog = females.find(f => f.code === femaleCode);
+  return {
+    code: femaleCode,
+    name: (dog && dog.name) ? dog.name : femaleCode,
+    photo: (dog && dog.photo) ? dog.photo : null
+  };
+}
+
+window.openPuppyDetail = function(litterKey, puppyId){
+  pdLitterKey = litterKey;
+  pdPuppyId = puppyId;
+  renderPuppyDetailContent();
+  document.getElementById('puppy-detail-overlay').classList.add('open');
+};
+
+window.closePuppyDetail = function(){
+  document.getElementById('puppy-detail-overlay').classList.remove('open');
+};
+
+window.handlePuppyDetailOverlay = function(e){
+  if (e.target === document.getElementById('puppy-detail-overlay')) closePuppyDetail();
+};
+
+function renderPuppyDetailContent(){
+  const container = document.getElementById('pd-content');
+  if(!container) return;
+
+  const lt = litters.find(l => l._key === pdLitterKey);
+  if(!lt) { container.innerHTML = '<div style="padding:20px;">정보를 찾을 수 없습니다.</div>'; return; }
+  const p = (lt.puppies || {})[pdPuppyId];
+  if(!p) { container.innerHTML = '<div style="padding:20px;">강아지 정보를 찾을 수 없습니다.</div>'; return; }
+
+  const motherInfo = getMotherInfo(lt.femaleCode);
+  const sireInfo = getSireInfo(lt.maleCode);
+  const mediaList = p.media ? Object.entries(p.media).map(([mk, val]) => ({_key: mk, ...val})) : [];
+  
+  // 사진/영상 갤러리 셀 HTML
+  const mediaCells = mediaList.map(m => {
+    if(m.type === 'video') {
+      return `
+      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'video')">
+        <video src="${m.src}"></video>
+        <span class="pd-media-type-badge">🎥 영상</span>
+        <div class="pd-video-play-icon">▶️</div>
+        <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_video.mp4')">💾</button>
+        <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
+      </div>`;
+    } else {
+      return `
+      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')">
+        <img src="${m.src}">
+        <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
+        <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
+      </div>`;
+    }
+  }).join('');
+
+  // 60일 분양 시작일 로직
+  const birthBDateStr = lt.birthB || lt.birthA;
+  let adoptionRowHtml = '';
+  if (birthBDateStr) {
+    const bDate = new Date(birthBDateStr);
+    const startAdoptionDate = new Date(bDate);
+    startAdoptionDate.setDate(startAdoptionDate.getDate() + 60);
+
+    if (daysFrom(birthBDateStr) > -60) {
+      // 60일 미만
+      const formattedStartDate = startAdoptionDate.toISOString().slice(0,10).replace(/-/g, '.');
+      adoptionRowHtml = `
+      <tr>
+        <td class="td-label">🗓 분양 시작일</td>
+        <td class="td-value">${formattedStartDate} <span class="pd-reserve-badge">사전 예약 중</span></td>
+      </tr>`;
+    }
+  }
+
+  container.innerHTML = `
+    <!-- 미디어 갤러리 섹션 -->
+    <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
+      <div class="pd-section-title">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
+      <div class="pd-gallery">
+        ${mediaCells}
+        <div class="pd-media-add" title="사진 추가">
+          <div class="ai">📷</div><div class="at">사진 추가</div>
+          <input type="file" accept="image/*" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
+        </div>
+        <div class="pd-media-add" title="영상 추가 (최대 10MB)">
+          <div class="ai">🎥</div><div class="at">영상 추가</div>
+          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
+        </div>
+      </div>
+    </div>
+
+    <!-- 기본 정보 섹션 -->
+    <div class="pd-section">
+      <div class="pd-section-title">📋 강아지 정보</div>
+      <table class="pd-info-table">
+        <tr>
+          <td class="td-label">🐾 이름</td>
+          <td class="td-value">${esc(p.name||pdPuppyId)}</td>
+        </tr>
+        <tr>
+          <td class="td-label">성별</td>
+          <td class="td-value">${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}</td>
+        </tr>
+        <tr>
+          <td class="td-label">📅 출산일(B)</td>
+          <td class="td-value">${fmtDate(lt.birthB || lt.birthA)}</td>
+        </tr>
+        <tr>
+          <td class="td-label">🐕‍🦺 모견</td>
+          <td class="td-value">${esc(motherInfo.name)}</td>
+        </tr>
+        <tr>
+          <td class="td-label">🐕 부견</td>
+          <td class="td-value">${esc(sireInfo.name)}</td>
+        </tr>
+        ${adoptionRowHtml}
+      </table>
+    </div>
+
+    <!-- 부견 프로필 사진 섹션 -->
+    <div class="pd-section" style="border-top:1px solid var(--border);">
+      <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필 사진</div>
+      ${sireInfo.photo ? 
+        `<img class="pd-sire-photo" src="${sireInfo.photo}" onclick="openLightbox('${sireInfo.photo}', '부견: ${esc(sireInfo.name)}')">` :
+        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 부견 사진을 등록하면 자동 표시됩니다</small></div>`
+      }
+    </div>
+
+    <!-- 액션 버튼 섹션 -->
+    <div class="pd-section" style="padding-top:0;">
+      <button class="pd-profile-btn" onclick="generateProfileCard('${pdLitterKey}','${pdPuppyId}')">
+        🎴 카톡 전송용 프로필 카드 이미지 저장
+      </button>
+      <button class="pd-edit-btn" onclick="closePuppyDetail(); openEditPuppyModal('${pdLitterKey}','${pdPuppyId}');">
+        ✏️ 강아지 정보 수정 (대표 사진 / 이름)
+      </button>
+      <button class="pd-contract-btn" onclick="goToAdminContract('${pdLitterKey}','${pdPuppyId}','${p.status||'분양 전'}')">
+        📄 분양 계약 작성 이동
+      </button>
+    </div>
+  `;
+}
+
+// 미디어 파일 업로드 (사진/영상 - 10MB 제한)
+window.addPuppyMedia = async function(e, litterKey, puppyId, type){
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+
+  for(const file of files){
+    if(type === 'video' && file.size > 10 * 1024 * 1024){
+      alert('⚠️ 동영상은 10MB 이하의 파일만 첨부 가능합니다.');
+      continue;
+    }
+    await new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = async ev => {
+        const mediaObj = {
+          type,
+          src: ev.target.result,
+          label: type==='video'?'영상':'사진',
+          createdAt: today()
+        };
+        await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, mediaObj);
+        resolve();
+      };
+      r.readAsDataURL(file);
+    });
+  }
+  showToast(`✅ ${type==='video'?'영상':'사진'}이 업로드되었습니다.`);
+  renderPuppyDetailContent();
+};
+
+window.deletePuppyMedia = async function(litterKey, puppyId, mediaKey){
+  if(!confirm('해당 미디어를 삭제하시겠습니까?')) return;
+  await fbRemove(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`);
+  showToast('삭제되었습니다.');
+  renderPuppyDetailContent();
+};
+
+window.downloadMedia = function(src, filename){
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+// ═══════════════════════════════════════
+//  Canvas 프로필 카드 자동 생성 & 저장
+// ═══════════════════════════════════════
+window.generateProfileCard = async function(litterKey, puppyId){
+  showToast('🎴 프로필 카드를 생성하는 중입니다...');
+  
+  const lt = litters.find(l => l._key === litterKey);
+  if(!lt) return;
+  const p = (lt.puppies || {})[puppyId];
+  if(!p) return;
+
+  const motherInfo = getMotherInfo(lt.femaleCode);
+  const sireInfo = getSireInfo(lt.maleCode);
+  const mediaList = p.media ? Object.values(p.media).filter(m => m.type==='image') : [];
+  
+  // 카드 사진 배열: p.photo가 있으면 맨 앞(메인), 그 다음 mediaList의 사진들
+  const photoSrcs = [];
+  if (p.photo) photoSrcs.push(p.photo);
+  mediaList.forEach(m => { if(m.src && !photoSrcs.includes(m.src)) photoSrcs.push(m.src); });
+
+  // 캔버스 크기 (스마트폰 9:16 비율)
+  const W = 600;
+  const H = 1020;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // 1. 전체 배경 (따뜻한 크림톤)
+  ctx.fillStyle = '#FFFDF5';
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. 상단 헤더 (골드 그라데이션)
+  const headGrad = ctx.createLinearGradient(0, 0, W, 70);
+  headGrad.addColorStop(0, '#6B3F0E');
+  headGrad.addColorStop(1, '#C8860A');
+  ctx.fillStyle = headGrad;
+  ctx.fillRect(0, 0, W, 70);
+
+  // 헤더 텍스트
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
+  ctx.fillText('🐾 골디쉼터 프로필', 24, 44);
+
+  // 이미지 로드 헬퍼
+  const loadImage = (src) => new Promise((res) => {
+    if(!src) return res(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = src;
+  });
+
+  const loadedPhotos = await Promise.all(photoSrcs.map(src => loadImage(src)));
+  const validPhotos = loadedPhotos.filter(img => img !== null);
+  const sireImg = await loadImage(sireInfo.photo);
+
+  // 3. 동적 사진 레이아웃 그리기 (Y: 85 ~ 440)
+  const pX = 20, pY = 85, pW = 560, pH = 355;
+
+  function drawRoundedImg(img, x, y, w, h, radius=12) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.clip();
+
+    if (img) {
+      // center crop
+      const imgAspect = img.width / img.height;
+      const rectAspect = w / h;
+      let drawW, drawH, drawX, drawY;
+      if (imgAspect > rectAspect) {
+        drawH = h; drawW = h * imgAspect;
+        drawX = x - (drawW - w) / 2; drawY = y;
+      } else {
+        drawW = w; drawH = w / imgAspect;
+        drawX = x; drawY = y - (drawH - h) / 2;
+      }
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    } else {
+      ctx.fillStyle = '#FFF8E7';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#A0632A';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐶 대표 사진', x + w/2, y + h/2);
+      ctx.textAlign = 'left';
+    }
+    ctx.restore();
+
+    // 테두리
+    ctx.strokeStyle = '#E8D5A3';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  const count = validPhotos.length;
+  if (count <= 1) {
+    drawRoundedImg(validPhotos[0] || null, pX, pY, pW, pH);
+  } else if (count === 2) {
+    const mainH = 240;
+    const subH = 105;
+    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
+    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, pW, subH);
+  } else if (count === 3) {
+    const mainH = 240;
+    const subH = 105;
+    const subW = (pW - 10) / 2;
+    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
+    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
+    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
+  } else if (count === 4) {
+    const mainH = 240;
+    const subH = 105;
+    const subW = (pW - 20) / 3;
+    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
+    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
+    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
+    drawRoundedImg(validPhotos[3], pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
+  } else {
+    // 5장 이상
+    const mainH = 240;
+    const subH = 105;
+    const subW = (pW - 20) / 3;
+    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
+    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
+    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
+    drawRoundedImg(validPhotos[3], pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
+    
+    // N+ 표기
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`+${count - 3}`, pX + (subW + 10)*2 + subW/2, pY + mainH + 10 + subH/2 + 6);
+    ctx.textAlign = 'left';
+  }
+
+  // 4. 정보 카드 박스 (Y: 460 ~ 680)
+  const infoY = 460;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(100,60,10,0.08)';
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetY = 4;
+  ctx.fillRect(pX, infoY, pW, 230);
+  ctx.shadowColor = 'transparent';
+
+  ctx.strokeStyle = '#E8D5A3';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pX, infoY, pW, 230);
+
+  // 정보 행 구성
+  const rows = [
+    { label: '🐾 이름', val: p.name || puppyId },
+    { label: '성별', val: p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정' },
+    { label: '📅 출산일', val: fmtDate(lt.birthB || lt.birthA) },
+    { label: '🐕‍🦺 모견', val: motherInfo.name },
+    { label: '🐕 부견', val: sireInfo.name }
+  ];
+
+  // 60일 미만인 경우 분양시작일 추가
+  const birthBDateStr = lt.birthB || lt.birthA;
+  if (birthBDateStr && daysFrom(birthBDateStr) > -60) {
+    const bDate = new Date(birthBDateStr);
+    const startDate = new Date(bDate);
+    startDate.setDate(startDate.getDate() + 60);
+    const startStr = startDate.toISOString().slice(0,10).replace(/-/g, '.');
+    rows.push({ label: '🗓 분양시작일', val: `${startStr} (사전 예약 중)` });
+  }
+
+  let rowY = infoY + 32;
+  const rowStep = Math.min(36, 210 / rows.length);
+
+  rows.forEach((r, idx) => {
+    ctx.fillStyle = '#8B6A3A';
+    ctx.font = 'bold 15px "Noto Sans KR", sans-serif';
+    ctx.fillText(r.label, pX + 20, rowY);
+
+    ctx.fillStyle = '#2C1A06';
+    ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
+    ctx.fillText(r.val, pX + 150, rowY);
+
+    if (idx < rows.length - 1) {
+      ctx.strokeStyle = '#F5EAD0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pX + 15, rowY + 10);
+      ctx.lineTo(pX + pW - 15, rowY + 10);
+      ctx.stroke();
+    }
+    rowY += rowStep;
+  });
+
+  // 5. 부견 사진 섹션 (Y: 710 ~ 950)
+  const sireY = 710;
+  ctx.fillStyle = '#6B3F0E';
+  ctx.font = 'bold 15px "Noto Sans KR", sans-serif';
+  ctx.fillText(`🐕 부견 (${sireInfo.name}) 사진`, pX, sireY);
+
+  drawRoundedImg(sireImg, pX, sireY + 12, pW, 215, 12);
+
+  // 6. 푸터 (Y: 985) - "한마리 한마리 정성을다해 키웠습니다."
+  ctx.fillStyle = '#A0632A';
+  ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 985);
+  ctx.textAlign = 'left';
+
+  // 7. 다운로드 처리
+  canvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `골디쉼터_프로필_${p.name||puppyId}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ 프로필 카드 이미지가 저장되었습니다!');
+  }, 'image/png');
+};
+
+// 라이트박스 확장 (영상 및 이미지 지원)
+window.openLightbox = function(src, lbl='', type='image'){
+  const imgEl = document.getElementById('lightbox-img');
+  const videoEl = document.getElementById('lightbox-video');
+  const lblEl = document.getElementById('lightbox-lbl');
+
+  lblEl.textContent = lbl;
+
+  if (type === 'video') {
+    imgEl.style.display = 'none';
+    videoEl.style.display = 'block';
+    videoEl.src = src;
+    videoEl.play();
+  } else {
+    videoEl.style.display = 'none';
+    videoEl.pause();
+    imgEl.style.display = 'block';
+    imgEl.src = src;
+  }
   document.getElementById('lightbox').classList.add('open');
 };
-window.closeLightbox=function(){document.getElementById('lightbox').classList.remove('open');};
+
+window.closeLightbox = function(){
+  const videoEl = document.getElementById('lightbox-video');
+  if (videoEl) { videoEl.pause(); videoEl.src = ''; }
+  document.getElementById('lightbox').classList.remove('open');
+};
+
 
 // ═══════════════════════════════════════
 //  사진 헬퍼
@@ -1950,856 +1854,9 @@ window.showToast=function(msg){
   setTimeout(()=>t.classList.remove('show'),2800);
 };
 
-// ═══════════════════════════════════════
-//  배송 탭 및 캘린더
-// ═══════════════════════════════════════
-window.renderDeliveryCalendar = function() {
-  const grid = document.getElementById('calendar-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  
-  const dateLabel = document.getElementById('calendar-month-year');
-  const year = currentCalendarDate.getFullYear();
-  const month = currentCalendarDate.getMonth();
-  
-  dateLabel.textContent = `${year}년 ${(month + 1).toString().padStart(2, '0')}월`;
-  
-  const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
-  daysOfWeek.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'calendar-day-header';
-    el.textContent = d;
-    grid.appendChild(el);
-  });
-  
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  
-  for (let i = firstDayIndex - 1; i >= 0; i--) {
-    const el = document.createElement('div');
-    el.className = 'calendar-day empty';
-    grid.appendChild(el);
-  }
-  
-  const todayStr = today();
-  
-  for (let day = 1; day <= totalDays; day++) {
-    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    const isToday = dayDateStr === todayStr;
-    
-    const dayCell = document.createElement('div');
-    dayCell.className = `calendar-day${isToday ? ' today' : ''}`;
-    dayCell.onclick = () => openAddDeliveryModal(dayDateStr);
-    
-    const numEl = document.createElement('div');
-    numEl.className = 'calendar-day-num';
-    numEl.textContent = day;
-    dayCell.appendChild(numEl);
-    
-    const chipsContainer = document.createElement('div');
-    chipsContainer.className = 'calendar-chips';
-    
-    // 1. 배송 일정 (🚗)
-    const dayDeliveries = (deliveries || [])
-      .filter(d => d.date === dayDateStr)
-      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-      
-    dayDeliveries.forEach(dev => {
-      const chip = document.createElement('div');
-      chip.className = `delivery-chip${dev.status === '완료' ? ' completed' : ''}`;
-      const timeStr = dev.time ? `${dev.time} ` : '';
-      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'}`;
-      chip.onclick = (e) => {
-        e.stopPropagation();
-        openEditDeliveryModal(dev._key);
-      };
-      chipsContainer.appendChild(chip);
-    });
-
-    // 2. 치료/투약 일정 (🩺)
-    const dayTreatments = (window._treatments || []).filter(t => {
-      if (!t || !t.startDate) return false;
-      const s = t.startDate;
-      const e = t.endDate || t.startDate;
-      return dayDateStr >= s && dayDateStr <= e;
-    });
-
-    dayTreatments.forEach(t => {
-      const chip = document.createElement('div');
-      chip.className = `delivery-chip treatment-chip${t.status === '완료' ? ' completed' : ''}`;
-      chip.textContent = `🩺 ${t.targetName || '치료'}`;
-      chip.title = `치료 메모: ${t.memo || ''}`;
-      chip.onclick = (e) => {
-        e.stopPropagation();
-        showTab('treatment');
-      };
-      chipsContainer.appendChild(chip);
-    });
-
-    // 3. 방역(백신/구충) 일정 (💉 / 🪱)
-    (litters || []).forEach(lt => {
-      if (!lt || !lt.birthA) return;
-      const parentLabel = `${lt.femaleCode || '?'}×${lt.maleCode || '?'}`;
-      const vax1 = dateToStr(addDaysDate(lt.birthA, 25));
-      const vax2 = dateToStr(addDaysDate(lt.birthA, 35));
-      const vax3 = dateToStr(addDaysDate(lt.birthA, 45));
-      
-      let vaxText = '';
-      if (vax1 === dayDateStr) vaxText = '💉 1차백신';
-      else if (vax2 === dayDateStr) vaxText = '💉 2차백신';
-      else if (vax3 === dayDateStr) vaxText = '💉 3차백신';
-
-      if (vaxText) {
-        const chip = document.createElement('div');
-        chip.className = 'delivery-chip vax-chip-cal';
-        chip.textContent = `${vaxText} (${parentLabel})`;
-        chip.onclick = (e) => {
-          e.stopPropagation();
-          showTab('puppies');
-        };
-        chipsContainer.appendChild(chip);
-      }
-
-      // 구충일 (생후 30~43일 짝수날)
-      for (let i = 0; i < 14; i += 2) {
-        const dwDate = dateToStr(addDaysDate(lt.birthA, 30 + i));
-        if (dwDate === dayDateStr) {
-          const chip = document.createElement('div');
-          chip.className = 'delivery-chip vax-chip-cal';
-          chip.textContent = `🪱 구충 (${parentLabel})`;
-          chip.onclick = (e) => {
-            e.stopPropagation();
-            showTab('puppies');
-          };
-          chipsContainer.appendChild(chip);
-          break;
-        }
-      }
-    });
-
-    dayCell.appendChild(chipsContainer);
-    grid.appendChild(dayCell);
-  }
-  
-  const totalGridCells = firstDayIndex + totalDays;
-  const remainingCells = (7 - (totalGridCells % 7)) % 7;
-  for (let i = 0; i < remainingCells; i++) {
-    const el = document.createElement('div');
-    el.className = 'calendar-day empty';
-    grid.appendChild(el);
-  }
-};
-
-window.changeCalendarMonth = function(offset) {
-  currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
-  renderDeliveryCalendar();
-};
-
-window.closeDeliveryModal = function() {
-  document.getElementById('delivery-modal').classList.remove('open');
-};
-
-window.handleDeliveryModalOverlay = function(e) {
-  if (e.target === document.getElementById('delivery-modal')) closeDeliveryModal();
-};
-
-window.searchDeliveryAddress = function() {
-  new window.daum.Postcode({
-    oncomplete: function(data) {
-      let addr = '';
-      if (data.userSelectedType === 'R') {
-        addr = data.roadAddress;
-      } else {
-        addr = data.jibunAddress;
-      }
-      document.getElementById('dev-addr').value = addr;
-    }
-  }).open();
-};
-
-window.openAddDeliveryModal = function(dateStr) {
-  deliveryModalMode = 'add';
-  deliveryEditKey = null;
-  
-  document.getElementById('delivery-modal-title').textContent = '배송 일정 등록';
-  document.getElementById('dev-del-btn').style.display = 'none';
-  document.getElementById('dev-status-group').style.display = 'none';
-  document.getElementById('dev-status').value = '예정';
-  
-  // 완료된 계약건 목록 채우기 (최신순)
-  const sortedContracts = [...contracts].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-  const select = document.getElementById('dev-contract');
-  select.innerHTML = '<option value="">-- 계약 선택 --</option>' + 
-    sortedContracts.map(c => `<option value="${c._key}">[강아지: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})] ${c.buyer_name} - ${c.buyer_phone}</option>`).join('');
-  select.disabled = false;
-  
-  document.getElementById('dev-date').value = dateStr || today();
-  document.getElementById('dev-time').value = '12:00';
-  document.getElementById('dev-addr').value = '';
-  document.getElementById('dev-addr-detail').value = '';
-  document.getElementById('dev-memo').value = '';
-  
-  document.getElementById('delivery-modal').classList.add('open');
-};
-
-window.openEditDeliveryModal = function(dKey) {
-  deliveryModalMode = 'edit';
-  deliveryEditKey = dKey;
-  
-  const dev = deliveries.find(d => d._key === dKey);
-  if (!dev) return;
-  
-  document.getElementById('delivery-modal-title').textContent = '배송 일정 수정';
-  document.getElementById('dev-del-btn').style.display = 'block';
-  document.getElementById('dev-status-group').style.display = 'block';
-  
-  const select = document.getElementById('dev-contract');
-  select.innerHTML = `<option value="${dev.contractId}">[강아지: ${dev.dogname} (계약완료)] ${dev.buyer_name} - ${dev.buyer_phone}</option>`;
-  select.value = dev.contractId;
-  select.disabled = true;
-  
-  document.getElementById('dev-date').value = dev.date || '';
-  document.getElementById('dev-time').value = dev.time || '';
-  document.getElementById('dev-addr').value = dev.address || '';
-  document.getElementById('dev-addr-detail').value = '';
-  document.getElementById('dev-memo').value = dev.memo || '';
-  document.getElementById('dev-status').value = dev.status || '예정';
-  
-  document.getElementById('delivery-modal').classList.add('open');
-};
-
-window.saveDelivery = async function() {
-  const contractId = document.getElementById('dev-contract').value;
-  const date = document.getElementById('dev-date').value;
-  const time = document.getElementById('dev-time').value;
-  const addr = document.getElementById('dev-addr').value.trim();
-  const addrDetail = document.getElementById('dev-addr-detail').value.trim();
-  const memo = document.getElementById('dev-memo').value.trim();
-  
-  if (!contractId) { showToast('분양 계약건을 선택해주세요.'); return; }
-  if (!date || !time) { showToast('배송 날짜와 시간을 입력해주세요.'); return; }
-  if (!addr) { showToast('배송 주소를 입력해주세요.'); return; }
-  
-  const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
-  const saveBtn = document.getElementById('dev-save-btn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = '저장 중...';
-  
-  try {
-    if (deliveryModalMode === 'add') {
-      const contract = contracts.find(c => c._key === contractId);
-      if (!contract) return;
-      
-      const newDev = {
-        contractId,
-        dogid: contract.dogid || '',
-        dogname: contract.dogname || '',
-        buyer_name: contract.buyer_name || '',
-        buyer_phone: contract.buyer_phone || '',
-        date,
-        time,
-        address: fullAddr,
-        memo,
-        status: '예정',
-        created_at: new Date().toISOString()
-      };
-      
-      await fbPush('deliveries', newDev);
-      showToast('✅ 배송 일정이 정상적으로 등록되었습니다!');
-    } else {
-      const updates = {
-        date,
-        time,
-        address: fullAddr,
-        memo,
-        status: document.getElementById('dev-status').value
-      };
-      await fbUpdate(`deliveries/${deliveryEditKey}`, updates);
-      showToast('✅ 배송 일정이 수정되었습니다!');
-    }
-    closeDeliveryModal();
-    renderDeliveryCalendar();
-  } catch(e) {
-    console.error('배송 일정 저장 실패:', e);
-    showToast('⚠ 저장 실패: ' + e.message);
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = '✅ 저장';
-  }
-};
-
-window.deleteDelivery = async function() {
-  if (!deliveryEditKey) return;
-  if (!confirm('정말로 이 배송 일정을 취소/삭제하시겠습니까?')) return;
-  
-  const delBtn = document.getElementById('dev-del-btn');
-  delBtn.disabled = true;
-  delBtn.textContent = '삭제 중...';
-  
-  try {
-    await fbRemove(`deliveries/${deliveryEditKey}`);
-    showToast('🗑️ 배송 일정이 취소되었습니다.');
-    closeDeliveryModal();
-    renderDeliveryCalendar();
-  } catch(e) {
-    console.error('배송 일정 삭제 실패:', e);
-    showToast('⚠ 삭제 실패: ' + e.message);
-  } finally {
-    delBtn.disabled = false;
-    delBtn.textContent = '🗑️ 삭제';
-  }
-};
-
-// ── 치료 관리 기능 ──
-window._treatmentTargetType = 'puppy';
-window._treatmentsFilter = 'all';
-
-const INJECTION_INFO = {
-  baytril: { name: '바이트릴' },
-  danpron: { name: '단프론' },
-  bromhexine: { name: '브롬신' },
-  kingbelin: { name: '킹벨린' },
-  carasil: { name: '카라실' },
-  jeslong: { name: '제스롱' },
-  dexasone: { name: '덱사손' }
-};
-
-const SYMPTOM_COMBINATIONS = {
-  direct: [],
-  cold_wet: ['danpron', 'baytril'],
-  cold_dry: ['bromhexine', 'baytril'],
-  diarrhea_simple: ['kingbelin', 'baytril'],
-  diarrhea_anorexia: ['kingbelin', 'baytril', 'carasil'],
-  diarrhea_vomit: ['kingbelin', 'baytril', 'jeslong'],
-  diarrhea_fever: ['kingbelin', 'baytril', 'danpron'],
-  wound_inflammation: ['dexasone', 'baytril'],
-  anorexia_simple: ['carasil']
-};
-
-function addDaysDate(dateStr, n) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d;
-}
-function dateToStr(d) {
-  return d ? d.toISOString().slice(0, 10) : '';
-}
-
-window.initTreatmentTab = function() {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const startDateInput = document.getElementById('treat-start-date');
-  if (startDateInput && !startDateInput.value) {
-    startDateInput.value = todayStr;
-  }
-  fillTreatmentSelects();
-  onTreatmentDateChanged();
-  renderTreatmentList();
-};
-
-window.setTreatmentTargetType = function(type) {
-  window._treatmentTargetType = type;
-  const puppyBtn = document.getElementById('btn-treat-type-puppy');
-  const adultBtn = document.getElementById('btn-treat-type-adult');
-  const puppyWrap = document.getElementById('treat-target-puppy-wrap');
-  const adultWrap = document.getElementById('treat-target-adult-wrap');
-  
-  if (type === 'puppy') {
-    puppyBtn.className = 'sex-btn female active';
-    adultBtn.className = 'sex-btn male';
-    puppyWrap.style.display = 'block';
-    adultWrap.style.display = 'none';
-  } else {
-    puppyBtn.className = 'sex-btn female';
-    adultBtn.className = 'sex-btn male active';
-    puppyWrap.style.display = 'none';
-    adultWrap.style.display = 'block';
-  }
-  
-  if (document.getElementById('treat-puppy-select')) document.getElementById('treat-puppy-select').value = '';
-  if (document.getElementById('treat-adult-select')) document.getElementById('treat-adult-select').value = '';
-  if (document.getElementById('treat-adult-input')) document.getElementById('treat-adult-input').value = '';
-  document.getElementById('treat-pregnant-check').checked = false;
-  document.getElementById('treat-weight').value = '';
-  document.getElementById('treat-symptom-select').value = 'direct';
-  
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk) chk.checked = false;
-    if (val) { val.value = ''; val.disabled = true; }
-  });
-  checkBaytrilWarning();
-};
-
-function getLitterLabel(l) {
-  if (!l) return '';
-  
-  // 1. 모견 식별/이름 파싱 (예: 4262/다미)
-  let fCode = (l.femaleCode || '?').trim();
-  const rawFemales = typeof females !== 'undefined' ? females : (window._females || []);
-  const femaleObj = Array.isArray(rawFemales)
-    ? rawFemales.find(f => f && (String(f.code).trim() === fCode || String(f._key) === fCode))
-    : null;
-  if (femaleObj) {
-    const c = (femaleObj.code || '').trim();
-    const n = (femaleObj.name || '').trim();
-    if (c && n && c !== n && !fCode.includes('/')) fCode = `${c}/${n}`;
-    else if (n && !fCode.includes('/')) fCode = n;
-    else if (c && !fCode.includes('/')) fCode = c;
-  }
-
-  // 2. 부견 식별/이름 파싱 (예: 늑구)
-  let mCode = (l.maleCode || '?').trim();
-  const rawMales = typeof males !== 'undefined' ? males : (window._males || []);
-  const maleObj = Array.isArray(rawMales)
-    ? rawMales.find(m => m && (String(m.code).trim() === mCode || String(m._key) === mCode))
-    : null;
-  if (maleObj) {
-    const c = (maleObj.code || '').trim();
-    const n = (maleObj.name || '').trim();
-    if (c && n && c !== n && !mCode.includes('/')) mCode = `${c}/${n}`;
-    else if (n && !mCode.includes('/')) mCode = n;
-    else if (c && !mCode.includes('/')) mCode = c;
-  }
-
-  // 3. 자견 수
-  const puppies = l.puppies || {};
-  const puppyCount = l.count || Object.keys(puppies).length || 1;
-
-  // 4. 생후 일수
-  const ageInDays = l.birthA 
-    ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) 
-    : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
-  
-  const ageStr = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
-
-  return `${fCode} × ${mCode} ${puppyCount}마리${ageStr}`;
-}
-
-function fillTreatmentSelects() {
-  const puppySelect = document.getElementById('treat-puppy-select');
-  if (puppySelect) {
-    const currentVal = puppySelect.value;
-    let options = '<option value="">-- 새끼 (형제 그룹) 선택 --</option>';
-    const rawLitters = typeof litters !== 'undefined' ? litters : (window._litters || {});
-    const litterList = Array.isArray(rawLitters) 
-      ? rawLitters 
-      : Object.entries(rawLitters || {}).map(([k, v]) => ({ _key: k, ...v }));
-    
-    // 출산일(birthA) 최근순 정렬
-    const sortedLitters = [...litterList].sort((a, b) => (b.birthA || '').localeCompare(a.birthA || ''));
-    
-    sortedLitters.forEach(l => {
-      const lid = l._key || l.id;
-      const label = getLitterLabel(l);
-      const puppies = l.puppies || {};
-      
-      let sampleWeight = '';
-      Object.values(puppies).forEach(p => { if (p.weight && !sampleWeight) sampleWeight = p.weight; });
-      const weightAttr = sampleWeight ? ` data-weight="${sampleWeight}"` : '';
-
-      options += `<option value="${lid}"${weightAttr}>${label}</option>`;
-    });
-    
-    puppySelect.innerHTML = options;
-    if (currentVal) puppySelect.value = currentVal;
-  }
-  
-  const adultSelect = document.getElementById('treat-adult-select');
-  const datalist = document.getElementById('treat-adult-suggestions');
-  
-  const adultSet = new Set();
-  if (Array.isArray(females)) females.forEach(d => { if (d && d.code) adultSet.add(d.code.trim()); });
-  if (Array.isArray(males)) males.forEach(d => { if (d && d.code) adultSet.add(d.code.trim()); });
-  
-  const litterList = Array.isArray(litters) ? litters : Object.values(litters || {});
-  litterList.forEach(l => {
-    if (l && l.femaleCode) adultSet.add(l.femaleCode.trim());
-    if (l && l.maleCode) adultSet.add(l.maleCode.trim());
-  });
-  
-  const sortedAdults = Array.from(adultSet).sort();
-  
-  if (adultSelect) {
-    const currentAdultVal = adultSelect.value;
-    let selectHtml = '<option value="">-- 성견 선택 --</option>';
-    sortedAdults.forEach(code => {
-      selectHtml += `<option value="${code}">🐕 ${code}</option>`;
-    });
-    adultSelect.innerHTML = selectHtml;
-    if (currentAdultVal) adultSelect.value = currentAdultVal;
-  }
-  
-  if (datalist) {
-    let datalistHtml = '';
-    sortedAdults.forEach(code => { datalistHtml += `<option value="${code}">`; });
-    datalist.innerHTML = datalistHtml;
-  }
-}
-
-window.onTreatmentAdultSelectChanged = function(val) {
-  const input = document.getElementById('treat-adult-input');
-  if (input) input.value = val;
-  checkBaytrilWarning();
-};
-
-window.onTreatmentPuppyChanged = function() {
-  const sel = document.getElementById('treat-puppy-select');
-  const selectedOption = sel.options[sel.selectedIndex];
-  if (selectedOption) {
-    const savedWeight = selectedOption.getAttribute('data-weight');
-    if (savedWeight) {
-      document.getElementById('treat-weight').value = savedWeight;
-      onTreatmentWeightChanged();
-    }
-  }
-  checkBaytrilWarning();
-};
-
-window.onTreatmentAdultChanged = function() {
-  checkBaytrilWarning();
-};
-
-window.onTreatmentWeightChanged = function() {
-  const weightVal = parseFloat(document.getElementById('treat-weight').value);
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk && chk.checked && !isNaN(weightVal) && weightVal > 0) {
-      val.value = Math.round(weightVal * 0.1 * 100) / 100;
-    } else if (val && (!chk || !chk.checked)) {
-      val.value = '';
-    }
-  });
-  checkBaytrilWarning();
-};
-
-const RECOMMENDED_DURATIONS = {
-  direct: 3,
-  cold_wet: 5,           // 콧물 감기 (항생제 바이트릴 포함) -> 5일
-  cold_dry: 5,           // 마른 기침 (항생제 바이트릴 포함) -> 5일
-  diarrhea_simple: 5,    // 단순 설사 (항생제 바이트릴 포함) -> 5일
-  diarrhea_anorexia: 5,  // 설사+식욕부진 (항생제 바이트릴 포함) -> 5일
-  diarrhea_vomit: 5,     // 설사+구토 (항생제 바이트릴 포함) -> 5일
-  diarrhea_fever: 5,     // 설사+열/염증 (항생제 바이트릴 포함) -> 5일
-  wound_inflammation: 5, // 외부상처/염증 (소염제 덱사손 + 바이트릴) -> 5일
-  anorexia_simple: 2     // 단순 식욕부진 (카라실 영양) -> 2일
-};
-
-window.onTreatmentSymptomChanged = function(symptomKey) {
-  const activeKeys = SYMPTOM_COMBINATIONS[symptomKey] || [];
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk) {
-      const shouldCheck = activeKeys.includes(key);
-      chk.checked = shouldCheck;
-      if (val) val.disabled = !shouldCheck;
-    }
-  });
-  
-  const recDuration = RECOMMENDED_DURATIONS[symptomKey] || 3;
-  const durInput = document.getElementById('treat-duration');
-  if (durInput) durInput.value = recDuration;
-
-  onTreatmentWeightChanged();
-};
-
-window.onInjCheckChanged = function(key) {
-  const chk = document.getElementById(`inj-check-${key}`);
-  const val = document.getElementById(`inj-val-${key}`);
-  if (chk && val) {
-    val.disabled = !chk.checked;
-    if (!chk.checked) val.value = '';
-    else {
-      const weightVal = parseFloat(document.getElementById('treat-weight').value);
-      if (!isNaN(weightVal) && weightVal > 0) {
-        val.value = Math.round(weightVal * 0.1 * 100) / 100;
-      }
-    }
-  }
-  document.getElementById('treat-symptom-select').value = 'direct';
-  
-  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
-  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
-  const durInput = document.getElementById('treat-duration');
-  if (durInput) durInput.value = (hasBaytril || hasDexasone) ? 5 : 3;
-
-  checkBaytrilWarning();
-  onTreatmentDateChanged();
-};
-
-window.checkBaytrilWarning = function() {
-  const baytrilChecked = document.getElementById('inj-check-baytril')?.checked;
-  const warnBox = document.getElementById('treat-warning-box');
-  if (!warnBox) return false;
-  if (!baytrilChecked) { warnBox.style.display = 'none'; return false; }
-  
-  let isPregnant = false;
-  let isVaccineDay = false;
-  const startDate = document.getElementById('treat-start-date').value;
-  
-  if (window._treatmentTargetType === 'adult') {
-    isPregnant = document.getElementById('treat-pregnant-check').checked;
-  }
-  if (window._treatmentTargetType === 'puppy' && startDate) {
-    const litterId = document.getElementById('treat-puppy-select').value;
-    if (litterId) {
-      const litter = Array.isArray(litters) ? litters.find(l => l._key === litterId) : (litters ? litters[litterId] : null);
-      if (litter && litter.birthA) {
-        const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
-        const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
-        const vax3 = dateToStr(addDaysDate(litter.birthA, 45));
-        if (startDate === vax1 || startDate === vax2 || startDate === vax3) {
-          isVaccineDay = true;
-        }
-      }
-    }
-  }
-  if (isPregnant || isVaccineDay) {
-    let reason = isPregnant && isVaccineDay ? ' (임신 모견 및 백신 접종 당일)' : isPregnant ? ' (임신 모견)' : ' (백신 접종 당일)';
-    warnBox.innerHTML = `⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다.${reason}<br>약품 조합을 변경해 주세요.`;
-    warnBox.style.display = 'block';
-    return true;
-  } else {
-    warnBox.style.display = 'none';
-    return false;
-  }
-};
-
-window.onTreatmentDateChanged = function() {
-  const startDateVal = document.getElementById('treat-start-date').value;
-  const durationVal = parseInt(document.getElementById('treat-duration').value);
-  const display = document.getElementById('treat-end-date-display');
-  const hintEl = document.getElementById('treat-duration-hint');
-  
-  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
-  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
-  const symptomKey = document.getElementById('treat-symptom-select')?.value;
-
-  if (hintEl) {
-    if (hasBaytril || hasDexasone || symptomKey === 'cold_wet' || symptomKey === 'cold_dry' || symptomKey === 'diarrhea_fever' || symptomKey === 'wound_inflammation') {
-      hintEl.textContent = '💡 추천: 5일 (항생제/소염제)';
-    } else if (symptomKey === 'anorexia_simple') {
-      hintEl.textContent = '💡 추천: 2일 (대사 촉진)';
-    } else {
-      hintEl.textContent = '💡 추천: 3일 (기본 치료)';
-    }
-  }
-
-  if (!display) return;
-  if (startDateVal && !isNaN(durationVal) && durationVal > 0) {
-    const end = addDaysDate(startDateVal, durationVal - 1);
-    display.textContent = fmtDate(dateToStr(end));
-  } else {
-    display.textContent = '-';
-  }
-  checkBaytrilWarning();
-};
-
-window.filterTreatments = function(filter) {
-  window._treatmentsFilter = filter;
-  const allBtn = document.getElementById('filter-treat-all');
-  const activeBtn = document.getElementById('filter-treat-active');
-  const doneBtn = document.getElementById('filter-treat-done');
-  
-  if (allBtn) { allBtn.style.background = filter === 'all' ? '#fff' : 'transparent'; allBtn.style.color = filter === 'all' ? 'var(--gold)' : 'var(--text-muted)'; allBtn.style.fontWeight = filter === 'all' ? '800' : '700'; }
-  if (activeBtn) { activeBtn.style.background = filter === 'active' ? '#fff' : 'transparent'; activeBtn.style.color = filter === 'active' ? 'var(--gold)' : 'var(--text-muted)'; activeBtn.style.fontWeight = filter === 'active' ? '800' : '700'; }
-  if (doneBtn) { doneBtn.style.background = filter === 'done' ? '#fff' : 'transparent'; doneBtn.style.color = filter === 'done' ? 'var(--gold)' : 'var(--text-muted)'; doneBtn.style.fontWeight = filter === 'done' ? '800' : '700'; }
-  renderTreatmentList();
-};
-
-window.saveTreatment = async function() {
-  const type = window._treatmentTargetType;
-  let targetId = '';
-  let targetName = '';
-  
-  if (type === 'puppy') {
-    const sel = document.getElementById('treat-puppy-select').value;
-    if (!sel) { showToast('새끼 (형제 그룹)을 선택해주세요.'); return; }
-    targetId = sel;
-    const selectEl = document.getElementById('treat-puppy-select');
-    targetName = selectEl.options[selectEl.selectedIndex].text;
-  } else {
-    const adultSelVal = document.getElementById('treat-adult-select')?.value.trim() || '';
-    const adultInpVal = document.getElementById('treat-adult-input')?.value.trim() || '';
-    const adultVal = adultInpVal || adultSelVal;
-    if (!adultVal) { showToast('성견 코드를 선택하거나 입력해주세요.'); return; }
-    targetId = adultVal;
-    targetName = `🐕 성견: ${adultVal}`;
-  }
-  
-  const weightVal = parseFloat(document.getElementById('treat-weight').value);
-  if (isNaN(weightVal) || weightVal <= 0) { showToast('올바른 몸무게를 입력해주세요.'); return; }
-  
-  const startDate = document.getElementById('treat-start-date').value;
-  const durationDays = parseInt(document.getElementById('treat-duration').value);
-  if (!startDate || isNaN(durationDays) || durationDays <= 0) { showToast('올바른 시작일과 투약 기간을 입력해주세요.'); return; }
-  
-  if (checkBaytrilWarning()) { showToast('⚠️ 바이트릴 투약 금지 경고를 확인하고 약품을 조정해주세요.'); return; }
-  
-  const injections = {};
-  let selectedCount = 0;
-  Object.entries(INJECTION_INFO).forEach(([key, info]) => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk && chk.checked) {
-      injections[info.name] = parseFloat(val?.value) || 0;
-      selectedCount++;
-    }
-  });
-  
-  if (selectedCount === 0) { showToast('최소 하나 이상의 치료 주사제를 선택해주세요.'); return; }
-  injections['아미톱(영양제)'] = '끝까지 채움';
-  
-  const symptomSelect = document.getElementById('treat-symptom-select');
-  const symptomName = symptomSelect.options[symptomSelect.selectedIndex].text.split('(')[0].trim();
-  const endDate = dateToStr(addDaysDate(startDate, durationDays - 1));
-  const memo = document.getElementById('treat-memo').value.trim();
-  const isPregnant = type === 'adult' ? document.getElementById('treat-pregnant-check').checked : false;
-  
-  const payload = {
-    targetType: type,
-    targetId,
-    targetName,
-    weight: weightVal,
-    symptom: symptomName,
-    injections,
-    startDate,
-    durationDays,
-    endDate,
-    status: '진행중',
-    isPregnant,
-    memo,
-    createdAt: new Date().toISOString()
-  };
-  
-  try {
-    await fbPush('treatments', payload);
-    showToast('✅ 치료 기록이 등록되었습니다! 캘린더에 동기화되었습니다.');
-    renderTreatmentList();
-    renderDeliveryCalendar();
-    
-    document.getElementById('treat-weight').value = '';
-    document.getElementById('treat-memo').value = '';
-    document.getElementById('treat-symptom-select').value = 'direct';
-    if (type === 'puppy') document.getElementById('treat-puppy-select').value = '';
-    else {
-      document.getElementById('treat-adult-input').value = '';
-      document.getElementById('treat-pregnant-check').checked = false;
-    }
-    Object.keys(INJECTION_INFO).forEach(key => {
-      const chk = document.getElementById(`inj-check-${key}`);
-      const val = document.getElementById(`inj-val-${key}`);
-      if (chk) chk.checked = false;
-      if (val) { val.value = ''; val.disabled = true; }
-    });
-    onTreatmentDateChanged();
-  } catch(e) {
-    console.error('치료 저장 실패:', e);
-    showToast('⚠ 등록 실패: ' + e.message);
-  }
-};
-
-window.renderTreatmentList = function() {
-  const container = document.getElementById('treatmentListContent');
-  if (!container) return;
-  const list = window._treatments || [];
-  if (!list.length) {
-    container.innerHTML = '<div class="kennel-empty" style="text-align:center;padding:40px;">등록된 치료 및 처방 내역이 없습니다.</div>';
-    return;
-  }
-  
-  const sorted = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const todayStr = new Date().toISOString().slice(0, 10);
-  let html = '';
-  
-  sorted.forEach(t => {
-    if (window._treatmentsFilter === 'active' && t.status !== '진행중') return;
-    if (window._treatmentsFilter === 'done' && t.status !== '완료') return;
-    
-    const isDone = t.status === '완료';
-    const isOverdue = !isDone && t.endDate < todayStr;
-    const cardBorderColor = isDone ? '#aaa' : isOverdue ? '#e74c3c' : 'var(--gold)';
-    
-    const injTextList = [];
-    Object.entries(t.injections || {}).forEach(([name, val]) => {
-      if (typeof val === 'number') injTextList.push(`${name} ${val}ml`);
-      else injTextList.push(`${name}(${val})`);
-    });
-    
-    let dDayText = '';
-    if (!isDone) {
-      const diff = Math.round((new Date(t.endDate + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
-      if (diff < 0) dDayText = `<span style="color:#e74c3c; font-weight:800;">기간 경과 (완료 필요)</span>`;
-      else if (diff === 0) dDayText = `<span style="color:var(--gold); font-weight:800;">오늘 완료!</span>`;
-      else dDayText = `<span style="color:var(--male); font-weight:800;">D-${diff}일 남음</span>`;
-    } else {
-      dDayText = `<span style="color:#5A9E1A; font-weight:800;">치료 완료</span>`;
-    }
-    
-    const pregnantBadge = t.isPregnant ? '<span style="display:inline-block; font-size:10px; background:#FFEDE5; color:#FF6B35; padding:1px 6px; border-radius:10px; font-weight:800; margin-left:6px;">🤰 임신견</span>' : '';
-    
-    html += `
-      <div class="form-card" style="margin-bottom:0; border-left: 5px solid ${cardBorderColor}; padding:14px; position:relative; background:${isDone ? '#fbfbfb' : '#fff'}; border-radius:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-          <div>
-            <div style="font-size:.9rem; font-weight:900; color:var(--text); display:flex; align-items:center;">
-              ${esc(t.targetName)}
-              ${pregnantBadge}
-            </div>
-            <div style="font-size:.78rem; color:var(--text-muted); margin-top:2px;">
-              ⚖️ 몸무게: <strong>${t.weight} kg</strong> &nbsp;|&nbsp; 📋 증상: <strong>${esc(t.symptom)}</strong>
-            </div>
-          </div>
-          <div style="font-size:.78rem; text-align:right;">
-            ${dDayText}
-          </div>
-        </div>
-        <div style="font-size:.82rem; font-weight:700; color:var(--text); background:var(--gold-pale); padding:8px 10px; border-radius:8px; margin-bottom:8px; line-height:1.4; border: 1px solid var(--border);">
-          💊 처방: ${esc(injTextList.join(' + '))}
-        </div>
-        ${t.memo ? `<div style="font-size:.78rem; color:var(--text-muted); margin-bottom:8px; padding-left:4px; border-left:2px solid var(--border);">📝 ${esc(t.memo)}</div>` : ''}
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:.72rem; color:var(--text-muted); margin-top:10px; border-top:1px dashed var(--border); padding-top:8px;">
-          <div>📅 기간: ${fmtDate(t.startDate)} ~ ${fmtDate(t.endDate)} (${t.durationDays}일간)</div>
-          <div style="display:flex; gap:6px;">
-            <button class="btn-outline btn-sm" onclick="toggleTreatmentStatus('${t._key}', '${t.status}')" style="margin:0; padding:2px 8px; font-size:10px; height:auto; background:${isDone ? '#EEF7E0':'#fff'}; color:${isDone ? '#5A9E1A':'var(--text-muted)'}; border-color:${isDone ? '#8BC34A':'var(--border)'}">
-              ${isDone ? '✅ 치료 완료' : '⬜ 미완료'}
-            </button>
-            <button class="btn-outline btn-sm" onclick="deleteTreatment('${t._key}')" style="margin:0; padding:2px 6px; background:#FFEDE5; color:#FF6B35; border-color:#FFBCA0; height:auto;">
-              🗑️
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-  container.innerHTML = html || `<div class="kennel-empty" style="text-align:center;padding:40px;">${window._treatmentsFilter === 'active' ? '진행 중인 치료 내역이 없습니다.' : '완료된 치료 내역이 없습니다.'}</div>`;
-};
-
-window.toggleTreatmentStatus = async function(key, currentStatus) {
-  const newStatus = currentStatus === '진행중' ? '완료' : '진행중';
-  try {
-    await fbUpdate(`treatments/${key}`, { status: newStatus });
-    showToast(newStatus === '완료' ? '✅ 치료를 완료 처리했습니다!' : '치료를 진행중으로 변경했습니다.');
-  } catch(e) {
-    showToast('⚠ 상태 변경 실패: ' + e.message);
-  }
-};
-
-window.deleteTreatment = async function(key) {
-  if (!confirm('정말로 이 치료 기록을 삭제하시겠습니까?')) return;
-  try {
-    await fbRemove(`treatments/${key}`);
-    showToast('🗑️ 치료 기록이 삭제되었습니다.');
-  } catch(e) {
-    showToast('⚠ 삭제 실패: ' + e.message);
-  }
-};
-
 // ── 시작 ──
 init();
 </script>
 </body>
 </html>
+
