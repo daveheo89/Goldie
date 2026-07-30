@@ -894,16 +894,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 /* ═══════════════════════════════════════
-   새끼 상세 모달 (미디어 갤러리 + 프로필 카드)
+   새끼 상세 모달 내부 스타일
    ═══════════════════════════════════════ */
-.puppy-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:none;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;}
-.puppy-detail-overlay.open{display:flex!important;opacity:1!important;pointer-events:all!important;}
-.puppy-detail-modal{background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:0 0 20px;transform:translateY(20px);transition:transform .22s;box-shadow:0 16px 48px rgba(0,0,0,.25);}
-.puppy-detail-overlay.open .puppy-detail-modal{transform:translateY(0);}
-.pd-handle{width:38px;height:4px;background:#ddd;border-radius:99px;margin:12px auto 4px;}
-.pd-header{padding:12px 18px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
-.pd-header h2{font-size:1rem;font-weight:900;color:var(--brown);}
-.pd-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted);}
 .pd-section{padding:14px 18px;}
 .pd-section-title{font-size:.78rem;font-weight:900;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .pd-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:4px;}
@@ -926,7 +918,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .td-label{color:var(--text-muted);font-weight:700;width:95px;font-size:.76rem;white-space:nowrap;}
 .td-value{font-weight:700;color:var(--text);}
 .pd-reserve-badge{display:inline-block;background:#FFF3CD;color:#B8860B;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:5px;}
-.pd-sire-photo{width:100%;border-radius:12px;object-fit:cover;display:block;border:2px solid var(--border);max-height:220px;}
+.pd-sire-photo{width:100%;border-radius:12px;object-fit:contain;background:var(--gold-pale);display:block;border:2px solid var(--border);max-height:360px;}
 .pd-sire-placeholder{width:100%;height:120px;border-radius:12px;background:var(--gold-pale);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:3rem;}
 .pd-profile-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--brown-light));color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;transition:opacity .2s;margin-bottom:8px;}
 .pd-profile-btn:hover{opacity:.88;}
@@ -1578,9 +1570,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
       <div class="photo-upload-wrap" id="dm-photo-wrap">
 
-        <input type="file" accept="image/*" id="dm-photo-input" onchange="handleDogPhoto(event)">
+        <input type="file" accept="image/*,image/heic,image/heif" id="dm-photo-input" multiple onchange="handleDogPhoto(event)">
 
-        <div class="pu-hint" id="dm-hint"><div class="ph-icon">📷</div><div>사진 추가 (선택)</div></div>
+        <div class="pu-hint" id="dm-hint"><div class="ph-icon">📷</div><div>기기에서 업로드 (선택)</div></div>
 
         <div class="pu-overlay" id="dm-overlay">📷 사진 변경</div>
 
@@ -1676,9 +1668,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
       <div class="photo-upload-wrap" id="pm-photo-wrap">
 
-        <input type="file" accept="image/*" id="pm-photo-input" onchange="handlePuppyPhoto(event)">
+        <input type="file" accept="image/*,image/heic,image/heif" id="pm-photo-input" multiple onchange="handlePuppyPhoto(event)">
 
-        <div class="pu-hint" id="pm-hint"><div class="ph-icon">📷</div><div>새끼 사진 추가 (선택)</div></div>
+        <div class="pu-hint" id="pm-hint"><div class="ph-icon">📷</div><div>기기에서 업로드 (선택)</div></div>
 
         <div class="pu-overlay" id="pm-overlay">📷 사진 변경</div>
 
@@ -1854,13 +1846,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  <!-- 새끼 상세 모달 (미디어 갤러리 + 프로필 카드) -->
-  <div class="puppy-detail-overlay" id="puppy-detail-overlay" onclick="handlePuppyDetailOverlay(event)">
-    <div class="puppy-detail-modal">
-      <div class="pd-handle"></div>
-      <div class="pd-header">
-        <h2 id="pd-title">🐾 새끼 상세 정보</h2>
-        <button class="pd-close" onclick="closePuppyDetail()">✕</button>
+  <!-- 새끼 상세 모달 (표준 modal-overlay 적용) -->
+  <div class="modal-overlay" id="puppy-detail-overlay" onclick="handlePuppyDetailOverlay(event)">
+    <div class="modal" style="max-width:560px; padding:0 0 16px; border-radius:20px;">
+      <div class="modal-header" style="padding:14px 18px 10px; margin-bottom:0; border-bottom:1px solid var(--border);">
+        <h2 id="pd-title" style="font-size:1rem; font-weight:900; color:var(--brown);">🐾 새끼 상세 정보</h2>
+        <button class="modal-close" onclick="closePuppyDetail()">✕</button>
       </div>
       <div id="pd-content"></div>
     </div>
@@ -3054,9 +3045,9 @@ function renderBreeding(){
 
             <div class="bd-photo-add-cell">
 
-              <div class="ai">📷</div><div class="at">사진 추가</div>
+              <div class="ai">📷</div><div class="at">기기에서 업로드</div>
 
-              <input type="file" accept="image/*" multiple onchange="addBreedingPhotos(event,'${b._key}','${b.matingDate}')">
+              <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addBreedingPhotos(event,'${b._key}','${b.matingDate}')">
 
             </div>
 
@@ -5763,9 +5754,9 @@ function renderPuppyDetailContent(){
       <div class="pd-section-title">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
       <div class="pd-gallery">
         ${mediaCells}
-        <div class="pd-media-add" title="사진 추가">
-          <div class="ai">📷</div><div class="at">사진 추가</div>
-          <input type="file" accept="image/*" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
+        <div class="pd-media-add" title="기기에서 업로드">
+          <div class="ai">📷</div><div class="at">기기에서 업로드</div>
+          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
         </div>
         <div class="pd-media-add" title="영상 추가 (최대 10MB)">
           <div class="ai">🎥</div><div class="at">영상 추가</div>
@@ -5891,9 +5882,9 @@ window.generateProfileCard = async function(litterKey, puppyId){
   if (p.photo) photoSrcs.push(p.photo);
   mediaList.forEach(m => { if(m.src && !photoSrcs.includes(m.src)) photoSrcs.push(m.src); });
 
-  // 캔버스 크기 (스마트폰 9:16 비율)
+  // 캔버스 크기 (부견 세로 긴 프레임 포함 최적 비율)
   const W = 600;
-  const H = 1020;
+  const H = 1180;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -5947,31 +5938,35 @@ window.generateProfileCard = async function(litterKey, puppyId){
     ctx.closePath();
     ctx.clip();
 
+    // 바탕 은은한 크림색 채우기
+    ctx.fillStyle = '#FFFDF5';
+    ctx.fillRect(x, y, w, h);
+
     if (img) {
-      // center crop
+      // 비율 유지하며 짤림 없이 맞춤 (contain 로직)
       const imgAspect = img.width / img.height;
       const rectAspect = w / h;
-      let drawW, drawH, drawX, drawY;
+      let drawW, drawH;
       if (imgAspect > rectAspect) {
-        drawH = h; drawW = h * imgAspect;
-        drawX = x - (drawW - w) / 2; drawY = y;
+        drawW = w;
+        drawH = w / imgAspect;
       } else {
-        drawW = w; drawH = w / imgAspect;
-        drawX = x; drawY = y - (drawH - h) / 2;
+        drawH = h;
+        drawW = h * imgAspect;
       }
+      const drawX = x + (w - drawW) / 2;
+      const drawY = y + (h - drawH) / 2;
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
     } else {
-      ctx.fillStyle = '#FFF8E7';
-      ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#A0632A';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🐶 대표 사진', x + w/2, y + h/2);
+      ctx.fillText('🐶 사진', x + w/2, y + h/2);
       ctx.textAlign = 'left';
     }
     ctx.restore();
 
-    // 테두리
+    // 프레임 테두리
     ctx.strokeStyle = '#E8D5A3';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -5979,45 +5974,56 @@ window.generateProfileCard = async function(litterKey, puppyId){
 
   const count = validPhotos.length;
   if (count <= 1) {
+    // 1장: 전체 영역 풀사이즈
     drawRoundedImg(validPhotos[0] || null, pX, pY, pW, pH);
-  } else if (count === 2) {
-    const mainH = 240;
-    const subH = 105;
-    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
-    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, pW, subH);
-  } else if (count === 3) {
-    const mainH = 240;
-    const subH = 105;
-    const subW = (pW - 10) / 2;
-    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
-    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
-    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
-  } else if (count === 4) {
-    const mainH = 240;
-    const subH = 105;
-    const subW = (pW - 20) / 3;
-    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
-    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
-    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
-    drawRoundedImg(validPhotos[3], pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
   } else {
-    // 5장 이상
-    const mainH = 240;
-    const subH = 105;
-    const subW = (pW - 20) / 3;
-    drawRoundedImg(validPhotos[0], pX, pY, pW, mainH);
-    drawRoundedImg(validPhotos[1], pX, pY + mainH + 10, subW, subH);
-    drawRoundedImg(validPhotos[2], pX + subW + 10, pY + mainH + 10, subW, subH);
-    drawRoundedImg(validPhotos[3], pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
-    
-    // N+ 표기
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(pX + (subW + 10)*2, pY + mainH + 10, subW, subH);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`+${count - 3}`, pX + (subW + 10)*2 + subW/2, pY + mainH + 10 + subH/2 + 6);
-    ctx.textAlign = 'left';
+    // 2장 이상: 좌측 대표사진 풀사이즈 (절반) + 우측 4개 분할 (절반)
+    const leftW = 270;
+    const rightX = pX + leftW + 10;
+    const rightW = pW - leftW - 10; // 280px
+
+    // 좌측 대표사진 (높이 전체)
+    drawRoundedImg(validPhotos[0], pX, pY, leftW, pH);
+
+    // 우측 서브 사진들 (나머지 1~4장+)
+    const subPhotos = validPhotos.slice(1);
+    const subCount = subPhotos.length;
+
+    if (subCount === 1) {
+      // 1장: 우측 전체
+      drawRoundedImg(subPhotos[0], rightX, pY, rightW, pH);
+    } else if (subCount === 2) {
+      // 2장: 위아래 2분할
+      const subH = (pH - 8) / 2;
+      drawRoundedImg(subPhotos[0], rightX, pY, rightW, subH);
+      drawRoundedImg(subPhotos[1], rightX, pY + subH + 8, rightW, subH);
+    } else {
+      // 3장~4장+: 우측 2x2 (4분할)
+      const subW = (rightW - 8) / 2;
+      const subH = (pH - 8) / 2;
+
+      // 1
+      drawRoundedImg(subPhotos[0], rightX, pY, subW, subH);
+      // 2
+      drawRoundedImg(subPhotos[1], rightX + subW + 8, pY, subW, subH);
+      // 3
+      drawRoundedImg(subPhotos[2], rightX, pY + subH + 8, subW, subH);
+      // 4
+      if (subPhotos[3]) {
+        drawRoundedImg(subPhotos[3], rightX + subW + 8, pY + subH + 8, subW, subH);
+      }
+
+      // 5개 이상일 때 4번째 사진 위치에 +N 표기
+      if (subCount > 4) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(rightX + subW + 8, pY + subH + 8, subW, subH);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`+${subCount - 3}`, rightX + subW + 8 + subW/2, pY + subH + 8 + subH/2 + 7);
+        ctx.textAlign = 'left';
+      }
+    }
   }
 
   // 4. 정보 카드 박스 (Y: 460 ~ 680)
@@ -6075,19 +6081,20 @@ window.generateProfileCard = async function(litterKey, puppyId){
     rowY += rowStep;
   });
 
-  // 5. 부견 사진 섹션 (Y: 710 ~ 950)
-  const sireY = 710;
+  // 5. 부견 사진 섹션 (세로 긴 대형 프레임 Y: 695 ~ 1100)
+  const sireY = 695;
   ctx.fillStyle = '#6B3F0E';
-  ctx.font = 'bold 15px "Noto Sans KR", sans-serif';
+  ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
   ctx.fillText(`🐕 부견 (${sireInfo.name}) 사진`, pX, sireY);
 
-  drawRoundedImg(sireImg, pX, sireY + 12, pW, 215, 12);
+  // 부견 전용 세로 대형 프레임 (높이 370px)
+  drawRoundedImg(sireImg, pX, sireY + 12, pW, 370, 14);
 
-  // 6. 푸터 (Y: 985) - "한마리 한마리 정성을다해 키웠습니다."
+  // 6. 푸터 (Y: 1145) - "한마리 한마리 정성을다해 키웠습니다."
   ctx.fillStyle = '#A0632A';
   ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 985);
+  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 1145);
   ctx.textAlign = 'left';
 
   // 7. 다운로드 처리
