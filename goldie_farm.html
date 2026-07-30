@@ -5819,13 +5819,18 @@ function renderPuppyDetailContent(){
       <div class="pd-section-title">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
       <div class="pd-gallery">
         ${mediaCells}
-        <div class="pd-media-add" title="기기에서 업로드">
-          <div class="ai">📷</div><div class="at">기기에서 업로드</div>
+        <div class="pd-media-add" title="기기 사진 업로드">
+          <div class="ai">📷</div><div class="at">사진 업로드</div>
           <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
         </div>
+        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
+          <div class="ai">🎥</div>
+          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
+          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
+        </div>
         <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
-          <div class="ai" style="font-size:1.5rem;">📸</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 영상<br>링크 등록</div>
+          <div class="ai" style="font-size:1.4rem;">📸</div>
+          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
         </div>
       </div>
     </div>
@@ -5907,13 +5912,39 @@ window.addGooglePhotosVideo = async function(litterKey, puppyId){
   }
 };
 
-// ── 미디어 업로드 (사진: 기기에서 직접 업로드) ──
+// ── 미디어 업로드 (사진 & 폰 카톡 전송용 동영상 파일) ──
 window.addPuppyMedia = async function(e, litterKey, puppyId, type){
   const files = Array.from(e.target.files);
   if(!files.length) return;
 
   for(const file of files){
-    if(type === 'image') {
+    if(type === 'video') {
+      showToast('⏳ 동영상 파일을 준비하고 있습니다... 잠시만 기다려주세요.');
+      try {
+        const reader = new FileReader();
+        reader.onload = async ev => {
+          const mediaObj = {
+            type: 'video',
+            src: ev.target.result,
+            fileName: file.name || 'dog_video.mp4',
+            label: '🎥 카톡 전송용 영상 파일',
+            createdAt: today()
+          };
+          // 로컬 IndexedDB에 저장하거나 FB에 저장
+          try {
+            await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, mediaObj);
+          } catch(err) {
+            // FB 10MB 초과 시 IndexedDB 로컬에 안전 저장
+            await saveVideoToIndexedDB(`${litterKey}_${puppyId}_${Date.now()}`, ev.target.result, mediaObj, litterKey, puppyId);
+          }
+          showToast('✅ 카톡 전송용 동영상 파일이 추가되었습니다!');
+          renderPuppyDetailContent();
+        };
+        reader.readAsDataURL(file);
+      } catch(err) {
+        showToast('⚠ 영상 처리 실패: ' + err.message);
+      }
+    } else {
       await new Promise(resolve => {
         const r = new FileReader();
         r.onload = async ev => {
@@ -5934,27 +5965,96 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, type){
   renderPuppyDetailContent();
 };
 
-// 카카오톡 영상 파일 및 링크 전송 공유
+// IndexedDB 세이프 저장 (용량 제한 없음)
+function saveVideoToIndexedDB(key, dataUrl, mediaObj, litterKey, puppyId) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('GoldieMediaDB', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('videos')) db.createObjectStore('videos');
+    };
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction('videos', 'readwrite');
+      tx.objectStore('videos').put({ dataUrl, ...mediaObj }, key);
+      tx.oncomplete = async () => {
+        // 백그라운드 참조만 FB에 기재
+        await fbPush(`litters/${litterKey}/puppies/${puppyId}/media`, {
+          type: 'video',
+          src: 'idb:' + key,
+          label: '🎥 카톡 전송용 영상 파일',
+          createdAt: today()
+        });
+        resolve();
+      };
+    };
+    req.onerror = err => reject(err);
+  });
+}
+
+function getVideoFromIndexedDB(key) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('GoldieMediaDB', 1);
+    req.onsuccess = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('videos')) return resolve(null);
+      const tx = db.transaction('videos', 'readonly');
+      const getReq = tx.objectStore('videos').get(key);
+      getReq.onsuccess = () => resolve(getReq.result ? getReq.result.dataUrl : null);
+      getReq.onerror = () => resolve(null);
+    };
+    req.onerror = () => resolve(null);
+  });
+}
+
+// 카카오톡 '진짜 동영상 파일(.mp4)' 직접 첨부 전송 (링크 없음!)
 window.shareVideoFileToKakao = async function(videoUrl, puppyName, motherName, sireName){
-  const shareText = `🐾 [골디쉼터] ${puppyName} 강아지 고화질 실물 동영상입니다!\n\n🐕‍🦺 모견: ${motherName} | 🐕 부견: ${sireName}\n\n▶️ 동영상 보기:\n${videoUrl}`;
+  showToast('⏳ 동영상 파일을 준비하는 중입니다...');
 
-  // 1. 모바일 기기(갤럭시/아이폰) 원클릭 카카오톡 전송
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: `[골디쉼터] ${puppyName} 강아지 동영상`,
-        text: shareText,
-        url: videoUrl
-      });
-      showToast('💬 카카오톡으로 동영상이 성공적으로 공유되었습니다!');
-      return;
-    } catch(err) {
-      if (err.name === 'AbortError') return;
+  try {
+    let rawSrc = videoUrl;
+    if (videoUrl.startsWith('idb:')) {
+      const idbKey = videoUrl.replace('idb:', '');
+      const idbData = await getVideoFromIndexedDB(idbKey);
+      if (idbData) rawSrc = idbData;
     }
-  }
 
-  // 2. PC 또는 지원되지 않는 브라우저: 클립보드 복사 후 안내
-  copyVideoShareText(shareText);
+    // 1. 실제 MP4 바이너리 blob 변환
+    let blob;
+    if (rawSrc.startsWith('data:')) {
+      const parts = rawSrc.split(',');
+      const mime = parts[0].match(/:(.*?);/)[1];
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      blob = new Blob([u8arr], { type: mime });
+    } else {
+      const res = await fetch(rawSrc);
+      blob = await res.blob();
+    }
+
+    const fileName = `${puppyName || '골디쉼터'}_강아지동영상.mp4`;
+    const videoFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
+
+    // 2. 모바일 기기(갤럭시/아이폰) 카톡에 진짜 동영상 파일 직접 첨부!
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [videoFile] })) {
+      await navigator.share({
+        files: [videoFile],
+        title: `[골디쉼터] ${puppyName} 강아지 동영상`
+      });
+      showToast('✅ 카카오톡으로 동영상 파일이 직접 전송되었습니다!');
+      return;
+    }
+
+    // 3. 파일 직접 공유 미지원 시: 폰 갤러리에 저장 후 카톡으로 바로 연결
+    downloadMedia(rawSrc, fileName);
+    showToast('💾 폰 갤러리에 영상이 저장되었습니다! 카톡 대화방 (+) 버튼에서 동영상을 바로 첨부해 주세요.');
+  } catch(err) {
+    console.error(err);
+    downloadMedia(videoUrl, `${puppyName||'골디쉼터'}_동영상.mp4`);
+    showToast('💾 폰 갤러리에 영상이 저장되었습니다! 카톡 대화방 (+) 버튼을 눌러 전송해 주세요.');
+  }
 };
 
 window.shareVideoToKakao = function(videoUrl, puppyName, motherName, sireName){
