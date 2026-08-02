@@ -1053,7 +1053,8 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
             <option value="완료">배송 완료</option>
           </select>
         </div>
-        <div class="btn-row" style="display:flex;gap:8px">
+        <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-green" id="dev-kakao-btn" onclick="window.sendDeliveryKakao()" style="flex:1;background:#27AE60;color:#fff;border:none;white-space:nowrap;font-weight:800;padding:10px;">💬 카톡 일정 전송</button>
           <button class="btn btn-gray" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;color:var(--red);border-color:var(--red);background:#fff">🗑️ 삭제</button>
           <button class="btn btn-gray" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
           <button class="btn btn-gold" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
@@ -2980,6 +2981,81 @@ window.openTMapSearch = function(address) {
   }
   const encoded = encodeURIComponent(address.trim());
   window.location.href = `tmap://search?name=${encoded}`;
+};
+
+window.sendDeliveryKakao = async function(dKey) {
+  let dev = null;
+  const currentKey = dKey || window._deliveryEditKey;
+  if (currentKey) {
+    dev = (window._deliveries || []).find(d => d._key === currentKey);
+  }
+  
+  let contractId = document.getElementById('dev-contract')?.value;
+  if (!contractId && dev) contractId = dev.contractId;
+  
+  const contract = contractId ? (window._contracts || {})[contractId] : null;
+
+  let buyerName = (dev && dev.buyer_name) || (contract && contract.buyer_name) || '';
+  let buyerPhone = (dev && dev.buyer_phone) || (contract && contract.buyer_phone) || '';
+  let dogName = (dev && dev.dogname) || (contract && contract.dogname) || '';
+
+  let date = document.getElementById('dev-date')?.value || (dev && dev.date) || '';
+  let time = document.getElementById('dev-time')?.value || (dev && dev.time) || '';
+  
+  let addrMain = document.getElementById('dev-addr')?.value || '';
+  let addrDetail = document.getElementById('dev-addr-detail')?.value || '';
+  let address = (addrMain + (addrDetail ? ' ' + addrDetail : '')).trim();
+  if (!address && dev) address = dev.address || '';
+
+  let memo = document.getElementById('dev-memo')?.value;
+  if (memo === undefined || memo === '') {
+    if (dev && dev.memo) memo = dev.memo;
+  }
+
+  if (!date) {
+    toast('배송 날짜를 입력해주세요.');
+    return;
+  }
+  if (!address) {
+    toast('배송 주소를 입력해주세요.');
+    return;
+  }
+
+  const encodedAddr = encodeURIComponent(address);
+  const tmapLink = `tmap://search?name=${encodedAddr}`;
+
+  let msg = `[골디쉼터] 🚗 배송 일정 안내\n\n`;
+  if (dogName) msg += `🐾 강아지: ${dogName}\n`;
+  msg += `📅 배송 일시: ${date}${time ? ' ' + time : ''}\n`;
+  if (buyerName || buyerPhone) {
+    msg += `👤 수령인: ${buyerName || '입양인'}${buyerPhone ? ' (' + buyerPhone + ')' : ''}\n`;
+  }
+  msg += `📍 배송 주소: ${address}\n`;
+  msg += `🚙 티맵 길안내:\n${tmapLink}\n`;
+  if (memo && memo.trim()) {
+    msg += `\n📝 메모: ${memo.trim()}\n`;
+  }
+  msg += `\n안전에 유의하여 배송하겠습니다. 감사합니다! 🐾`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: '골디쉼터 배송 일정',
+        text: msg
+      });
+      toast('💬 카카오톡 공유 창이 열렸습니다.');
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.log('Web Share failed, copying text:', err);
+      } else {
+        return;
+      }
+    }
+  }
+
+  const ok = await safeCopy(msg);
+  toast(ok ? '💬 카톡 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송해주세요.' : '메시지 복사에 실패했습니다.');
 };
 
 // ═══════════════════════════════════════════════
