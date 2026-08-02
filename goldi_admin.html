@@ -3022,7 +3022,8 @@ window.sendDeliveryKakao = async function(dKey) {
   }
 
   const encodedAddr = encodeURIComponent(address);
-  const tmapLink = `tmap://search?name=${encodedAddr}`;
+  const tmapAppUrl = `tmap://search?name=${encodedAddr}`;
+  const webMapUrl = `https://m.map.naver.com/search2/search.naver?query=${encodedAddr}`;
 
   let msg = `[골디쉼터] 🚗 배송 일정 안내\n\n`;
   if (dogName) msg += `🐾 강아지: ${dogName}\n`;
@@ -3030,12 +3031,12 @@ window.sendDeliveryKakao = async function(dKey) {
   if (buyerName || buyerPhone) {
     msg += `👤 수령인: ${buyerName || '입양인'}${buyerPhone ? ' (' + buyerPhone + ')' : ''}\n`;
   }
-  msg += `📍 배송 주소: ${address}\n`;
-  msg += `🚙 티맵 길안내:\n${tmapLink}\n`;
+  msg += `📍 배송 주소: ${address}\n\n`;
+  msg += `🚙 티맵 앱 길안내:\n${tmapAppUrl}\n\n`;
+  msg += `🗺️ 지도 길안내(웹):\n${webMapUrl}`;
   if (memo && memo.trim()) {
-    msg += `\n📝 메모: ${memo.trim()}\n`;
+    msg += `\n\n📝 메모: ${memo.trim()}`;
   }
-  msg += `\n안전에 유의하여 배송하겠습니다. 감사합니다! 🐾`;
 
   if (navigator.share) {
     try {
