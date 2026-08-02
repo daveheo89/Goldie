@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>골디쉼터 — 티맵 길안내 연결</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #C8931A;
+  --gold-l: #F0BE5A;
+  --gold-p: #FDF5E0;
+  --br: #5C3D1E;
+  --cream: #FAFAF7;
+  --gray: #6B6B6B;
+  --gray-l: #E8E6E0;
+  --tmap-blue: #0050A0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--cream);
+  color: var(--br);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(92, 61, 30, 0.12);
+  padding: 28px 22px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--gray-l);
+}
+.icon {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+}
+h1 {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--br);
+  margin-bottom: 6px;
+}
+p.sub {
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-bottom: 20px;
+}
+.addr-box {
+  background: var(--gold-p);
+  border: 1.5px solid var(--gold-l);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--br);
+  margin-bottom: 22px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-bottom: 10px;
+}
+.btn:active { transform: scale(0.98); }
+.btn-tmap {
+  background: linear-gradient(135deg, #0275D8, #004085);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(2, 117, 216, 0.3);
+}
+.btn-naver {
+  background: #03C75A;
+  color: #fff;
+}
+.btn-kakao {
+  background: #FEE500;
+  color: #191919;
+}
+.divider {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin: 16px 0 12px;
+  position: relative;
+}
+.footer-note {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 14px;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="icon">🚙</div>
+  <h1>골디쉼터 티맵 길안내</h1>
+  <p class="sub">잠시 후 티맵(TMap) 앱으로 자동 이동합니다.</p>
+  
+  <div class="addr-box" id="addrText">목적지 주소를 불러오는 중...</div>
+
+  <button class="btn btn-tmap" onclick="openTMap()">🚙 티맵 앱으로 길안내 시작</button>
+  
+  <div class="divider">티맵이 실행되지 않는 경우 보조 지도 선택</div>
+  
+  <button class="btn btn-naver" onclick="openNaver()">🟢 네이버 지도로 보기</button>
+  <button class="btn btn-kakao" onclick="openKakao()">🟡 카카오맵으로 보기</button>
+
+  <div class="footer-note">🐾 골디쉼터 배송 지원 시스템</div>
+</div>
+
+<script>
+function getQueryParam(param) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(param) || '';
+}
+
+const targetAddr = getQueryParam('q') || getQueryParam('addr') || '';
+
+if (targetAddr) {
+  document.getElementById('addrText').textContent = '📍 ' + targetAddr;
+} else {
+  document.getElementById('addrText').textContent = '⚠️ 입력된 주소가 없습니다.';
+}
+
+function openTMap() {
+  if (!targetAddr) return;
+  const encoded = encodeURIComponent(targetAddr);
+  window.location.href = 'tmap://search?name=' + encoded;
+}
+
+function openNaver() {
+  if (!targetAddr) return;
+  window.location.href = 'https://m.map.naver.com/search2/search.naver?query=' + encodeURIComponent(targetAddr);
+}
+
+function openKakao() {
+  if (!targetAddr) return;
+  window.location.href = 'https://m.map.kakao.com/link/search/' + encodeURIComponent(targetAddr);
+}
+
+// 페이지 로드 시 300ms 후 티맵 앱 자동 실행 시도
+window.addEventListener('DOMContentLoaded', () => {
+  if (targetAddr) {
+    setTimeout(openTMap, 300);
+  }
+});
+</script>
+
+</body>
+</html>
