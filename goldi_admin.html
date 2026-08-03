@@ -5,9 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 관리자</title>
 <script>
-  if (sessionStorage.getItem('goldi_admin_auth') === 'ok') {
-    document.documentElement.classList.add('admin-authenticated');
+  function checkAdminAuth() {
+    if (sessionStorage.getItem('goldi_admin_auth') === 'ok') {
+      document.documentElement.classList.add('admin-authenticated');
+    }
   }
+  checkAdminAuth();
+
+  function adminLogin() {
+    var pwInput = document.getElementById('admin-pw-input');
+    var pw = pwInput ? pwInput.value.trim() : '';
+    var errEl = document.getElementById('admin-pw-error');
+    if (pw === '5900') {
+      sessionStorage.setItem('goldi_admin_auth', 'ok');
+      document.documentElement.classList.add('admin-authenticated');
+      var overlay = document.getElementById('admin-login-overlay');
+      var main = document.getElementById('admin-main-content');
+      if (overlay) overlay.style.display = 'none';
+      if (main) main.style.display = 'block';
+    } else {
+      if (errEl) errEl.style.display = 'block';
+      var card = document.querySelector('.login-card');
+      if (card) {
+        card.style.animation = 'none';
+        setTimeout(function() { card.style.animation = 'admin-shake .4s ease'; }, 10);
+      }
+      if (pwInput) {
+        pwInput.value = '';
+        pwInput.focus();
+      }
+    }
+  }
+  window.adminLogin = adminLogin;
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
