@@ -355,7 +355,7 @@ const FB={
 };
 const app=initializeApp(FB);
 const db=getDatabase(app);
-const EMAIL_NOTIFY_URL = ''; // 이메일 알림 전송용 구글 앱스 스크립트 웹앱 URL (설정 시 이메일 전송 가동)
+const EMAIL_NOTIFY_URL = 'https://script.google.com/macros/s/AKfycby1gG4lRsXb498FTjtJeVZsmmRcJNecsy3pg8mwzG9sQMBWgON9dWJMsu25hrTFy9MsOw/exec'; // 이메일 알림 전송용 구글 앱스 스크립트 웹앱 URL
 
 // ── URL 파라미터 수신 (표준 파서 우선)
 let P = new URLSearchParams(location.search);
