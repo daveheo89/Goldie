@@ -2118,7 +2118,7 @@ window.downloadContractPdfFromAdmin = async () => {
       <div class="s-label">분양자 (골디 쉼터)</div>
       <div class="s-name" style="position:relative; display:inline-block; margin-top:4px;">
         골디 쉼터
-        <img src="${GOLDI_SEAL_B64}" alt="골디쉼터 직인" style="position:absolute; right:-32px; top:-12px; width:56px; height:56px; pointer-events:none; opacity:0.95;">
+        <img src="${GOLDI_SEAL_B64}" alt="골디쉼터 직인" style="position:absolute; right:-32px; top:-12px; width:56px; height:56px; pointer-events:none; opacity:0.95;" onerror="this.src='goldi_seal.png'">
       </div>
       <div class="s-date" style="margin-top:14px;">분양일: ${fmt(c.saledate)}</div>
     </div>
