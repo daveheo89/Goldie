@@ -2,7 +2,18 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+  // DOM 완료 0.8초 후 로딩 스피너 즉시 강제 제거 보장
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var pl = document.getElementById('puppyLoading');
+      if (pl) pl.style.display = 'none';
+    }, 800);
+  });
+</script>
 <title>골디쉼터 관리자</title>
 <script>
   function checkAdminAuth() {
