@@ -5,15 +5,6 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<script>
-  // DOM 완료 0.8초 후 로딩 스피너 즉시 강제 제거 보장
-  document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-      var pl = document.getElementById('puppyLoading');
-      if (pl) pl.style.display = 'none';
-    }, 800);
-  });
-</script>
 <title>골디쉼터 관리자</title>
 <script>
   function checkAdminAuth() {
@@ -651,6 +642,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
   </header>
 
+  <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
     <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
     <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
@@ -1346,16 +1338,12 @@ function restoreLocalCache() {
     if (cachedDeliveries) window._deliveries = JSON.parse(cachedDeliveries);
     if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
 
-    // ⚡ 캐시 데이터가 있으면 0.001초 만에 즉시 렌더링하여 로딩 스피너 제거
-    if (Object.keys(window._litters).length) {
-      renderPuppyGroups();
-      renderManageList();
-      updateStats();
-      fillTreatmentSelects();
-    }
-    if (Object.keys(window._contracts).length) {
-      renderDB();
-    }
+    // ⚡ 캐시 복원 즉시 UI 렌더링 (빈 데이터라도 올바른 안내 화면 렌더링)
+    renderPuppyGroups();
+    renderManageList();
+    renderDB();
+    updateStats();
+    fillTreatmentSelects();
 
     if (initLitter && initPuppy && !window._autoSelectedTriggered && Object.keys(window._litters).length) {
       window._autoSelectedTriggered = true;
