@@ -1325,37 +1325,30 @@ function restoreLocalCache() {
   try {
     const cachedLitters = localStorage.getItem('goldi_admin_cache_litters');
     const cachedContracts = localStorage.getItem('goldi_admin_cache_contracts');
-    
-    if (cachedLitters) {
-      window._litters = JSON.parse(cachedLitters);
-      // DOM 로드 완료 대기 후 캐시 데이터 렌더링
-      setTimeout(() => {
-        renderPuppyGroups();
-        renderManageList();
-        updateStats();
-        
-        // 자동 선택 연동 파라미터가 있는 경우 처리
-        if (initLitter && initPuppy && !window._autoSelectedTriggered) {
-          window._autoSelectedTriggered = true;
-          selectPuppy(initLitter, initPuppy);
-        }
-      }, 50);
-    }
-    if (cachedContracts) {
-      window._contracts = JSON.parse(cachedContracts);
-      setTimeout(renderDB, 50);
-    }
     const cachedReservations = localStorage.getItem('goldi_admin_cache_reservations');
-    if (cachedReservations) {
-      window._reservations = JSON.parse(cachedReservations);
-    }
     const cachedDeliveries = localStorage.getItem('goldi_admin_cache_deliveries');
-    if (cachedDeliveries) {
-      window._deliveries = JSON.parse(cachedDeliveries);
-    }
     const cachedTreatments = localStorage.getItem('goldi_admin_cache_treatments');
-    if (cachedTreatments) {
-      window._treatments = JSON.parse(cachedTreatments);
+    
+    if (cachedLitters) window._litters = JSON.parse(cachedLitters);
+    if (cachedContracts) window._contracts = JSON.parse(cachedContracts);
+    if (cachedReservations) window._reservations = JSON.parse(cachedReservations);
+    if (cachedDeliveries) window._deliveries = JSON.parse(cachedDeliveries);
+    if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
+
+    // ⚡ 캐시 데이터가 있으면 0.001초 만에 즉시 렌더링하여 로딩 스피너 제거
+    if (Object.keys(window._litters).length) {
+      renderPuppyGroups();
+      renderManageList();
+      updateStats();
+      fillTreatmentSelects();
+    }
+    if (Object.keys(window._contracts).length) {
+      renderDB();
+    }
+
+    if (initLitter && initPuppy && !window._autoSelectedTriggered && Object.keys(window._litters).length) {
+      window._autoSelectedTriggered = true;
+      selectPuppy(initLitter, initPuppy);
     }
   } catch(e) {
     console.error('[Admin Cache Restore Error]:', e);
@@ -1364,6 +1357,39 @@ function restoreLocalCache() {
 
 // 스크립트 실행 즉시 캐시 복원
 restoreLocalCache();
+
+// ⚡ 1.5초 네트워크 지연 가드: 어떤 상황에서도 로딩 스피너가 무한 유지되지 않도록 가동
+setTimeout(() => {
+  const pl = document.getElementById('puppyLoading');
+  if (pl && pl.style.display !== 'none') {
+    pl.style.display = 'none';
+    renderPuppyGroups();
+    renderManageList();
+    renderDB();
+  }
+}, 1500);
+
+// ⚡ 초고속 REST get() 1회성 로드 (WebSocket 지연 대비)
+(async () => {
+  try {
+    const littersSnap = await get(ref(db, 'litters'));
+    if (littersSnap.exists()) {
+      window._litters = littersSnap.val() || {};
+      saveLocalCache('litters', window._litters);
+      renderPuppyGroups();
+      renderManageList();
+      updateStats();
+      fillTreatmentSelects();
+    } else {
+      const pl = document.getElementById('puppyLoading');
+      if (pl) pl.style.display = 'none';
+    }
+  } catch(e) {
+    console.warn('REST get litters warning:', e);
+    const pl = document.getElementById('puppyLoading');
+    if (pl) pl.style.display = 'none';
+  }
+})();
 
 function showAdminFirebaseError(error) {
   console.error("Firebase Database Error:", error);
