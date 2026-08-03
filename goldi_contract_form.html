@@ -310,20 +310,29 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     </div>
   </div>
 
-  <!-- ── STEP4: 완료 -->
+  <!-- ── STEP4: 완료 / 분양 완료 전용 페이지 -->
   <div class="step-panel" id="step4">
     <div class="card complete-box">
-      <div class="complete-icon">🎉</div>
-      <div class="complete-title" id="complete-title">계약이 완료됐습니다!</div>
+      <div style="display:inline-block; background:#E8F8F5; color:#27AE60; border:1.5px solid #27AE60; border-radius:99px; padding:5px 18px; font-size:14px; font-weight:800; margin-bottom:14px;">🎉 분양 완료</div>
+      <div class="complete-title" id="complete-title">분양 계약이 완료됐습니다!</div>
       <div class="complete-sub" id="complete-sub">
         골디쉼터를 선택해주셔서 감사합니다.<br>
-        아래 버튼으로 계약서 PDF를 저장하고<br>
-        가이드북도 확인해주세요 🐾
+        아래 버튼을 통해 서명이 완료된 계약서 사본을 다운로드하고<br>
+        분양 가이드북도 함께 확인하실 수 있습니다. 🐾
       </div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-br" id="pdfBtn" onclick="downloadPDF()">📄 계약서 PDF 저장</button>
-        <button class="btn btn-gold" onclick="window.open('goldi_guide.pdf','_blank')">📘 가이드북 보기</button>
+        <button class="btn btn-br" id="pdfBtn" onclick="downloadPDF()">📄 계약서 사본 (PDF) 다운로드</button>
+        <button class="btn btn-gold" onclick="window.open('goldi_guide.pdf','_blank')">📘 분양 가이드북 다운로드</button>
       </div>
+    </div>
+
+    <!-- 완료된 계약서 사본 미리보기 카드 -->
+    <div class="card" id="completedContractCopyCard" style="display:none; margin-top:20px;">
+      <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>📋 서명 완료된 계약서 사본</span>
+        <span style="font-size:12px; font-weight:600; color:var(--green); background:#E8F8F5; padding:3px 10px; border-radius:4px;">✅ 서명 완료</span>
+      </div>
+      <div id="completedContractPreviewContainer"></div>
     </div>
   </div>
 
@@ -422,17 +431,45 @@ function toast(msg){
 function today(){return new Date().toISOString().slice(0,10)}
 
 // ── 스텝 표시
+// ── 스텝 표시
 window.goStep=n=>{
+  if (window._alreadyCompleted && n !== 4) {
+    toast('이미 분양 계약이 완료된 강아지입니다.');
+    return;
+  }
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('step'+n).classList.add('active');
+  const targetStep = document.getElementById('step'+n);
+  if (targetStep) targetStep.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
+
   // 스텝바 업데이트
-  [1,2,3,4].forEach(i=>{
-    const el=document.getElementById('si'+i);
-    el.classList.remove('active','done');
-    if(i<n) el.classList.add('done');
-    if(i===n) el.classList.add('active');
-  });
+  const stepBar = document.querySelector('.step-bar');
+  if (window._alreadyCompleted || n === 4) {
+    if (stepBar) stepBar.style.display = 'none';
+  } else {
+    if (stepBar) stepBar.style.display = 'flex';
+    [1,2,3,4].forEach(i=>{
+      const el=document.getElementById('si'+i);
+      if (el) {
+        el.classList.remove('active','done');
+        if(i<n) el.classList.add('done');
+        if(i===n) el.classList.add('active');
+      }
+    });
+  }
+
+  // Step 4 (분양 완료) 활성화 시 #contractPreview를 #completedContractPreviewContainer 안으로 이동하여 인라인 렌더링
+  if (n === 4) {
+    const preview = document.getElementById('contractPreview');
+    const container = document.getElementById('completedContractPreviewContainer');
+    const copyCard = document.getElementById('completedContractCopyCard');
+    if (preview && container) {
+      if (!container.contains(preview)) {
+        container.appendChild(preview);
+      }
+      if (copyCard) copyCard.style.display = 'block';
+    }
+  }
 };
 
 // ── 초기화
@@ -512,55 +549,6 @@ async function init(){
         contract=Object.values(contracts).find(c=>c.dogid===dogid);
       }
       
-      if(contract){
-        window._alreadyCompleted=true;
-        
-        // G 객체 파라미터 복원 (URL 파라미터가 유실되거나 생략되더라도 DB 데이터 우선)
-        G.dogname = contract.dogname || G.dogname;
-        G.sex = contract.sex || G.sex;
-        G.birthB = contract.birthB || G.birthB;
-        G.femaleCode = contract.femaleCode || G.femaleCode;
-        G.maleCode = contract.maleCode || G.maleCode;
-        G.price = contract.price || G.price;
-        G.saledate = contract.saledate || G.saledate;
-        G.memo = contract.special_memo || G.memo;
-        
-        // 입력 폼에 기존 정보 채우기
-        document.getElementById('b_name').value = contract.buyer_name || '';
-        document.getElementById('b_phone').value = contract.buyer_phone || '';
-        document.getElementById('b_addr').value = contract.buyer_addr || '';
-        document.getElementById('b_addr_detail').value = contract.buyer_addr_detail || '';
-        if(document.getElementById('b_payment')) document.getElementById('b_payment').value = contract.payment || '';
-        if(document.getElementById('b_transfer')) document.getElementById('b_transfer').value = contract.transfer_name || '';
-        if(document.getElementById('b_deposit')) document.getElementById('b_deposit').value = contract.deposit || 0;
-        if(document.getElementById('b_balance_date')) document.getElementById('b_balance_date').value = contract.balance_date || '';
-        
-        // 계약서 미리보기 HTML 빌드 생성
-        window.goStep2();
-        
-        // 서명 이미지 삽입
-        const signImg=document.getElementById('cv_sign_img');
-        if(signImg && contract.signature){
-          signImg.innerHTML=`<img src="${contract.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;
-        }
-        const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
-        if (cvMemoSignImg && contract.signature_memo) {
-          cvMemoSignImg.innerHTML = `<img src="${contract.signature_memo}" style="max-height:40px; border-radius:3px;">`;
-          cvMemoSignImg.style.border = 'none';
-          cvMemoSignImg.style.background = 'transparent';
-        }
-        
-        // Step 4(완료 화면)로 바로 보내고 가이드 다운로드 제공
-        document.getElementById('complete-title').textContent = '계약이 완료된 강아지입니다!';
-        document.getElementById('complete-sub').innerHTML = `
-          이미 분양 계약 및 서명이 완료되었습니다.<br>
-          아래 버튼을 통해 서명이 완료된 계약서를 다운로드하고<br>
-          가이드북도 함께 확인하실 수 있습니다. 🐾
-        `;
-        window.goStep(4);
-        return;
-      }
-      
       const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
       const fbStatus=fbSnap.val()?.status;
       let lsDup=false;
@@ -568,9 +556,58 @@ async function init(){
         const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
         lsDup=Object.values(ls).some(c=>c.dogid===dogid);
       }catch(e){}
-      if(fbStatus==='분양 완료'||lsDup){
-        document.getElementById('dupWarn').style.display='block';
-        window._isDuplicate=true;
+
+      if(contract || fbStatus==='분양 완료' || lsDup){
+        window._alreadyCompleted=true;
+        
+        if(contract){
+          // G 객체 파라미터 복원 (URL 파라미터가 유실되거나 생략되더라도 DB 데이터 우선)
+          G.dogname = contract.dogname || G.dogname;
+          G.sex = contract.sex || G.sex;
+          G.birthB = contract.birthB || G.birthB;
+          G.femaleCode = contract.femaleCode || G.femaleCode;
+          G.maleCode = contract.maleCode || G.maleCode;
+          G.price = contract.price || G.price;
+          G.saledate = contract.saledate || G.saledate;
+          G.memo = contract.special_memo || G.memo;
+          
+          // 입력 폼에 기존 정보 채우기
+          document.getElementById('b_name').value = contract.buyer_name || '';
+          document.getElementById('b_phone').value = contract.buyer_phone || '';
+          document.getElementById('b_addr').value = contract.buyer_addr || '';
+          document.getElementById('b_addr_detail').value = contract.buyer_addr_detail || '';
+          if(document.getElementById('b_payment')) document.getElementById('b_payment').value = contract.payment || '';
+          if(document.getElementById('b_transfer')) document.getElementById('b_transfer').value = contract.transfer_name || '';
+          if(document.getElementById('b_deposit')) document.getElementById('b_deposit').value = contract.deposit || 0;
+          if(document.getElementById('b_balance_date')) document.getElementById('b_balance_date').value = contract.balance_date || '';
+          
+          // 계약서 미리보기 HTML 빌드 생성
+          window.goStep2();
+          
+          // 서명 이미지 삽입
+          const signImg=document.getElementById('cv_sign_img');
+          if(signImg && contract.signature){
+            signImg.innerHTML=`<img src="${contract.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;
+          }
+          const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
+          if (cvMemoSignImg && contract.signature_memo) {
+            cvMemoSignImg.innerHTML = `<img src="${contract.signature_memo}" style="max-height:40px; border-radius:3px;">`;
+            cvMemoSignImg.style.border = 'none';
+            cvMemoSignImg.style.background = 'transparent';
+          }
+        } else {
+          window.goStep2();
+        }
+        
+        // Step 4(분양 완료 화면)로 바로 이동하여 계약서 사본 및 가이드 다운로드 제공
+        document.getElementById('complete-title').textContent = '이미 분양 완료된 강아지입니다!';
+        document.getElementById('complete-sub').innerHTML = `
+          이미 분양 계약 및 서명이 완료되었습니다.<br>
+          아래 버튼을 통해 서명이 완료된 계약서 사본을 다운로드하고<br>
+          가이드북도 함께 확인하실 수 있습니다. 🐾
+        `;
+        window.goStep(4);
+        return;
       }
     }catch(e){
       console.warn('중복 계약 백그라운드 스캔 지연:',e);
