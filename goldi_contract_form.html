@@ -1008,7 +1008,7 @@ window.submitContract=async()=>{
     // 분양 완료 처리
     await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
 
-    // 이메일 알림 발송 (구글 앱스 스크립트 웹앱 연동)
+    // 이메일 알림 발송 (구글 앱스 스크립트 웹앱 연동: daveheo89@gmail.com 전송용)
     if (typeof EMAIL_NOTIFY_URL !== 'undefined' && EMAIL_NOTIFY_URL) {
       try {
         fetch(EMAIL_NOTIFY_URL, {
@@ -1016,8 +1016,10 @@ window.submitContract=async()=>{
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            target_email: 'daveheo89@gmail.com',
             buyer_name: data.buyer_name,
             buyer_phone: data.buyer_phone,
+            buyer_addr: data.buyer_addr,
             dogname: data.dogname,
             sex: data.sex,
             price: data.price,
