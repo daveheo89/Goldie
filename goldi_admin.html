@@ -640,7 +640,10 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 <div id="admin-main-content">
   <header style="justify-content:space-between;">
     <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
-    <a href="goldie_farm.html" class="btn btn-gold btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🏡 농장 관리 페이지 이동</a>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="goldi_memorial.html" class="btn btn-purple btn-sm" style="background:#7B1FA2; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🌈 무지개다리 기록</a>
+      <a href="goldie_farm.html" class="btn btn-gold btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🏡 농장 관리 페이지 이동</a>
+    </div>
   </header>
 
   <div class="tab-bar">
@@ -1234,7 +1237,10 @@ function genderKo(s){
 function statusBadge(st){
   if(!st||st==='분양 전') return '<span class="badge badge-avail">분양 전</span>';
   if(st==='예약')         return '<span class="badge badge-rsv">예약</span>';
-  return                         '<span class="badge badge-sold">분양 완료</span>';
+  if(st==='분양 완료')    return '<span class="badge badge-sold">분양 완료</span>';
+  if(st==='무지개다리'||st==='🌈 무지개다리') return '<span class="badge" style="background:#F3E5F5;color:#7B1FA2;border:1px solid #E1BEE7">🌈 무지개다리</span>';
+  if(st==='견사 이동'||st==='🏠 견사 이동')   return '<span class="badge" style="background:#E3F2FD;color:#1976D2;border:1px solid #BBDEFB">🏠 견사 이동</span>';
+  return `<span class="badge badge-sold">${st}</span>`;
 }
 function toast(msg){
   const t=document.getElementById('toast');

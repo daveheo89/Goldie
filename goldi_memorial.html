@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>골디쉼터 — 🌈 무지개다리 추모 & 기록 관리</title>
+<style>
+:root {
+  --gold:#C8931A; --gold-l:#F0BE5A; --gold-p:#FDF5E0;
+  --br:#4A2E14; --br-l:#7A5230;
+  --cream:#FAFAF7; --white:#fff;
+  --purple:#7B1FA2; --purple-l:#E1BEE7; --purple-bg:#F3E5F5;
+  --gray:#6B6B6B; --gray-l:#E8E6E0; --gray-ll:#F4F3EF;
+  --red:#C0392B; --blue:#1E6FBB; --green:#27AE60;
+  --r:12px; --sh:0 4px 18px rgba(74,46,20,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
+
+header{background:linear-gradient(135deg, var(--br), #2d1b0b);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,.25);position:sticky;top:0;z-index:200}
+.logo{font-size:18px;color:var(--purple-l);font-weight:900;letter-spacing:-.5px;display:flex;align-items:center;gap:6px}
+.logo span{color:rgba(255,255,255,.6);font-size:12px;font-weight:400}
+
+.nav-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:4px;text-decoration:none;font-family:inherit}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{background:var(--br-l)}
+.btn-gray{background:var(--gray-l);color:var(--br)}
+.btn-gray:hover{background:#d8d5ce}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-purple:hover{background:#6a1b9a}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+
+.banner{background:linear-gradient(135deg,#7B1FA2,#4A148C);color:#fff;border-radius:var(--r);padding:24px;margin-bottom:20px;box-shadow:0 8px 24px rgba(123,31,162,.2);position:relative;overflow:hidden}
+.banner h1{font-size:20px;font-weight:900;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.banner p{font-size:13px;opacity:.9;line-height:1.5}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border:1.5px solid var(--purple-l);border-radius:var(--r);padding:16px;box-shadow:var(--sh);text-align:center}
+.stat-val{font-size:26px;font-weight:900;color:var(--purple);margin-bottom:2px}
+.stat-lbl{font-size:12px;color:var(--gray);font-weight:700}
+
+.controls{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.filter-tabs{display:flex;background:var(--gray-ll);padding:3px;border-radius:9px;gap:3px}
+.tab-btn{padding:8px 16px;font-size:12px;font-weight:700;color:var(--gray);border:none;background:transparent;border-radius:7px;cursor:pointer;transition:.15s}
+.tab-btn.active{background:#fff;color:var(--purple);font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+
+.search-box{flex:1;max-width:320px;min-width:200px}
+.search-box input{width:100%;border:1.5px solid var(--gray-l);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;background:#fff}
+.search-box input:focus{border-color:var(--purple)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.card{background:#fff;border-radius:var(--r);border:1.5px solid var(--purple-l);box-shadow:var(--sh);padding:18px;position:relative;transition:transform .15s}
+.card:hover{transform:translateY(-2px)}
+.card-tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-l);margin-bottom:10px}
+.card-tag.tag-adult{background:#FFF3E0;color:#E67E22;border-color:#F5CBA7}
+.card-title{font-size:16px;font-weight:900;color:var(--br);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.card-meta{font-size:12px;color:var(--gray);margin-bottom:10px;line-height:1.6}
+.card-memo{background:var(--gray-ll);border-radius:8px;padding:10px;font-size:12px;color:var(--br);margin-bottom:14px;line-height:1.5}
+.card-actions{display:flex;justify-content:flex-end;gap:6px}
+
+.empty{text-align:center;padding:50px 20px;background:#fff;border-radius:var(--r);border:1.5px solid var(--gray-l);color:var(--gray);font-size:14px}
+.loading{text-align:center;padding:40px;color:var(--gray);font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-l);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 모달 */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;justify-content:center;align-items:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:480px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);overflow:hidden}
+.modal-head{background:var(--purple);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:15px;font-weight:800}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer}
+.modal-body{padding:20px}
+.ffield{margin-bottom:14px}
+.ffield label{display:block;font-size:12px;font-weight:800;color:var(--br);margin-bottom:4px}
+.ffield input,.ffield textarea,.ffield select{border:1.5px solid var(--gray-l);border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;color:var(--br);outline:none;width:100%}
+.ffield textarea{resize:vertical;min-height:70px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--br);color:#fff;padding:12px 22px;border-radius:8px;font-size:13.5px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:transform .3s;z-index:999;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  header{padding:10px 14px}
+  .logo{font-size:15px}
+  .banner{padding:18px}
+  .banner h1{font-size:17px}
+  .controls{flex-direction:column;align-items:stretch}
+  .search-box{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌈 골디쉼터 <span>무지개다리 기록</span></div>
+  <div class="nav-btns">
+    <a href="goldi_admin.html" class="btn btn-gold">🔑 어드민 페이지</a>
+    <a href="goldie_farm.html" class="btn btn-gold">🏡 농장 관리</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="banner">
+    <h1>🌈 무지개다리 추모 & 기록 관리</h1>
+    <p>소중하게 보살폈던 아이들의 무지개다리 여정과 기록을 정중히 기리고 관리하는 공간입니다.<br>기록된 이력은 영구 보존되며 언제든 사유 및 날짜를 수정하거나 이력을 조회할 수 있습니다.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-lbl">전체 무지개다리 기록</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-puppy" style="color:var(--purple)">0</div>
+      <div class="stat-lbl">자견 (새끼)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-adult" style="color:#E67E22">0</div>
+      <div class="stat-lbl">성견 (모/부견)</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="filter-tabs">
+      <button class="tab-btn active" onclick="setFilter('all')">전체 보기</button>
+      <button class="tab-btn" onclick="setFilter('puppy')">자견 (새끼)</button>
+      <button class="tab-btn" onclick="setFilter('adult')">성견 (모/부견)</button>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="이름, 모견코드, 사유 검색..." oninput="renderList()">
+    </div>
+  </div>
+
+  <div id="memorialList" class="loading"><div class="spinner"></div>데이터를 불러오는 중...</div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">✏️ 추모 기록 수정</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit_type">
+      <input type="hidden" id="edit_lid">
+      <input type="hidden" id="edit_pid">
+      
+      <div class="ffield">
+        <label>별이 된 날짜 *</label>
+        <input type="date" id="edit_date">
+      </div>
+      <div class="ffield">
+        <label>추모 및 사유 기재 *</label>
+        <textarea id="edit_memo" placeholder="예: 생후 15일 심장 마비, 노환 등 사유 기록"></textarea>
+      </div>
+      <div class="ffield">
+        <label>상태 변경</label>
+        <select id="edit_status">
+          <option value="무지개다리">🌈 무지개다리 (유지)</option>
+          <option value="restore">🔄 상태 복구 ('분양 전' 또는 '번식중'으로 복원)</option>
+        </select>
+      </div>
+      
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-gray" style="flex:1;justify-content:center" onclick="closeModal()">취소</button>
+        <button class="btn btn-purple" style="flex:1;justify-content:center" onclick="saveEdit()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, update, push, remove, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const FB = {
+  apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain:"goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL:"https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId:"goldie-shelter-d6c81",
+  storageBucket:"goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId:"305277425020",
+  appId:"1:305277425020:web:1f841f61d733c3a3aec0f9"
+};
+const app = initializeApp(FB);
+const db  = getDatabase(app);
+
+window._litters = {};
+window._dogs = {};
+window._filter = 'all';
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+const fmt = d => d ? d.replace(/-/g,'.') : '—';
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── 데이터 로드
+onValue(ref(db, 'litters'), snap => {
+  window._litters = snap.val() || {};
+  renderList();
+});
+onValue(ref(db, 'dogs'), snap => {
+  window._dogs = snap.val() || {};
+  renderList();
+});
+
+window.setFilter = function(f) {
+  window._filter = f;
+  document.querySelectorAll('.filter-tabs .tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (f==='all'&&i===0)||(f==='puppy'&&i===1)||(f==='adult'&&i===2));
+  });
+  renderList();
+};
+
+function isMemorialStatus(st) {
+  if (!st) return false;
+  const s = String(st).trim();
+  return s.includes('무지개다리') || s.includes('별이') || s === '폐사' || s === '사망';
+}
+
+function getMemorialItems() {
+  const items = [];
+  
+  // 1. 자견 (puppies in litters)
+  Object.entries(window._litters).forEach(([lid, l]) => {
+    const puppies = l.puppies || {};
+    Object.entries(puppies).forEach(([pid, p]) => {
+      if (isMemorialStatus(p.status)) {
+        items.push({
+          type: 'puppy',
+          lid, pid,
+          name: p.name || pid,
+          sex: p.sex === 'female' ? '암컷 ♀' : p.sex === 'male' ? '수컷 ♂' : '—',
+          birthDate: l.birthB || l.birthA || '—',
+          parentCode: `♀ ${l.femaleCode||'?'} × ♂ ${l.maleCode||'?'}`,
+          passDate: p.statusDate || p.passDate || '—',
+          memo: p.statusMemo || p.memo || '기록된 사유 없음',
+          raw: p
+        });
+      }
+    });
+  });
+
+  // 2. 성견 (dogs)
+  Object.entries(window._dogs).forEach(([did, d]) => {
+    if (isMemorialStatus(d.status)) {
+      items.push({
+        type: 'adult',
+        lid: null, pid: did,
+        name: `${d.code || ''} ${d.name || ''}`.trim() || did,
+        sex: d.sex === 'female' ? '암컷 ♀' : d.sex === 'male' ? '수컷 ♂' : '—',
+        birthDate: d.birth || '—',
+        parentCode: d.role ? `[${d.role}]` : '성견',
+        passDate: d.statusDate || d.passDate || '—',
+        memo: d.statusMemo || d.memo || '기록된 사유 없음',
+        raw: d
+      });
+    }
+  });
+
+  return items;
+}
+
+window.renderList = function() {
+  const allItems = getMemorialItems();
+  
+  // 통계 업데이트
+  const puppyCount = allItems.filter(i => i.type === 'puppy').length;
+  const adultCount = allItems.filter(i => i.type === 'adult').length;
+  document.getElementById('stat-total').textContent = allItems.length;
+  document.getElementById('stat-puppy').textContent = puppyCount;
+  document.getElementById('stat-adult').textContent = adultCount;
+
+  const kw = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  
+  const filtered = allItems.filter(i => {
+    if (window._filter === 'puppy' && i.type !== 'puppy') return false;
+    if (window._filter === 'adult' && i.type !== 'adult') return false;
+    if (kw && !i.name.toLowerCase().includes(kw) && !i.parentCode.toLowerCase().includes(kw) && !i.memo.toLowerCase().includes(kw)) {
+      return false;
+    }
+    return true;
+  });
+
+  const container = document.getElementById('memorialList');
+  if (!container) return;
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty">🌈 기록된 무지개다리 내역이 없습니다.</div>';
+    return;
+  }
+
+  // 날짜순 정렬
+  filtered.sort((a, b) => (b.passDate || '').localeCompare(a.passDate || ''));
+
+  let html = '<div class="grid">';
+  filtered.forEach(item => {
+    const isAdult = item.type === 'adult';
+    html += `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="card-tag${isAdult?' tag-adult':''}">${isAdult?'🐕 성견 (모/부견)':'🐶 자견 (새끼)'}</span>
+          <span style="font-size:11px;color:var(--gray);font-weight:700">별이 된 날: ${fmt(item.passDate)}</span>
+        </div>
+        <div class="card-title">
+          <span>${esc(item.name)}</span>
+          <span style="font-size:12px;font-weight:700;color:var(--purple)">${item.sex}</span>
+        </div>
+        <div class="card-meta">
+          <div>혈통/구분: <strong>${esc(item.parentCode)}</strong></div>
+          <div>출생일: <strong>${fmt(item.birthDate)}</strong></div>
+        </div>
+        <div class="card-memo">
+          <strong>📝 추모 및 기록:</strong><br>
+          ${esc(item.memo)}
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-gray btn-sm" onclick="openEditModal('${item.type}','${item.lid||''}','${item.pid}')">✏️ 기록 수정</button>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+};
+
+window.openEditModal = function(type, lid, pid) {
+  document.getElementById('edit_type').value = type;
+  document.getElementById('edit_lid').value = lid;
+  document.getElementById('edit_pid').value = pid;
+  document.getElementById('edit_status').value = '무지개다리';
+
+  let item = null;
+  if (type === 'puppy') {
+    item = (window._litters[lid]?.puppies || {})[pid];
+  } else {
+    item = window._dogs[pid];
+  }
+
+  if (item) {
+    document.getElementById('edit_date').value = item.statusDate || item.passDate || new Date().toISOString().slice(0, 10);
+    document.getElementById('edit_memo').value = item.statusMemo || item.memo || '';
+  }
+
+  document.getElementById('editModal').classList.add('open');
+};
+
+window.closeModal = function() {
+  document.getElementById('editModal').classList.remove('open');
+};
+
+window.saveEdit = async function() {
+  const type = document.getElementById('edit_type').value;
+  const lid = document.getElementById('edit_lid').value;
+  const pid = document.getElementById('edit_pid').value;
+  const passDate = document.getElementById('edit_date').value;
+  const statusMemo = document.getElementById('edit_memo').value.trim();
+  const statusOpt = document.getElementById('edit_status').value;
+
+  try {
+    if (statusOpt === 'restore') {
+      // 상태 복구
+      const restoredStatus = type === 'puppy' ? '분양 전' : '번식중';
+      if (type === 'puppy') {
+        await update(ref(db, `litters/${lid}/puppies/${pid}`), {
+          status: restoredStatus,
+          statusDate: null,
+          statusMemo: null
+        });
+      } else {
+        await update(ref(db, `dogs/${pid}`), {
+          status: restoredStatus,
+          statusDate: null,
+          statusMemo: null
+        });
+      }
+      toast('🔄 상태가 정상 복원되었습니다.');
+    } else {
+      // 기록 수정
+      if (type === 'puppy') {
+        await update(ref(db, `litters/${lid}/puppies/${pid}`), {
+          status: '무지개다리',
+          statusDate: passDate,
+          statusMemo: statusMemo
+        });
+      } else {
+        await update(ref(db, `dogs/${pid}`), {
+          status: '무지개다리',
+          statusDate: passDate,
+          statusMemo: statusMemo
+        });
+      }
+      toast('💾 기록이 업데이트되었습니다.');
+    }
+    closeModal();
+    renderList();
+  } catch(e) {
+    toast('⚠ 저장 실패: ' + e.message);
+  }
+};
+</script>
+
+</body>
+</html>
