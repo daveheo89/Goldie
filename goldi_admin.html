@@ -638,8 +638,9 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 </div>
 
 <div id="admin-main-content">
-  <header>
+  <header style="justify-content:space-between;">
     <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+    <a href="goldie_farm.html" class="btn btn-gold btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🏡 농장 관리 페이지 이동</a>
   </header>
 
   <div class="tab-bar">
@@ -2757,6 +2758,9 @@ window.renderDeliveryCalendar = function() {
     numEl.textContent = day;
     dayCell.appendChild(numEl);
     
+    const chipsContainer = document.createElement('div');
+    chipsContainer.className = 'calendar-chips';
+    
     // 1. 배송 일정 (🚗)
     const dayDeliveries = (window._deliveries || [])
       .filter(d => d.date === dayDateStr)
@@ -2792,7 +2796,7 @@ window.renderDeliveryCalendar = function() {
       chip.title = `치료 메모: ${t.memo || ''}`;
       chip.onclick = (e) => {
         e.stopPropagation();
-        if (typeof showTab === 'function') showTab('health');
+        if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="treatment"]'), 'treatment');
       };
       chipsContainer.appendChild(chip);
     });
@@ -2820,7 +2824,7 @@ window.renderDeliveryCalendar = function() {
         chip.textContent = `${vaxText} (${parentLabel})`;
         chip.onclick = (e) => {
           e.stopPropagation();
-          if (typeof showTab === 'function') showTab('health');
+          if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="health"]'), 'health');
         };
         chipsContainer.appendChild(chip);
       }
@@ -2837,7 +2841,7 @@ window.renderDeliveryCalendar = function() {
           chip.textContent = `🪱 구충 (${parentLabel})`;
           chip.onclick = (e) => {
             e.stopPropagation();
-            if (typeof showTab === 'function') showTab('health');
+            if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="health"]'), 'health');
           };
           chipsContainer.appendChild(chip);
           break;
