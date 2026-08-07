@@ -989,6 +989,11 @@ window.renderSelectedDayEvents = function(dateStr) {
       tmapBtn = `<a href="${s.tmapUrl}" target="_blank" class="btn btn-br btn-sm" style="text-decoration:none;">🚙 Tmap 길안내</a>`;
     }
 
+    let kakaoBtn = '';
+    if (type === 'delivery' || s.tmapUrl) {
+      kakaoBtn = `<button class="btn btn-sm" onclick="shareDeliveryKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 가족 카톡 전송</button>`;
+    }
+
     return `
       <div class="card" style="margin-bottom:10px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
@@ -1004,12 +1009,73 @@ window.renderSelectedDayEvents = function(dateStr) {
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             ${gcalBtn}
             ${tmapBtn}
+            ${kakaoBtn}
           </div>
           <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${s.dbPath}')" style="color:var(--red);">삭제</button>
         </div>
       </div>
     `;
   }).join('');
+};
+
+// 💬 가족 공유용 배송 일정 카카오톡 메시지 전송 기능
+window.shareDeliveryKakao = async function(eventId) {
+  const event = (window._mergedEvents || []).find(e => e.id === eventId);
+  if (!event) return;
+
+  const raw = event.raw || {};
+  const dogName = event.dogname || raw.dogname || raw.puppy || raw.puppyName || raw.dogName || '자견';
+  const dateStr = event.date || '';
+  const timeStr = event.time || raw.time || '';
+  const dateTimeStr = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+
+  const buyerName = event.buyer_name || raw.buyer_name || raw.visitorName || raw.name || raw.buyerName || '수령인';
+  const buyerPhone = event.buyer_phone || raw.buyer_phone || raw.visitorPhone || raw.phone || raw.buyerPhone || '';
+  const buyerStr = buyerPhone ? `${buyerName} (${buyerPhone})` : buyerName;
+
+  const addressStr = event.location || raw.address || raw.buyer_addr || raw.location || '주소 미지정';
+
+  let tmapLink = event.tmapUrl;
+  if (!tmapLink && addressStr && addressStr !== '주소 미지정') {
+    tmapLink = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(addressStr)}`;
+  }
+  if (!tmapLink) {
+    tmapLink = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent('골디쉼터')}`;
+  }
+
+  const memoStr = raw.memo || raw.details || event.details || '특이사항 없음';
+
+  const kakaoMsg = `[골디쉼터] 🚗 배송 일정 안내
+
+🐾 강아지: ${dogName}
+📅 배송 일시: ${dateTimeStr}
+👤 수령인: ${buyerStr}
+📍 배송 주소: ${addressStr}
+
+🚙 티맵 길안내 (클릭 시 티맵 앱 실행):
+${tmapLink}
+
+📝 메모: ${memoStr}`;
+
+  // 모바일 브라우저인 경우 카카오톡 공유창 직접 연결
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: '[골디쉼터] 🚗 배송 일정 안내',
+        text: kakaoMsg
+      });
+      toast('💬 가족 공유용 카카오톡 창이 열렸습니다.');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // 데스크톱 / PC인 경우 클립보드에 자동 복사 후 전송 안내
+  const ok = await safeCopy(kakaoMsg);
+  if (ok) {
+    toast('💬 가족 전달용 배송 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송하세요.');
+  }
 };
 
 
