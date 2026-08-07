@@ -132,8 +132,9 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 </head>
 <body>
 
-<header>
+<header style="display:flex; justify-content:space-between; align-items:center; width:100%;">
   <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+  <a href="https://daveheo89.github.io/Goldie/goldie_farm.html" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none; white-space:nowrap; font-weight:700;">🏡 농장 관리 웹앱 바로가기 ↗</a>
 </header>
 
 <div class="tab-bar">
@@ -141,6 +142,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
   <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
   <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 일정 & Google 캘린더</button>
+  <button class="tab-btn" onclick="window.open('https://daveheo89.github.io/Goldie/goldie_farm.html','_blank')" style="color:var(--gold-l);">🏡 농장 관리 페이지 ↗</button>
 </div>
 
 <!-- TAB1 -->
@@ -214,6 +216,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <button class="btn btn-green btn-sm" onclick="exportMonthGCalICS()" style="background:#4285F4; color:#fff;">📅 이번 달 [예약&배송] 구글 캘린더 일괄 자동 동기화</button>
+      <button class="btn btn-green btn-sm" onclick="openAddDisinfectionModal()" style="background:#10B981; color:#fff;">+ 🟢 내부 방역 일정 등록</button>
       <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
     </div>
   </div>
@@ -802,7 +805,7 @@ window.renderCalendarEvents = function() {
     });
   });
 
-  // 4. Disinfection & Treatments (/treatments)
+  // 4. Internal Shelter Facility Disinfection & Treatments (/treatments)
   Object.entries(window._treatments).forEach(([id, tr]) => {
     if (!tr || !tr.date) return;
     mergedEvents.push({
@@ -810,98 +813,26 @@ window.renderCalendarEvents = function() {
       dbKey: id,
       dbPath: `treatments/${id}`,
       type: 'disinfection',
-      title: `💉 [방역/치료] ${tr.title || tr.medicine || '소독 및 약품 투여'}`,
+      title: `🟢 [내부 시설 방역] ${tr.title || tr.medicine || '견사 전체 소독 및 약제 방역'}`,
       date: tr.date,
-      location: tr.location || '쉼터 견사',
-      details: `내용: ${tr.memo || tr.details || ''}`,
+      location: tr.location || '골디쉼터 본원 견사 및 운동장',
+      details: `소독 구분: ${tr.medicine || '내부 방역'} | 메모: ${tr.memo || tr.details || '정기 소독 완료'}`,
       raw: tr
     });
   });
 
-  // 5. Vaccination & Deworming Dates from Litters (/litters)
-  const cleanDogName = (code) => {
-    if (!code) return '';
-    const parts = code.split(/[\/\-_]/);
-    const last = parts[parts.length - 1].trim();
-    return last.replace(/^[0-9\s]+/, '').trim() || code;
-  };
-
-  Object.entries(window._litters).forEach(([lid, l]) => {
-    if (!l) return;
-    const motherName = cleanDogName(l.femaleCode || '모견');
-    const fatherName = cleanDogName(l.maleCode || '부견');
-    const labelPrefix = motherName ? `${motherName} 리터` : '자견';
-
-    // Vaccinations (1, 2, 3차 백신)
-    ['vax1', 'vax2', 'vax3'].forEach((vk, idx) => {
-      if (l[vk]) {
-        mergedEvents.push({
-          id: `litter-${lid}-${vk}`,
-          dbKey: lid,
-          dbPath: `litters/${lid}/${vk}`,
-          type: 'disinfection',
-          title: `💉 [종합백신] ${labelPrefix} 자견 ${idx + 1}차 접종일`,
-          date: l[vk],
-          location: '골디쉼터 자견 견사',
-          details: `모견: ${motherName} | 부견: ${fatherName} | 자견 총 ${l.count || 0}마리 대상 ${idx + 1}차 종합백신 접종일`,
-          raw: l
-        });
-      }
-    });
-
-    // Dewormings (1, 2, 3차 구충제)
-    ['deworm1', 'deworm2', 'deworm3'].forEach((dk, idx) => {
-      if (l[dk]) {
-        mergedEvents.push({
-          id: `litter-${lid}-${dk}`,
-          dbKey: lid,
-          dbPath: `litters/${lid}/${dk}`,
-          type: 'disinfection',
-          title: `💊 [구충제] ${labelPrefix} 자견 ${idx + 1}차 구충 투여일`,
-          date: l[dk],
-          location: '골디쉼터 자견 견사',
-          details: `모견: ${motherName} | 부견: ${fatherName} | 자견 총 ${l.count || 0}마리 대상 ${idx + 1}차 구충제 투여일`,
-          raw: l
-        });
-      }
-    });
-
-    // Individual Puppy Vaccinations/Deworming
-    if (l.puppies && typeof l.puppies === 'object') {
-      Object.entries(l.puppies).forEach(([pid, p]) => {
-        if (!p) return;
-        ['vax1', 'vax2', 'vax3', 'deworm1', 'deworm2', 'deworm3'].forEach(pk => {
-          if (p[pk]) {
-            const isVax = pk.startsWith('vax');
-            const num = pk.slice(-1);
-            mergedEvents.push({
-              id: `puppy-${lid}-${pid}-${pk}`,
-              dbKey: pid,
-              dbPath: `litters/${lid}/puppies/${pid}/${pk}`,
-              type: 'disinfection',
-              title: `${isVax ? '💉 [개별 백신]' : '💊 [개별 구충]'} ${p.name || '자견'} (${motherName} 자견) ${num}차 ${isVax ? '백신' : '구충'}`,
-              date: p[pk],
-              location: '골디쉼터 자견 견사',
-              details: `강아지: ${p.name || pid} | 모견: ${motherName}`,
-              raw: p
-            });
-          }
-        });
-      });
-    }
-  });
-
-  // 5. Custom Schedules (/schedules)
+  // 5. Custom Internal Schedules (/schedules)
   Object.entries(window._schedules).forEach(([id, s]) => {
     if (!s || !s.date) return;
+    const isCare = s.type === 'disinfection';
     mergedEvents.push({
       id: `schedule-${id}`,
       dbKey: id,
       dbPath: `schedules/${id}`,
       type: s.type || 'rsv',
-      title: s.title || '쉼터 일정',
+      title: isCare ? `🟢 [내부 시설 방역] ${s.title}` : s.title,
       date: s.date,
-      location: s.location || '',
+      location: s.location || (isCare ? '골디쉼터 본원 전구역' : '골디쉼터'),
       details: s.details || '',
       raw: s
     });
@@ -1068,6 +999,74 @@ window.renderSelectedDayEvents = function(dateStr) {
       </div>
     `;
   }).join('');
+};
+
+window.openAddDisinfectionModal = function() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const html = `
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>내부 방역 프리셋 선택 *</label>
+      <select id="dis_preset" onchange="applyDisPreset(this.value)" style="margin-bottom:6px; font-weight:700;">
+        <option value="">-- 자주 쓰는 내부 시설 방역 선택 --</option>
+        <option value="🧹 [주간 정기 방역] 쉼터 견사 & 야외 운동장 분무 소독">🧹 [주간 정기 방역] 쉼터 견사 & 야외 운동장 분무 소독</option>
+        <option value="🧪 [약품 구충 소독] 실내 분양장 & 격리실 종합 약제 방역">🧪 [약품 구충 소독] 실내 분양장 & 격리실 종합 약제 방역</option>
+        <option value="🛡️ [월간 전체 방역] 쉼터 전구역 시설 방역 및 소독 관리">🛡️ [월간 전체 방역] 쉼터 전구역 시설 방역 및 소독 관리</option>
+      </select>
+      <input type="text" id="dis_title" placeholder="방역 일정 제목 입력" value="🧹 [내부 시설 방역] 쉼터 견사 정기 소독">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>방역 실시 예정일 *</label>
+      <input type="date" id="dis_date" value="${todayStr}">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>장소/구역</label>
+      <input type="text" id="dis_loc" placeholder="예: 골디쉼터 본원 견사 및 대형견 운동장" value="골디쉼터 본원 견사 및 운동장">
+    </div>
+    <div class="ffield" style="margin-bottom:16px;">
+      <label>상세 소독 메모</label>
+      <input type="text" id="dis_details" placeholder="예: 소독 약품 100배 희석 분무 및 식기 고온 소독 완료" value="시설 분무 소독 및 견사 일체 방역 완료">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveAddDisinfection()">🟢 내부 방역 일정 저장</button>
+      <button class="btn btn-gray" onclick="closeModal()">취소</button>
+    </div>
+  `;
+  document.getElementById('modalTitle').textContent = '🟢 내부 시설 방역 및 소독 일정 등록';
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('open');
+};
+
+window.applyDisPreset = function(val) {
+  if (val) {
+    document.getElementById('dis_title').value = val;
+  }
+};
+
+window.saveAddDisinfection = function() {
+  const title = (document.getElementById('dis_title')?.value || '').trim();
+  const date = document.getElementById('dis_date')?.value;
+  const location = (document.getElementById('dis_loc')?.value || '').trim();
+  const details = (document.getElementById('dis_details')?.value || '').trim();
+
+  if (!title || !date) {
+    alert('방역 제목과 날짜를 입력해주세요.');
+    return;
+  }
+
+  const newRef = fbPush(ref(db, 'treatments'));
+  set(newRef, {
+    title: title,
+    date: date,
+    location: location || '골디쉼터 본원 전구역',
+    medicine: '내부 시설 방역',
+    details: details,
+    createdAt: new Date().toISOString()
+  }).then(() => {
+    closeModal();
+    showToast('🟢 내부 시설 방역 일정이 성공적으로 등록되었습니다.');
+  }).catch(err => {
+    alert('저장 실패: ' + err.message);
+  });
 };
 
 window.openAddEventModal = function() {
