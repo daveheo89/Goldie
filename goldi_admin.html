@@ -548,12 +548,28 @@ window.closeModal=()=>document.getElementById('detailModal').classList.remove('o
 
 // ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
 window._schedules = {};
+window._deliveries = {};
+window._reservations = {};
+window._treatments = {};
 window._calFilter = 'all';
 
 import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// Firebase Realtime DB Subscriptions for All Event Categories
 onValue(ref(db, 'schedules'), snap => {
   window._schedules = snap.val() || {};
+  renderCalendarEvents();
+});
+onValue(ref(db, 'deliveries'), snap => {
+  window._deliveries = snap.val() || {};
+  renderCalendarEvents();
+});
+onValue(ref(db, 'reservations'), snap => {
+  window._reservations = snap.val() || {};
+  renderCalendarEvents();
+});
+onValue(ref(db, 'treatments'), snap => {
+  window._treatments = snap.val() || {};
   renderCalendarEvents();
 });
 
@@ -588,8 +604,95 @@ window.renderCalendarEvents = function() {
   const el = document.getElementById('calendarList');
   if (!el) return;
 
-  const rawList = Object.entries(window._schedules);
-  if (!rawList.length) {
+  // Aggregate All Realtime DB Data Sources
+  const mergedEvents = [];
+
+  // 1. Existing Deliveries (/deliveries)
+  Object.entries(window._deliveries).forEach(([id, d]) => {
+    if (!d || !d.date) return;
+    const tmapUrl = d.address ? `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(d.address)}` : '';
+    mergedEvents.push({
+      id: `delivery-${id}`,
+      dbKey: id,
+      dbPath: `deliveries/${id}`,
+      type: 'delivery',
+      title: `🚚 [배송] ${d.buyer_name || '수령인'} 님 (${d.buyer_phone || ''})`,
+      date: d.date,
+      location: d.address || '',
+      details: `수령인: ${d.buyer_name || ''} (${d.buyer_phone || ''}) | 계약ID: ${d.contractId || ''}${tmapUrl ? ` | Tmap: ${tmapUrl}` : ''}`,
+      raw: d
+    });
+  });
+
+  // 2. Existing Reservations (/reservations)
+  Object.entries(window._reservations).forEach(([id, r]) => {
+    if (!r || !r.date) return;
+    const name = r.buyer_name || r.name || '방문 고객';
+    const phone = r.phone || r.buyer_phone || '';
+    mergedEvents.push({
+      id: `rsv-${id}`,
+      dbKey: id,
+      dbPath: `reservations/${id}`,
+      type: 'rsv',
+      title: `🤝 [방문 예약] ${name} 님 ${phone ? `(${phone})` : ''}`,
+      date: r.date,
+      location: r.location || '골디쉼터 본원',
+      details: `메모: ${r.memo || '없음'} | Status: ${r.status || '신청'}`,
+      raw: r
+    });
+  });
+
+  // 3. Existing Contracts Balance Dates (/contracts)
+  Object.entries(window._contracts).forEach(([id, c]) => {
+    if (!c) return;
+    if (c.balance_date) {
+      mergedEvents.push({
+        id: `contract-bal-${id}`,
+        dbKey: id,
+        dbPath: `contracts/${id}`,
+        type: 'rsv',
+        title: `💰 [잔금 납부일] ${c.buyer_name || ''} 님 (${c.dogname || ''})`,
+        date: c.balance_date,
+        location: c.buyer_addr || '',
+        details: `분양가: ${c.price ? numFmt(c.price) : ''} | 연락처: ${c.buyer_phone || ''}`,
+        raw: c
+      });
+    }
+  });
+
+  // 4. Disinfection & Treatments (/treatments)
+  Object.entries(window._treatments).forEach(([id, tr]) => {
+    if (!tr || !tr.date) return;
+    mergedEvents.push({
+      id: `treatment-${id}`,
+      dbKey: id,
+      dbPath: `treatments/${id}`,
+      type: 'disinfection',
+      title: `💉 [방역/치료] ${tr.title || tr.medicine || '소독 및 약품 투여'}`,
+      date: tr.date,
+      location: tr.location || '쉼터 견사',
+      details: `내용: ${tr.memo || tr.details || ''}`,
+      raw: tr
+    });
+  });
+
+  // 5. Custom Schedules (/schedules)
+  Object.entries(window._schedules).forEach(([id, s]) => {
+    if (!s || !s.date) return;
+    mergedEvents.push({
+      id: `schedule-${id}`,
+      dbKey: id,
+      dbPath: `schedules/${id}`,
+      type: s.type || 'rsv',
+      title: s.title || '쉼터 일정',
+      date: s.date,
+      location: s.location || '',
+      details: s.details || '',
+      raw: s
+    });
+  });
+
+  if (!mergedEvents.length) {
     el.innerHTML = `
       <div class="card" style="text-align:center; padding:30px; color:var(--gray);">
         📅 등록된 일정이 없습니다. 오른쪽 상단 '+ 일정 등록' 버튼으로 구글 캘린더 연동 일정을 추가해보세요!
@@ -599,7 +702,7 @@ window.renderCalendarEvents = function() {
   }
 
   const filter = window._calFilter;
-  const filtered = rawList.filter(([, s]) => {
+  const filtered = mergedEvents.filter(s => {
     const type = s.type || 'rsv';
     if (filter === 'sync') return type === 'rsv' || type === 'delivery';
     if (filter === 'care') return type === 'disinfection';
@@ -611,9 +714,9 @@ window.renderCalendarEvents = function() {
     return;
   }
 
-  const sorted = filtered.sort(([, a], [, b]) => (b.date || '').localeCompare(a.date || ''));
+  const sorted = filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-  el.innerHTML = sorted.map(([id, s]) => {
+  el.innerHTML = sorted.map(s => {
     const type = s.type || 'rsv';
     let catBadge = '';
     let isGCalSyncable = true;
@@ -627,14 +730,13 @@ window.renderCalendarEvents = function() {
       isGCalSyncable = false;
     }
 
-    const titleText = isGCalSyncable ? `[골디쉼터 ${type === 'rsv' ? '예약' : '배송'}] ${s.title}` : `[골디쉼터 방역/치료] ${s.title}`;
-    const gcalUrl = window.buildGCalUrl(titleText, s.details || '', s.location || '', s.date);
+    const gcalUrl = window.buildGCalUrl(s.title, s.details || '', s.location || '', s.date);
 
     let gcalBtn = '';
     if (isGCalSyncable) {
       gcalBtn = `<a href="${gcalUrl}" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none;">📅 Google 캘린더에 추가</a>`;
     } else {
-      gcalBtn = `<span style="font-size:11px; color:var(--gray);">🔒 방역/치료 독립 카테고리</span>`;
+      gcalBtn = `<span style="font-size:11px; color:var(--gray);">🔒 방역/치료 독립 카테고리 (내부 전용)</span>`;
     }
 
     return `
@@ -650,7 +752,7 @@ window.renderCalendarEvents = function() {
         ${s.details ? `<div style="font-size:12px; color:var(--gray); margin-bottom:10px;">📝 <strong>상세내용:</strong> ${s.details}</div>` : ''}
         <div class="btn-row" style="margin-top:10px; justify-content:space-between; align-items:center;">
           ${gcalBtn}
-          <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${id}')" style="color:var(--red);">삭제</button>
+          <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${s.dbPath}')" style="color:var(--red);">삭제</button>
         </div>
       </div>
     `;
