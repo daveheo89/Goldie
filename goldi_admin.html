@@ -1047,7 +1047,10 @@ window.renderSelectedDayEvents = function(dateStr) {
             ${tmapBtn}
             ${kakaoBtn}
           </div>
-          <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${s.dbPath}')" style="color:var(--red);">삭제</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-gold btn-sm" onclick="openEditCalendarEventModal('${s.id}')">✏️ 수정</button>
+            <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${s.dbPath}')" style="color:var(--red);">삭제</button>
+          </div>
         </div>
       </div>
     `;
@@ -1111,6 +1114,124 @@ ${tmapLink}
   const ok = await safeCopy(kakaoMsg);
   if (ok) {
     toast('💬 가족 전달용 배송 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송하세요.');
+  }
+};
+
+// ✏️ 예약 & 배송 일정 수정 모달
+window.openEditCalendarEventModal = function(eventId) {
+  const event = (window._mergedEvents || []).find(e => e.id === eventId);
+  if (!event) return;
+
+  const raw = event.raw || {};
+  const type = event.type || 'rsv';
+  const dogname = event.dogname || raw.dogname || raw.puppy || raw.puppyName || raw.dogName || '';
+  const buyer_name = event.buyer_name || raw.buyer_name || raw.visitorName || raw.name || raw.buyerName || '';
+  const buyer_phone = event.buyer_phone || raw.buyer_phone || raw.visitorPhone || raw.phone || raw.buyerPhone || '';
+  const date = event.date || '';
+  const time = event.time || raw.time || raw.timeStart || '';
+  const location = event.location || raw.address || raw.buyer_addr || raw.location || '';
+  const details = raw.memo || raw.details || event.details || '';
+
+  const html = `
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>카테고리</label>
+      <select id="edit_cal_type" disabled style="padding:10px; font-weight:700; background:var(--gray-ll);">
+        <option value="delivery" ${type==='delivery'?'selected':''}>🔵 자택 배송</option>
+        <option value="rsv" ${type==='rsv'?'selected':''}>🟡 방문 예약</option>
+      </select>
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>강아지 이름 (선택)</label>
+      <input type="text" id="edit_dogname" value="${dogname}" placeholder="예: 빨강이">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>수령인 / 방문자 성함 *</label>
+      <input type="text" id="edit_buyer_name" value="${buyer_name}" placeholder="예: 양경모">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>연락처 *</label>
+      <input type="text" id="edit_buyer_phone" value="${buyer_phone}" placeholder="예: 01027592454">
+    </div>
+    <div class="fgrid" style="margin-bottom:12px;">
+      <div class="ffield"><label>일자 *</label><input type="date" id="edit_date" value="${date}"></div>
+      <div class="ffield"><label>시간 (선택)</label><input type="time" id="edit_time" value="${time}"></div>
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>배송 주소 / 방문 장소 *</label>
+      <input type="text" id="edit_location" value="${location}" placeholder="예: 서울 마포구 성미산로15길 52 1층">
+    </div>
+    <div class="ffield" style="margin-bottom:16px;">
+      <label>상세 메모 (선택)</label>
+      <textarea id="edit_details" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:10px; font-family:inherit; height:70px;" placeholder="예: 골목 공사중이라 근처 와서 전화 요청">${details}</textarea>
+    </div>
+    <div class="btn-row" style="margin-top:16px; justify-content:flex-end;">
+      <button class="btn btn-gray" onclick="closeModal()">취소</button>
+      <button class="btn btn-gold" onclick="saveEditCalendarEvent('${eventId}')">💾 수정사항 저장</button>
+    </div>
+  `;
+
+  document.getElementById('modalTitle').textContent = `✏️ 일정 수정 — ${type === 'delivery' ? '🔵 배송' : '🟡 예약'}`;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('open');
+};
+
+window.saveEditCalendarEvent = async function(eventId) {
+  const event = (window._mergedEvents || []).find(e => e.id === eventId);
+  if (!event) return;
+
+  const dogname = (document.getElementById('edit_dogname')?.value || '').trim();
+  const buyer_name = (document.getElementById('edit_buyer_name')?.value || '').trim();
+  const buyer_phone = (document.getElementById('edit_buyer_phone')?.value || '').trim();
+  const date = document.getElementById('edit_date')?.value;
+  const time = document.getElementById('edit_time')?.value || '';
+  const location = (document.getElementById('edit_location')?.value || '').trim();
+  const details = (document.getElementById('edit_details')?.value || '').trim();
+
+  if (!date) {
+    toast('일자를 입력해주세요.');
+    return;
+  }
+
+  try {
+    const dbPath = event.dbPath;
+    if (dbPath.startsWith('deliveries/')) {
+      await update(ref(db, dbPath), {
+        dogname: dogname,
+        buyer_name: buyer_name,
+        buyer_phone: buyer_phone,
+        date: date,
+        time: time,
+        address: location,
+        memo: details
+      });
+    } else if (dbPath.startsWith('reservations/')) {
+      await update(ref(db, dbPath), {
+        visitorName: buyer_name,
+        visitorPhone: buyer_phone,
+        date: date,
+        timeStart: time,
+        memo: details
+      });
+    } else if (dbPath.startsWith('schedules/')) {
+      const newTitle = event.type === 'delivery' ? `🚚 [배송] ${buyer_name || '수령인'} 님` : `🟡 [예약] ${buyer_name || '방문자'} 님`;
+      await update(ref(db, dbPath), {
+        title: newTitle,
+        date: date,
+        time: time,
+        location: location,
+        details: details
+      });
+    } else if (dbPath.startsWith('contracts/')) {
+      await update(ref(db, dbPath), {
+        balance_date: date,
+        memo: details
+      });
+    }
+
+    closeModal();
+    toast('✏️ 일정 정보가 성공적으로 수정되었습니다.');
+  } catch (e) {
+    alert('수정 실패: ' + e.message);
   }
 };
 
