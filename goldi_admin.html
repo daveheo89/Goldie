@@ -2,47 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 관리자</title>
-<script>
-  function checkAdminAuth() {
-    if (sessionStorage.getItem('goldi_admin_auth') === 'ok') {
-      document.documentElement.classList.add('admin-authenticated');
-    }
-  }
-  checkAdminAuth();
-
-  function adminLogin() {
-    var pwInput = document.getElementById('admin-pw-input');
-    var pw = pwInput ? pwInput.value.trim() : '';
-    var errEl = document.getElementById('admin-pw-error');
-    if (pw === '5900') {
-      sessionStorage.setItem('goldi_admin_auth', 'ok');
-      document.documentElement.classList.add('admin-authenticated');
-      var overlay = document.getElementById('admin-login-overlay');
-      var main = document.getElementById('admin-main-content');
-      if (overlay) overlay.style.display = 'none';
-      if (main) main.style.display = 'block';
-    } else {
-      if (errEl) errEl.style.display = 'block';
-      var card = document.querySelector('.login-card');
-      if (card) {
-        card.style.animation = 'none';
-        setTimeout(function() { card.style.animation = 'admin-shake .4s ease'; }, 10);
-      }
-      if (pwInput) {
-        pwInput.value = '';
-        pwInput.focus();
-      }
-    }
-  }
-  window.adminLogin = adminLogin;
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <style>
 :root {
   --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
@@ -52,73 +13,6 @@
   --green:#27AE60;--red:#C0392B;--blue:#1E6FBB;
   --r:10px;--sh:0 2px 14px rgba(92,61,30,.10);
 }
-/* ═══ 로그인 오버레이 ═══ */
-#admin-login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,var(--br) 0%,#3a250f 100%);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;}
-.admin-authenticated #admin-login-overlay{display:none!important;}
-#admin-main-content{display:none;}
-.admin-authenticated #admin-main-content{display:block;}
-.login-card{background:#fff;border-radius:16px;padding:32px 28px;max-width:360px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.35);}
-.login-icon{font-size:3.5rem;margin-bottom:14px;}
-.login-title{font-size:1.1rem;font-weight:900;color:var(--br);margin-bottom:6px;}
-.login-sub{font-size:0.8rem;color:var(--gray);margin-bottom:22px;}
-.login-input{width:100%;border:2px solid var(--gray-l);border-radius:9px;padding:12px;font-size:1rem;text-align:center;font-family:inherit;color:var(--br);background:var(--gold-p);outline:none;transition:border-color .2s;letter-spacing:4px;}
-.login-input:focus{border-color:var(--gold);}
-.login-btn{width:100%;margin-top:12px;padding:12px;background:linear-gradient(135deg,var(--gold),var(--br));color:#fff;border:none;border-radius:9px;font-size:0.95rem;font-weight:900;cursor:pointer;font-family:inherit;transition:opacity .2s;}
-.login-btn:hover{opacity:.88;}
-.login-error{color:var(--red);font-size:12px;margin-top:10px;font-weight:700;display:none;}
-@keyframes admin-shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-6px);}40%,80%{transform:translateX(6px);}}
-
-/* ═══ 방역 관리 탭 CSS ═══ */
-.health-litter-card{background:#fff;border-radius:12px;box-shadow:var(--sh);border:1px solid var(--gray-l);margin-bottom:18px;overflow:hidden;}
-.health-litter-header{background:linear-gradient(135deg,var(--br),#6a4820);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
-.health-litter-header h3{color:var(--gold-l);font-size:14px;font-weight:800;}
-.health-litter-body{padding:16px;}
-.health-section-title{font-size:11px;font-weight:800;color:var(--gold);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px;padding-bottom:4px;border-bottom:1.5px solid var(--gold-l);}
-.vax-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
-.vax-chip{border-radius:8px;padding:8px 10px;text-align:center;border:2px solid var(--gray-l);background:var(--gray-ll);}
-.vax-chip.vax-done{background:#E8F8EF;border-color:#A8DDB9;}
-.vax-chip.vax-today{background:#FFF3CD;border-color:#FFC107;}
-.vax-chip.vax-soon{background:#FFF8E0;border-color:var(--gold-l);}
-.vax-chip.vax-overdue{background:#FFEBE8;border-color:#C0392B;}
-.vax-chip.vax-upcoming{background:#f0f8ff;border-color:#9ab;}
-.vax-chip-label{font-size:10px;font-weight:700;color:var(--gray);margin-bottom:3px;}
-.vax-chip-date{font-size:12px;font-weight:800;color:var(--br);}
-.vax-chip-day{font-size:10px;font-weight:700;margin-top:2px;}
-.vax-chip.vax-done .vax-chip-date{color:var(--green);}
-.vax-chip.vax-today .vax-chip-date{color:#B8860B;}
-.vax-chip.vax-soon .vax-chip-date{color:var(--gold);}
-.vax-chip.vax-overdue .vax-chip-date{color:var(--red);}
-.vax-chip.vax-upcoming .vax-chip-date{color:#336;}
-.deworming-timeline{display:flex;flex-direction:column;gap:5px;}
-.dw-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;border:1.5px solid var(--gray-l);background:#fff;font-size:12px;}
-.dw-item.dw-done{background:#E8F8EF;border-color:#A8DDB9;opacity:.75;}
-.dw-item.dw-today{background:#FFF3CD;border-color:#FFC107;font-weight:800;}
-.dw-item.dw-overdue{background:#FFEBE8;border-color:#C0392B;opacity:.8;}
-.dw-item.dw-upcoming{background:#f8f8ff;border-color:var(--gray-l);}
-.dw-day-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:12px;white-space:nowrap;}
-.dw-item.dw-dewormer .dw-day-badge{background:#E8F8EF;color:var(--green);}
-.dw-item.dw-metro .dw-day-badge{background:#FFF0F8;color:#BB1E6F;}
-.dw-date{font-size:11px;color:var(--gray);min-width:64px;}
-.dw-type{flex:1;font-weight:700;}
-.dw-status-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;}
-.dw-done .dw-status-tag{background:#E8F8EF;color:var(--green);}
-.dw-today .dw-status-tag{background:#FFF3CD;color:#B8860B;}
-.dw-overdue .dw-status-tag{background:#FFEBE8;color:var(--red);}
-.dw-upcoming .dw-status-tag{background:var(--gray-ll);color:var(--gray);}
-.health-empty{text-align:center;padding:40px;color:var(--gray);font-size:13px;}
-.vax-check-row{display:flex;align-items:center;gap:6px;margin-top:6px;}
-.vax-check-btn{padding:4px 10px;border-radius:12px;border:1.5px solid var(--gray-l);background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;color:var(--gray);}
-.vax-check-btn.checked{background:var(--green);border-color:var(--green);color:#fff;}
-.vax-check-btn:hover:not(.checked){border-color:var(--gold);color:var(--gold);}
-
-/* ═══ 서브탭 CSS ═══ */
-.sub-tab-bar{display:flex;background:var(--gray-ll);border-radius:9px;padding:3px;margin-bottom:16px;gap:3px;}
-.sub-tab-btn{flex:1;padding:8px 12px;font-size:12px;font-weight:700;color:var(--gray);cursor:pointer;border:none;background:transparent;border-radius:7px;transition:.15s;text-align:center;}
-.sub-tab-btn.active{background:#fff;color:var(--br);box-shadow:0 1px 6px rgba(92,61,30,.15);}
-.sub-tab-btn:hover:not(.active){color:var(--br);}
-.sub-tab-panel{display:none;}
-.sub-tab-panel.active{display:block;}
-
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh}
 header{background:var(--br);padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
@@ -203,983 +97,120 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .chip{display:flex;gap:5px}
 .chip-k{color:var(--gray);font-weight:600}
 .chip-v{color:var(--br);font-weight:700}
-
-/* ═══ 예약 캘린더 CSS ═══ */
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
-.cal-nav-center{display:flex;align-items:center;gap:12px}
-.cal-nav-center h2{font-size:17px;font-weight:800;color:var(--br);white-space:nowrap}
-.cal-arrow{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gray-l);background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;color:var(--br)}
-.cal-arrow:hover{border-color:var(--gold);background:var(--gold-p);color:var(--gold)}
-.today-banner{background:linear-gradient(135deg,var(--br),#7a5230);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;color:#fff}
-.today-banner-title{font-size:12px;font-weight:700;opacity:.7;margin-bottom:6px;letter-spacing:1px}
-.today-banner-list{display:flex;flex-direction:column;gap:4px}
-.today-banner-item{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
-.today-banner-empty{font-size:13px;opacity:.6}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:18px}
-.cal-head{text-align:center;font-size:11px;font-weight:800;padding:8px 0;color:var(--gray)}
-.cal-head.sun{color:var(--red)}
-.cal-head.sat{color:var(--blue)}
-.cal-cell{min-height:52px;padding:4px;border-radius:7px;cursor:pointer;text-align:center;transition:.15s;border:2px solid transparent;position:relative;background:#fff}
-.cal-cell:hover{background:var(--gold-p);border-color:var(--gold-l)}
-.cal-cell.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-l)}
-.cal-cell.selected{background:var(--gold-p);border-color:var(--gold)}
-.cal-cell.other{opacity:.3;cursor:default}
-.cal-cell.other:hover{background:#fff;border-color:transparent}
-.cal-day{font-size:13px;font-weight:700;line-height:1}
-.cal-cell.sun .cal-day{color:var(--red)}
-.cal-cell.sat .cal-day{color:var(--blue)}
-.cal-dots{display:flex;gap:3px;justify-content:center;margin-top:4px;flex-wrap:wrap}
-.cal-dot{width:6px;height:6px;border-radius:50%}
-.cal-dot.dot-confirmed{background:#E67E22}
-.cal-dot.dot-completed{background:var(--green)}
-.cal-dot.dot-cancelled{background:#aaa}
-.cal-count{font-size:9px;font-weight:800;color:var(--gold);margin-top:2px}
-.day-panel{margin-bottom:18px}
-.day-panel-header{font-size:14px;font-weight:800;color:var(--br);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.day-panel-header .day-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--gold-p);color:var(--gold)}
-.rsv-card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:16px;margin-bottom:12px;border-left:4px solid #E67E22;transition:border-color .15s}
-.rsv-card.st-completed{border-left-color:var(--green)}
-.rsv-card.st-cancelled{border-left-color:#aaa;opacity:.65}
-.rsv-time{font-size:12px;font-weight:800;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.rsv-time .time-icon{font-size:14px}
-.rsv-visitor{font-size:15px;font-weight:800;color:var(--br);margin-bottom:6px}
-.rsv-contact{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--gray);margin-bottom:8px}
-.rsv-contact span{display:flex;align-items:center;gap:4px}
-.rsv-puppies{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.rsv-puppy-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--gold-p);color:var(--br);border:1px solid var(--gold-l)}
-.rsv-puppy-chip .p-sex{font-size:10px}
-.rsv-memo{font-size:12px;color:var(--gray);padding:8px 10px;background:var(--gray-ll);border-radius:6px;margin-bottom:10px;line-height:1.5}
-.rsv-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.rsv-status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-.rsv-sb-confirmed{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7}
-.rsv-sb-completed{background:#E8F8EF;color:var(--green);border:1px solid #A8DDB9}
-.rsv-sb-cancelled{background:#F0F0F0;color:#888;border:1px solid #CCC}
-.rsv-status-sel{border:1.5px solid var(--gray-l);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--br);outline:none;background:#fff;cursor:pointer}
-.month-stats{display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--gray-ll);border-radius:8px;font-size:12px;font-weight:700;color:var(--gray)}
-.month-stats span{color:var(--br)}
-.no-rsv{text-align:center;padding:30px;color:var(--gray);font-size:13px}
-
-/* 예약 모달 */
-.rsv-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;justify-content:center;align-items:flex-start;padding:16px;overflow-y:auto}
-.rsv-modal-bg.open{display:flex}
-.rsv-modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3);margin-top:40px}
-.rsv-modal-head{background:var(--br);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0}
-.rsv-modal-head h3{color:var(--gold-l);font-size:14px;font-weight:800}
-.rsv-modal-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer}
-.rsv-modal-body{padding:18px}
-.rsv-field{margin-bottom:14px}
-.rsv-field label{display:block;font-size:12px;font-weight:700;color:var(--br-l);margin-bottom:4px}
-.rsv-field input,.rsv-field textarea,.rsv-field select{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;transition:border-color .15s}
-.rsv-field input:focus,.rsv-field textarea:focus{border-color:var(--gold)}
-.rsv-field textarea{resize:vertical;min-height:56px}
-.rsv-time-row{display:flex;gap:8px;align-items:center}
-.rsv-time-row input{flex:1}
-.rsv-time-row .time-sep{font-size:14px;font-weight:700;color:var(--gray)}
-.rsv-overlap-warn{font-size:11px;color:var(--red);font-weight:700;margin-top:4px;display:none}
-
-/* 강아지 선택 카드 */
-.psel-search{border:1.5px solid var(--gray-l);border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--br);background:#fff;outline:none;width:100%;margin-bottom:10px;transition:border-color .15s}
-.psel-search:focus{border-color:var(--gold)}
-.psel-groups{max-height:260px;overflow-y:auto;border:1.5px solid var(--gray-l);border-radius:8px;padding:8px}
-.psel-group-hdr{font-size:11px;font-weight:800;color:var(--br-l);padding:5px 8px;background:var(--gray-ll);border-radius:5px;margin-bottom:6px;margin-top:6px}
-.psel-group-hdr:first-child{margin-top:0}
-.psel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px}
-.psel-card{border:2px solid var(--gray-l);border-radius:8px;padding:6px;text-align:center;cursor:pointer;transition:.15s;background:#fff;position:relative}
-.psel-card:hover{border-color:var(--gold-l);background:var(--gold-p)}
-.psel-card.chosen{border-color:var(--gold);background:var(--gold-p);box-shadow:0 0 0 2px var(--gold-l)}
-.psel-card .psel-check{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:var(--gray-l);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:900}
-.psel-card.chosen .psel-check{background:var(--gold)}
-.psel-photo{width:100%;aspect-ratio:1;border-radius:6px;object-fit:cover;display:block;margin-bottom:4px;background:var(--gold-p)}
-.psel-placeholder{width:100%;aspect-ratio:1;border-radius:6px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:4px}
-.psel-name{font-size:11px;font-weight:700;color:var(--br);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.psel-sex{font-size:10px;color:var(--gray)}
-.psel-selected{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;min-height:22px}
-.psel-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:var(--gold);color:#fff}
-.psel-tag .tag-x{cursor:pointer;opacity:.7;margin-left:2px}
-.psel-tag .tag-x:hover{opacity:1}
-
 .edit-puppy{padding:10px 12px;background:var(--gray-ll);border-radius:8px;margin-bottom:8px;border:1px solid var(--gray-l)}
 .edit-puppy .fgrid{align-items:end}
 .ep-label{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px}
 .litter-label .btn{margin-left:auto;flex-shrink:0}
-
-@media(max-width:560px){
-  .fgrid{grid-template-columns:1fr}
-  
-  header{padding:10px 16px}
-  .logo{font-size:16px}
-  .logo span{font-size:10px;margin-left:4px}
-  
-  .tab-bar{padding:0 4px;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .tab-btn{flex:1;padding:10px 14px;font-size:12px;text-align:center;justify-content:center;min-width:0}
-  
-  #tab-db{padding:16px 12px}
-  .search-row{gap:6px}
-  .search-row input{font-size:13px;padding:8px 10px}
-  
-  #dbList{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid var(--gray-l);background:#fff}
-  .tbl{min-width:620px}
-  .tbl th, .tbl td{padding:8px 10px;font-size:12px}
-  
-  .card{padding:14px 12px;margin-bottom:12px}
-  .stitle{font-size:10px;margin-bottom:10px}
-  .info-chips{padding:8px 10px;gap:4px 10px;font-size:11px;margin-bottom:12px}
-  .chip{gap:3px}
-  
-  .puppy-list{gap:6px;margin-bottom:12px}
-  .puppy-item{padding:10px 12px;gap:8px}
-  .puppy-name{font-size:13px}
-  .puppy-meta{font-size:11px}
-  
-  .modal{max-width:94%;margin:16px auto}
-  .modal-head{padding:12px 16px}
-  .modal-body{padding:14px 16px}
-
-  /* 캘린더 모바일 */
-  .cal-nav{gap:6px}
-  .cal-nav-center h2{font-size:14px}
-  .cal-arrow{width:30px;height:30px;font-size:14px}
-  .cal-cell{min-height:42px;padding:3px 2px}
-  .cal-day{font-size:11px}
-  .cal-count{font-size:8px}
-  .cal-dot{width:5px;height:5px}
-  .today-banner{padding:10px 14px}
-  .today-banner-item{font-size:12px}
-  .rsv-card{padding:12px;margin-bottom:10px}
-  .rsv-visitor{font-size:14px}
-  .rsv-actions{gap:6px}
-  .rsv-modal{max-width:96%;margin-top:16px}
-  .rsv-modal-body{padding:14px}
-  .psel-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:5px}
-  .psel-groups{max-height:200px}
-  .month-stats{font-size:11px;gap:6px;padding:10px}
-}
-
-/* ════════ 계약 DB 대시보드 및 미니 캘린더 관련 추가 스타일 ════════ */
-.db-stats-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.db-stat-card {
-  background: #fff;
-  border: 1.5px solid var(--gray-l);
-  border-radius: var(--r);
-  padding: 16px;
-  box-shadow: var(--sh);
-}
-.db-stat-title {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--br-l);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.db-stat-val {
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--br);
-}
-.db-cal-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.db-cal-title {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--br);
-}
-.db-cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 18px;
-  background: #fff;
-  border: 1.5px solid var(--gray-l);
-  border-radius: 8px;
-  padding: 8px;
-  box-shadow: var(--sh);
-}
-.db-cal-head {
-  text-align: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--gray);
-  padding: 4px 0;
-}
-.db-cal-cell {
-  background: var(--cream);
-  border-radius: 6px;
-  min-height: 48px;
-  padding: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border: 1px solid transparent;
-}
-.db-cal-cell:hover {
-  background: var(--gold-p);
-  border-color: var(--gold-l);
-}
-.db-cal-cell.selected {
-  background: var(--gold-p);
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px var(--gold-l);
-}
-.db-cal-cell.other {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-.db-cal-day {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--br);
-}
-.db-cal-dots {
-  display: flex;
-  justify-content: center;
-  gap: 2px;
-}
-.db-cal-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-.db-cal-count {
-  font-size: 8px;
-  font-weight: 800;
-  text-align: right;
-  color: var(--br-l);
-}
-.filter-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.filter-sel {
-  border: 1.5px solid var(--gray-l);
-  border-radius: 7px;
-  padding: 6px 10px;
-  font-size: 13px;
-  font-family: inherit;
-  color: var(--br);
-  background: #fff;
-  outline: none;
-  cursor: pointer;
-}
-.badge-balance-due {
-  background: #FFF3E0;
-  color: #E67E22;
-  border: 1px solid #F5CBA7;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  margin-top: 4px;
-  display: inline-block;
-}
-.badge-balance-paid {
-  background: #E8F8EF;
-  color: var(--green);
-  border: 1px solid #A8DDB9;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  margin-top: 4px;
-  display: inline-block;
-}
-
-/* 배송 캘린더 모바일 대응 */
-@media(max-width:768px){
-  .calendar-day {
-    min-height: 58px !important;
-    padding: 2px !important;
-  }
-  .calendar-day-num {
-    font-size: 0.65rem !important;
-    width: 14px !important;
-    height: 14px !important;
-    line-height: 14px !important;
-  }
-  .delivery-chip {
-    font-size: 0.52rem !important;
-    padding: 1px 2px !important;
-    border-left-width: 2px !important;
-  }
-}
-
-/* 배송 캘린더 스타일 */
-.calendar-container {
-  background: var(--white);
-  border-radius: var(--r);
-  box-shadow: var(--sh);
-  padding: 16px;
-  margin-top: 14px;
-  border: 1px solid var(--gray-l);
-}
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-.calendar-header h2 {
-  font-size: 1.1rem;
-  color: var(--br);
-  font-weight: 800;
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  border-top: 1px solid var(--gray-l);
-  border-left: 1px solid var(--gray-l);
-}
-.calendar-day-header {
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.72rem;
-  color: var(--gray);
-  background: var(--gray-ll);
-  padding: 6px 0;
-  border-right: 1px solid var(--gray-l);
-  border-bottom: 1px solid var(--gray-l);
-}
-.calendar-day-header:nth-child(7n+1) { color: var(--red); }
-.calendar-day-header:nth-child(7n) { color: var(--blue); }
-
-.calendar-day {
-  background: #fff;
-  min-height: 85px;
-  padding: 4px;
-  border-right: 1px solid var(--gray-l);
-  border-bottom: 1px solid var(--gray-l);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.calendar-day:hover {
-  background: var(--gold-p);
-}
-.calendar-day.empty {
-  background: var(--gray-ll);
-  cursor: default;
-}
-.calendar-day.today {
-  background: var(--gold-p);
-  border: 2px solid var(--gold);
-}
-.calendar-day-num {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--br);
-  margin-bottom: 4px;
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  text-align: center;
-  line-height: 18px;
-}
-.calendar-day.today .calendar-day-num {
-  background: var(--gold);
-  color: #fff;
-  border-radius: 50%;
-}
-.calendar-day:nth-child(7n+1) .calendar-day-num { color: var(--red); }
-.calendar-day:nth-child(7n) .calendar-day-num { color: var(--blue); }
-
-.calendar-chips {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.delivery-chip {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: var(--gold-p);
-  color: var(--br-l);
-  border-left: 3px solid var(--gold);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.delivery-chip:hover {
-  opacity: 0.8;
-}
-.delivery-chip.completed {
-  background: var(--gray-ll);
-  color: var(--gray);
-  border-left-color: var(--gray);
-  text-decoration: line-through;
-}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}}
 </style>
 </head>
 <body>
 
-<!-- 로그인 오버레이 -->
-<div id="admin-login-overlay">
-  <div class="login-card">
-    <div class="login-icon">🔑</div>
-    <div class="login-title">골디쉼터 관리자</div>
-    <div class="login-sub">어드민 비밀번호를 입력해주세요.</div>
-    <input type="password" id="admin-pw-input" class="login-input" placeholder="••••" maxlength="10" onkeydown="if(event.key==='Enter')adminLogin()">
-    <button class="login-btn" onclick="adminLogin()">🔓 인증하기</button>
-    <div class="login-error" id="admin-pw-error">⚠️ 비밀번호가 일치하지 않습니다.</div>
+<header>
+  <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
+  <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
+  <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
+  <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 일정 & Google 캘린더</button>
+</div>
+
+<!-- TAB1 -->
+<div class="tab-panel active" id="tab-send">
+  <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
+  <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
+  <div id="puppyGroups"></div>
+
+  <div class="card" id="sendForm" style="display:none">
+    <div class="stitle">분양 조건 입력</div>
+    <div class="info-chips" id="selectedInfo"></div>
+    <div class="fgrid" style="margin-bottom:14px">
+      <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
+      <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
+    </div>
+  </div>
+
+  <div class="card" id="linkCard" style="display:none">
+    <div class="stitle">발송용 링크</div>
+    <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
+    <div id="qrWrap"><div id="qrTarget"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
+      <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
+      <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
+    </div>
   </div>
 </div>
 
-<div id="admin-main-content">
-  <header style="justify-content:space-between;">
-    <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <a href="goldi_memorial.html" class="btn btn-purple btn-sm" style="background:#7B1FA2; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🌈 무지개다리 기록</a>
-      <a href="goldie_farm.html" class="btn btn-gold btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:12px; margin:0;">🏡 농장 관리 페이지 이동</a>
-    </div>
-  </header>
-
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
-    <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
-    <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
-    <button class="tab-btn" onclick="switchTab(this,'schedule')">📅 일정</button>
-    <button class="tab-btn" onclick="switchTab(this,'health')">💉 방역 관리</button>
-    <button class="tab-btn" onclick="switchTab(this,'treatment')">🩺 치료 관리</button>
+<!-- TAB2 -->
+<div class="tab-panel" id="tab-puppy">
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
+    <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
+    <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
+    <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
   </div>
-
-  <!-- TAB1 -->
-  <div class="tab-panel active" id="tab-send">
-    <div class="stitle">새끼 선택 (분양 전만 선택 가능)</div>
-    <div id="puppyLoading" class="loading"><div class="spinner"></div>데이터 로딩 중...</div>
-    <div id="puppyGroups"></div>
-
-    <div class="card" id="sendForm" style="display:none">
-      <div class="stitle">분양 조건 입력</div>
-      <div class="info-chips" id="selectedInfo"></div>
-      <div class="fgrid" style="margin-bottom:14px">
-        <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
-        <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
-      </div>
-      <div class="ffield" style="margin-bottom:14px">
-        <label>특이사항 / 특별 약정 (계약서에 별도 서명 필요)</label>
-        <textarea id="s_memo" placeholder="예: 사료 하루 3번 급여, 예방접종 3차 대행 등 (공백 시 서명 생략)" style="width:100%; height:64px; padding:9px 12px; border:1.5px solid var(--gray-l); border-radius:7px; outline:none; resize:vertical; font-family:inherit; font-size:14px; color:var(--br);"></textarea>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-gold" onclick="generateLink()">🔗 계약서 링크 생성</button>
-      </div>
-    </div>
-
-    <div class="card" id="linkCard" style="display:none">
-      <div class="stitle">발송용 링크</div>
-      <div class="link-box"><strong>계약서 링크 (카카오톡으로 전송)</strong><span id="contractLink"></span></div>
-      <div id="qrWrap"><div id="qrTarget"></div></div>
-      <div class="btn-row">
-        <button class="btn btn-gold btn-sm" onclick="previewLink()">🔍 미리보기</button>
-        <button class="btn btn-gray btn-sm" onclick="copyLink()">📋 링크 복사</button>
-        <button class="btn btn-br btn-sm" onclick="toggleQR()">📷 QR 보기</button>
-        <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB2 -->
-  <div class="tab-panel" id="tab-puppy">
-    <div class="stats-row">
-      <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
-      <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
-      <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
-      <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
-    </div>
-    <div class="stitle">전체 새끼 목록</div>
-    <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
-  </div>
-
-  <!-- TAB3 -->
-  <div class="tab-panel" id="tab-db">
-    <!-- 월별 분양 실적 통계 대시보드 -->
-    <div class="db-stats-row">
-      <div class="db-stat-card">
-        <div class="db-stat-title">이번 달 분양 건수</div>
-        <div class="db-stat-val" id="db-stat-count">0건</div>
-      </div>
-      <div class="db-stat-card">
-        <div class="db-stat-title">이번 달 총 분양액</div>
-        <div class="db-stat-val" id="db-stat-revenue">0원</div>
-      </div>
-      <div class="db-stat-card">
-        <div class="db-stat-title">이번 달 잔금 대기액</div>
-        <div class="db-stat-val" id="db-stat-pending" style="color: var(--red);">0원</div>
-      </div>
-    </div>
-
-    <!-- 계약 현황 전용 미니 캘린더 -->
-    <div class="card" style="padding: 14px;">
-      <div class="db-cal-nav">
-        <button class="cal-arrow" onclick="dbCalPrev()">◀</button>
-        <span class="db-cal-title" id="dbCalTitle">2026년 6월</span>
-        <button class="cal-arrow" onclick="dbCalNext()">▶</button>
-      </div>
-      <div class="db-cal-grid" id="dbCalGrid"></div>
-      <div style="display: flex; justify-content: flex-end;">
-        <button class="btn btn-gray btn-sm" id="btnDbCalReset" onclick="resetDbCalFilter()" style="display: none; font-size: 11px; padding: 6px 12px;">📅 날짜 필터 해제 (전체 보기)</button>
-      </div>
-    </div>
-
-    <div class="search-row">
-      <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
-      <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
-    </div>
-
-    <div class="filter-row">
-      <select id="dbFilterPayment" class="filter-sel" onchange="renderDB()">
-        <option value="">결제 방법 (전체)</option>
-        <option value="계좌이체">계좌이체</option>
-        <option value="현금">현금</option>
-      </select>
-      <select id="dbFilterStatus" class="filter-sel" onchange="renderDB()">
-        <option value="">수금 상태 (전체)</option>
-        <option value="완납">완납</option>
-        <option value="잔금대기">잔금 대기</option>
-      </select>
-    </div>
-
-    <div class="stitle" id="dbListTitle">계약 내역</div>
-    <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
-  </div>
-
-  <!-- TAB4: 통합 일정 탭 -->
-  <div class="tab-panel" id="tab-schedule">
-    <!-- 서브탭 바 -->
-    <div class="sub-tab-bar">
-      <button class="sub-tab-btn active" id="stb-calendar" onclick="switchSubTab('calendar')">📅 예약 캘린더</button>
-      <button class="sub-tab-btn" id="stb-delivery" onclick="switchSubTab('delivery')">🚗 배송 캘린더</button>
-    </div>
-
-    <!-- 서브탭: 예약 캘린더 -->
-    <div class="sub-tab-panel active" id="sub-tab-calendar">
-      <!-- 오늘의 예약 요약 -->
-      <div class="today-banner" id="todayBanner">
-        <div class="today-banner-title">📋 오늘의 방문 예약</div>
-        <div class="today-banner-list" id="todayBannerList"><div class="today-banner-empty">로딩 중...</div></div>
-      </div>
-      <!-- 캘린더 네비게이션 -->
-      <div class="cal-nav">
-        <div class="cal-nav-center">
-          <button class="cal-arrow" onclick="calPrev()">◀</button>
-          <h2 id="calTitle">2026년 6월</h2>
-          <button class="cal-arrow" onclick="calNext()">▶</button>
-        </div>
-        <button class="btn btn-gold btn-sm" onclick="openRsvModal()">+ 예약 추가</button>
-      </div>
-      <!-- 캘린더 그리드 -->
-      <div class="cal-grid" id="calGrid"></div>
-      <!-- 선택된 날짜 예약 목록 -->
-      <div class="day-panel" id="dayPanel" style="display:none"></div>
-      <!-- 월별 통계 -->
-      <div class="month-stats" id="monthStats"></div>
-    </div>
-
-    <!-- 서브탭: 배송 캘린더 -->
-    <div class="sub-tab-panel" id="sub-tab-delivery">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div class="stitle" style="margin-bottom:0;">🚗 배송 일정 관리</div>
-        <button class="btn btn-gold btn-sm" onclick="openAddDeliveryModal()" style="margin:0; width:auto;">＋ 배송 일정 추가</button>
-      </div>
-      <div class="calendar-container">
-        <div class="calendar-header">
-          <button class="btn btn-gray btn-sm" onclick="changeCalendarMonth(-1)" style="padding:4px 8px; width:auto;">◀ 이전달</button>
-          <h2 id="calendar-month-year">YYYY년 MM월</h2>
-          <button class="btn btn-gray btn-sm" onclick="changeCalendarMonth(1)" style="padding:4px 8px; width:auto;">다음달 ▶</button>
-        </div>
-        <div class="calendar-grid" id="calendar-grid"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB5: 방역 관리 -->
-  <div class="tab-panel" id="tab-health">
-    <div class="stitle">💉 백신 & 구충제 관리</div>
-
-    <!-- 구글 캘린더 연동 패널 -->
-    <div id="gcal-panel" style="background:#fff;border:1.5px solid var(--gray-l);border-radius:10px;padding:16px;margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div>
-          <div style="font-size:13px;font-weight:800;color:var(--br);margin-bottom:2px;">📅 구글 캘린더 자동 동기화</div>
-          <div style="font-size:11px;color:var(--gray);" id="gcal-status-text">매일 아침 6시경 구글 캘린더에 방역 일정이 자동으로 동기화됩니다. (웹사이트 로그인 불필요)</div>
-        </div>
-        <div>
-          <button class="btn btn-gray btn-sm" id="gcal-toggle-setup-btn" onclick="toggleGcalManualArea()" style="font-size:11px;margin:0;">⚙️ 수동 동기화 설정</button>
-        </div>
-      </div>
-
-      <!-- 수동 동기화 및 상세 설정 영역 (기본 숨김) -->
-      <div id="gcal-manual-area" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-l);background:#fbfbfb;padding:12px;border-radius:6px;">
-        <div style="font-size:11.5px;font-weight:800;color:var(--br);margin-bottom:8px;">🛠️ 수동 강제 동기화 (필요한 경우만)</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-          <div id="gcal-user-info" style="display:none;font-size:11px;font-weight:700;color:var(--green);padding:4px 10px;background:#E8F8EF;border-radius:12px;border:1px solid #A8DDB9;"></div>
-          <button class="btn btn-br btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()" style="font-size:11px;margin:0;">🔗 구글 로그인 연결</button>
-          <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="display:none;font-size:11px;margin:0;">📅 지금 즉시 전체 동기화</button>
-          <button class="btn btn-gray btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="display:none;font-size:11px;color:var(--red);margin:0;">연결 해제</button>
-        </div>
-
-        <div style="font-size:11px;font-weight:800;color:var(--gold);margin-top:14px;margin-bottom:6px;">⚙️ Google OAuth Client ID 설정</div>
-        <div style="display:flex;gap:8px;margin-bottom:6px;">
-          <input type="text" id="gcal-client-id-input" placeholder="xxxxxx.apps.googleusercontent.com" style="flex:1;border:1.5px solid var(--gray-l);border-radius:7px;padding:8px 12px;font-size:12px;font-family:inherit;outline:none;background:#fff;">
-          <button class="btn btn-gold btn-sm" onclick="saveGcalClientId()" style="margin:0;">💾 ID 저장</button>
-        </div>
-        <div style="font-size:10.5px;color:var(--gray);line-height:1.5;">
-          ※ 수동 동기화를 이용하려면 Google Cloud Console에서 발급받은 웹 Client ID 설정이 필요합니다.
-        </div>
-      </div>
-
-      <!-- 동기화 진행 상태 -->
-      <div id="gcal-progress" style="display:none;margin-top:12px;">
-        <div style="font-size:12px;font-weight:700;color:var(--br);margin-bottom:6px;" id="gcal-progress-text">동기화 중...</div>
-        <div style="background:var(--gray-ll);border-radius:99px;height:6px;overflow:hidden;">
-          <div id="gcal-progress-bar" style="background:linear-gradient(90deg,var(--gold),var(--green));height:100%;width:0%;transition:width .3s;border-radius:99px;"></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="healthTabContent"><div class="loading"><div class="spinner"></div>로딩 중...</div></div>
-  </div>
-
-  <!-- TAB6: 치료 관리 -->
-  <div class="tab-panel" id="tab-treatment">
-    <div class="stitle">🩺 치료 관리</div>
-    
-    <div class="fgrid" style="grid-template-columns: 1fr 1.2fr; gap: 20px; align-items: start;">
-      <!-- 왼쪽: 치료 등록 폼 -->
-      <div class="card" style="margin-bottom:0;">
-        <div style="font-size: 13px; font-weight: 800; color: var(--br); margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
-          📝 신규 치료 등록
-        </div>
-        
-        <div class="ffield" style="margin-bottom: 12px;">
-          <label>대상 구분 *</label>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" id="btn-treat-type-puppy" class="btn btn-gold btn-sm" onclick="setTreatmentTargetType('puppy')" style="flex:1; justify-content:center; margin:0;">🐶 새끼 (자견)</button>
-            <button type="button" id="btn-treat-type-adult" class="btn btn-gray btn-sm" onclick="setTreatmentTargetType('adult')" style="flex:1; justify-content:center; margin:0;">🐕 성견 (모/부견)</button>
-          </div>
-        </div>
-
-        <!-- 새끼 선택 필드 -->
-        <div class="ffield" id="treat-target-puppy-wrap" style="margin-bottom: 12px;">
-          <label>새끼 (형제 그룹) 지정 *</label>
-          <select id="treat-puppy-select" onchange="onTreatmentPuppyChanged()">
-            <option value="">-- 새끼 (형제 그룹) 선택 --</option>
-          </select>
-        </div>
-
-        <!-- 성견 선택 필드 -->
-        <div class="ffield" id="treat-target-adult-wrap" style="margin-bottom: 12px; display:none;">
-          <label>성견 지정 *</label>
-          <div style="display:flex; gap:6px; margin-bottom:6px;">
-            <select id="treat-adult-select" onchange="onTreatmentAdultSelectChanged(this.value)" style="flex:1;">
-              <option value="">-- 성견 선택 --</option>
-            </select>
-            <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="직접 입력" oninput="onTreatmentAdultChanged()" style="flex:1;">
-          </div>
-          <datalist id="treat-adult-suggestions"></datalist>
-          
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; font-weight: 700; color: var(--red); cursor: pointer;">
-            <input type="checkbox" id="treat-pregnant-check" onchange="checkBaytrilWarning()"> 🤰 현재 임신 중인 모견입니다.
-          </label>
-        </div>
-
-        <!-- 몸무게 입력 -->
-        <div class="ffield" style="margin-bottom: 12px;">
-          <label>몸무게 (kg) *</label>
-          <input type="number" id="treat-weight" step="0.1" min="0.1" placeholder="예: 3.5" oninput="onTreatmentWeightChanged()">
-        </div>
-
-        <!-- 증상 선택 -->
-        <div class="ffield" style="margin-bottom: 12px;">
-          <label>증상 / 질병 선택 *</label>
-          <select id="treat-symptom-select" onchange="onTreatmentSymptomChanged(this.value)">
-            <option value="direct">직접 약품 선택 (기타)</option>
-            <option value="cold_wet">콧물 감기 (단프론 + 바이트릴 + 아미톱)</option>
-            <option value="cold_dry">마른 기침 감기 [캑캑] (브롬신 + 바이트릴 + 아미톱)</option>
-            <option value="diarrhea_simple">설사 [식욕 정상/구토 없음] (킹벨린 + 아미톱)</option>
-            <option value="diarrhea_anorexia">설사 + 밥 안먹음 [식욕부진] (킹벨린 + 카라실 + 아미톱)</option>
-            <option value="diarrhea_vomit">설사 + 토함 [위장관] (킹벨린 + 제스롱 + 아미톱)</option>
-            <option value="diarrhea_fever">설사 + 열/염증 동반 (킹벨린 + 바이트릴 + 단프론 + 아미톱)</option>
-            <option value="wound_inflammation">외부 상처 염증 (덱사손 + 바이트릴 + 아미톱)</option>
-            <option value="anorexia_simple">단순 식욕 부진 [밥 안먹음] (카라실 + 아미톱)</option>
-          </select>
-        </div>
-
-        <!-- 주사제 조합 구성 -->
-        <div class="ffield" style="margin-bottom: 12px;">
-          <label>주사제 조합 및 투약량 (1kg당 0.1ml 계산) *</label>
-          <div style="background: var(--gray-ll); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; border: 1.5px solid var(--gray-l);">
-            <!-- 바이트릴 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-baytril" onchange="onInjCheckChanged('baytril')"> 바이트릴 (항생제)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-baytril" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 단프론 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-danpron" onchange="onInjCheckChanged('danpron')"> 단프론 (해열진통)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-danpron" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 브롬신 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-bromhexine" onchange="onInjCheckChanged('bromhexine')"> 브롬신 (마른기침)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-bromhexine" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 킹벨린 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-kingbelin" onchange="onInjCheckChanged('kingbelin')"> 킹벨린 (지사제)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-kingbelin" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 카라실 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-carasil" onchange="onInjCheckChanged('carasil')"> 카라실 (대사촉진)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-carasil" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 제스롱 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-jeslong" onchange="onInjCheckChanged('jeslong')"> 제스롱 (항구토제)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-jeslong" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 덱사손 -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--br); cursor:pointer;">
-                <input type="checkbox" id="inj-check-dexasone" onchange="onInjCheckChanged('dexasone')"> 덱사손 (소염제)
-              </label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input type="number" id="inj-val-dexasone" step="0.01" style="width: 65px; padding: 4px; border:1px solid var(--gray-l); border-radius:4px; text-align:center; font-size:12px;" disabled> <span style="font-size:11px;color:var(--gray)">ml</span>
-              </div>
-            </div>
-            <!-- 아미톱 (상시 고정) -->
-            <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; border-top: 1px dashed var(--gray-l); padding-top:6px; margin-top:2px;">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:800; color:var(--green);">
-                🧪 아미톱 (영양제)
-              </label>
-              <div style="font-size: 11px; font-weight: 700; color: var(--green); background: #E8F8EF; padding: 2px 8px; border-radius: 4px;">
-                혼합 (주사기 끝까지)
-              </div>
-            </div>
-          </div>
-          <!-- 투약 경고판 -->
-          <div id="treat-warning-box" style="display:none; margin-top:8px; padding:8px 10px; background:#FFEBE8; border:1px solid #C0392B; border-radius:6px; font-size:11px; font-weight:800; color:var(--red); line-height:1.4;">
-            ⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다. 약품 조합을 다시 확인해 주세요.
-          </div>
-        </div>
-
-        <!-- 기간 및 날짜 설정 -->
-        <div class="fgrid" style="margin-bottom: 12px;">
-          <div class="ffield">
-            <label>시작일 *</label>
-            <input type="date" id="treat-start-date" onchange="onTreatmentDateChanged()">
-          </div>
-          <div class="ffield">
-            <label>기간 (일) * <span id="treat-duration-hint" style="font-size:11px; font-weight:700; color:var(--gold); margin-left:4px;">💡 추천: 3일</span></label>
-            <input type="number" id="treat-duration" value="3" min="1" oninput="onTreatmentDateChanged()">
-          </div>
-        </div>
-        <div style="font-size: 11.5px; font-weight:700; color: var(--gray); margin-bottom: 14px; background:var(--gray-ll); padding:8px 10px; border-radius:6px;">
-          📅 투약 완료 예정일: <span id="treat-end-date-display" style="color:var(--br); font-weight:800;">-</span>
-        </div>
-
-        <div class="ffield" style="margin-bottom: 16px;">
-          <label>치료 메모 (특이사항)</label>
-          <textarea id="treat-memo" placeholder="예: 기침 소리가 심함, 식욕 저하 동반 등" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:13px; font-family:inherit; outline:none; resize:vertical; min-height:60px;"></textarea>
-        </div>
-
-        <button type="button" class="btn btn-gold" onclick="saveTreatment()" style="width: 100%; justify-content: center; height: 42px; margin:0;">🩺 치료 등록</button>
-      </div>
-
-      <!-- 오른쪽: 치료 현황 목록 -->
-      <div style="display:flex; flex-direction:column; gap:16px;">
-        <!-- 목록 상단 헤더 및 필터 -->
-        <div class="card" style="margin-bottom:0; padding:16px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-            <div style="font-size: 14px; font-weight: 800; color: var(--br);">📋 치료 및 처방 현황</div>
-            <!-- 필터 버튼 -->
-            <div style="display:flex; background:var(--gray-ll); padding:2px; border-radius:6px; gap:2px;">
-              <button type="button" id="filter-treat-all" class="btn btn-sm btn-gray" onclick="filterTreatments('all')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; background:#fff; font-weight:800;">전체</button>
-              <button type="button" id="filter-treat-active" class="btn btn-sm btn-gray" onclick="filterTreatments('active')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px;">진행중</button>
-              <button type="button" id="filter-treat-done" class="btn btn-sm btn-gray" onclick="filterTreatments('done')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px;">완료</button>
-            </div>
-          </div>
-          <!-- 치료 카드 목록 영역 -->
-          <div id="treatmentListContent" style="display:flex; flex-direction:column; gap:12px;">
-            <div class="loading"><div class="spinner"></div>치료 내역을 불러오는 중...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 배송 일정 등록/수정 모달 -->
-  <div class="modal-bg" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
-    <div class="modal" style="margin-top: 5vh;">
-      <div class="modal-head">
-        <h3 id="delivery-modal-title">🚗 배송 일정 등록</h3>
-        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="ffield" style="margin-bottom:12px;">
-          <label>분양 계약건 *</label>
-          <select id="dev-contract" onchange="window.handleContractSelectChange(this.value)" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:14px; width:100%;">
-            <option value="">-- 계약 선택 --</option>
-          </select>
-        </div>
-        <div class="ffield" style="margin-bottom:12px;">
-          <label>배송 예정 날짜 *</label>
-          <input type="date" id="dev-date">
-        </div>
-        <div class="ffield" style="margin-bottom:12px;">
-          <label>배송 예정 시간 *</label>
-          <input type="time" id="dev-time">
-        </div>
-        <div class="ffield" style="margin-bottom:12px;">
-          <label>배송 주소 *</label>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" style="flex:1">
-            <button type="button" class="btn btn-gray btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요." style="flex:1">
-            <button type="button" class="btn btn-sm" onclick="window.openTMapSearch(document.getElementById('dev-addr').value + ' ' + document.getElementById('dev-addr-detail').value)" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;background:#1E6FBB;color:#fff;border:none;border-radius:6px;font-weight:700;">🚙 티맵 검색</button>
-          </div>
-        </div>
-        <div class="ffield" style="margin-bottom:12px;">
-          <label>비고 (메모)</label>
-          <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:1.5px solid var(--gray-l);border-radius:7px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:#fff;color:var(--br);"></textarea>
-        </div>
-        <div class="ffield" id="dev-status-group" style="display:none; margin-bottom:16px;">
-          <label>배송 상태</label>
-          <select id="dev-status" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:9px 12px; font-size:14px; width:100%;">
-            <option value="예정">배송 예정</option>
-            <option value="완료">배송 완료</option>
-          </select>
-        </div>
-        <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="btn btn-green" id="dev-kakao-btn" onclick="window.sendDeliveryKakao()" style="flex:1;background:#27AE60;color:#fff;border:none;white-space:nowrap;font-weight:800;padding:10px;">💬 카톡 일정 전송</button>
-          <button class="btn btn-gray" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;color:var(--red);border-color:var(--red);background:#fff">🗑️ 삭제</button>
-          <button class="btn btn-gray" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
-          <button class="btn btn-gold" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 예약 등록/수정 모달 -->
-  <div class="rsv-modal-bg" id="rsvModal">
-    <div class="rsv-modal">
-      <div class="rsv-modal-head">
-        <h3 id="rsvModalTitle">📅 예약 등록</h3>
-        <button class="rsv-modal-close" onclick="closeRsvModal()">✕</button>
-      </div>
-      <div class="rsv-modal-body">
-        <input type="hidden" id="rsv_editId">
-        <div class="rsv-field">
-          <label>방문 날짜 *</label>
-          <input type="date" id="rsv_date">
-        </div>
-        <div class="rsv-field">
-          <label>방문 시간 (선택 — 비워두면 시간 미정)</label>
-          <div class="rsv-time-row">
-            <input type="time" id="rsv_timeStart" step="900">
-            <span class="time-sep">~</span>
-            <input type="time" id="rsv_timeEnd" step="900">
-          </div>
-          <div class="rsv-overlap-warn" id="rsvOverlapWarn">⚠ 해당 시간대에 기존 예약이 겹칩니다.</div>
-        </div>
-        <div class="rsv-field">
-          <label>방문자 이름 *</label>
-          <input type="text" id="rsv_name" placeholder="예: 홍길동">
-        </div>
-        <div class="rsv-field">
-          <label>📞 연락처 (선택)</label>
-          <input type="tel" id="rsv_phone" placeholder="예: 010-1234-5678">
-        </div>
-        <div class="rsv-field">
-          <label>💬 카카오 오픈채팅 ID (선택)</label>
-          <input type="text" id="rsv_kakao" placeholder="예: goldi_visitor">
-        </div>
-        <div class="rsv-field">
-          <label>🐶 보러 올 강아지 (복수 선택)</label>
-          <input type="text" class="psel-search" id="pselSearch" placeholder="🔍 이름 또는 모견코드 검색..." oninput="renderPuppySelector()">
-          <div class="psel-groups" id="pselGroups"></div>
-          <div class="psel-selected" id="pselSelected"></div>
-        </div>
-        <div class="rsv-field">
-          <label>특이사항 / 메모 (선택)</label>
-          <textarea id="rsv_memo" placeholder="예: 오후 방문, 아이 동반"></textarea>
-        </div>
-        <div class="btn-row" style="display:flex;gap:8px">
-          <button class="btn btn-gray" style="flex:1" onclick="closeRsvModal()">취소</button>
-          <button class="btn btn-gold" style="flex:1" onclick="saveReservation()">✅ 저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 계약 상세 모달 -->
-  <div class="modal-bg" id="detailModal">
-    <div class="modal">
-      <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body" id="modalBody"></div>
-      <div class="modal-foot" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px; border-top:1.5px solid var(--gray-l); background:var(--gray-ll); border-radius:0 0 12px 12px">
-        <button class="btn btn-gray" id="btnDeleteContract" onclick="deleteContractFromAdmin()" style="font-size:12.5px; padding:8px 16px; color:var(--red); border-color:var(--red); background:#fff">🗑️ 계약 삭제</button>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-green" id="btnMarkPaid" onclick="markContractAsPaid()" style="font-size:12.5px; padding:8px 16px; display:none; background:#27AE60; color:#fff; border:none; border-radius:6px; cursor:pointer;">💰 완납 처리</button>
-          <button class="btn btn-gold" id="btnDetailPdf" onclick="downloadContractPdfFromAdmin()" style="font-size:12.5px; padding:8px 16px">📄 PDF 보기 및 다운로드</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 리터 그룹 정보 수정 모달 -->
-  <div class="modal-bg" id="editModal">
-    <div class="modal" style="max-width:640px">
-      <div class="modal-head"><h3 id="editModalTitle">그룹 정보 수정</h3><button class="modal-close" onclick="closeEditModal()">✕</button></div>
-      <div class="modal-body" id="editModalBody"></div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
+  <div class="stitle">전체 새끼 목록</div>
+  <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
+
+<!-- TAB3 -->
+<div class="tab-panel" id="tab-db">
+  <div class="search-row">
+    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
+    <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
+  </div>
+  <div class="stitle">계약 내역</div>
+  <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
+</div>
+
+<!-- TAB4: 일정 & Google 캘린더 -->
+<div class="tab-panel" id="tab-calendar">
+  <div class="card" style="background:var(--gold-p); border-color:var(--gold-l); margin-bottom:16px;">
+    <div style="font-weight:700; font-size:14px; color:var(--br); margin-bottom:6px;">📅 구글 캘린더 연동 및 카테고리 분리 안내</div>
+    <div style="font-size:12px; color:var(--gray); line-height:1.5;">
+      • <span class="badge" style="background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7;">🟡 예약</span> 및 <span class="badge" style="background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1;">🔵 배송</span> 항목은 <strong>`📅 Google 캘린더에 추가`</strong> 버튼으로 1초만에 구글 캘린더 앱에 바로 등록됩니다.<br>
+      • <span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 방역 & 💊 치료</span> 일정은 내부 전용 독립 카테고리로 별도 분리 관리됩니다.
+    </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+    <div class="status-sel">
+      <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기</button>
+      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (구글 캘린더 연동)</button>
+      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (독립 카테고리)</button>
+    </div>
+    <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
+  </div>
+
+  <div class="stitle">일정 목록</div>
+  <div id="calendarList" class="loading"><div class="spinner"></div>일정 로딩 중...</div>
+</div>
+
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-head"><h3>계약 상세</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="editModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head"><h3 id="editModalTitle">그룹 정보 수정</h3><button class="modal-close" onclick="closeEditModal()">✕</button></div>
+    <div class="modal-body" id="editModalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update, push, remove, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const FB = {
   apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -1195,32 +226,11 @@ const db  = getDatabase(app);
 
 window._litters={};
 window._contracts={};
-window._reservations={};
 window._selected=null;
 window._contractUrl='';
-window._calYear=new Date().getFullYear();
-window._calMonth=new Date().getMonth();
-window._calSelectedDate=new Date().toISOString().slice(0,10);
-window._rsvSelectedPuppies=[];
-window._dbCalYear=new Date().getFullYear();
-window._dbCalMonth=new Date().getMonth();
-window._deliveries = [];
-window._deliveryModalMode = 'add';
-window._deliveryEditKey = null;
-window._currentDeliveryCalendarDate = new Date();
-
-// URL 파라미터 자동 선택 관련 파라미터 분석
-const urlParams = new URLSearchParams(window.location.search);
-const initLitter = urlParams.get('litter');
-const initPuppy = urlParams.get('puppy');
 
 // ── 유틸
 const fmt = d => d ? d.replace(/-/g,'.') : '—';
-const dewormShow = d => {
-  if (!d || d === '—') return '—';
-  const todayStr = new Date().toISOString().slice(0, 10);
-  return d > todayStr ? '예정' : d.replace(/-/g, '.');
-};
 const numFmt = n => Number(n).toLocaleString('ko-KR')+'원';
 function genderTxt(s){
   const v=String(s||'').toLowerCase();
@@ -1237,258 +247,37 @@ function genderKo(s){
 function statusBadge(st){
   if(!st||st==='분양 전') return '<span class="badge badge-avail">분양 전</span>';
   if(st==='예약')         return '<span class="badge badge-rsv">예약</span>';
-  if(st==='분양 완료')    return '<span class="badge badge-sold">분양 완료</span>';
-  if(st==='무지개다리'||st==='🌈 무지개다리') return '<span class="badge" style="background:#F3E5F5;color:#7B1FA2;border:1px solid #E1BEE7">🌈 무지개다리</span>';
-  if(st==='견사 이동'||st==='🏠 견사 이동')   return '<span class="badge" style="background:#E3F2FD;color:#1976D2;border:1px solid #BBDEFB">🏠 견사 이동</span>';
-  return `<span class="badge badge-sold">${st}</span>`;
+  return                         '<span class="badge badge-sold">분양 완료</span>';
 }
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
-// 특수문자 이스케이프 유틸
-function esc(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-// ── 로그인
- window.adminLogin = () => {
-  const pw = document.getElementById('admin-pw-input').value;
-  const errEl = document.getElementById('admin-pw-error');
-  if (pw === '5900') {
-    sessionStorage.setItem('goldi_admin_auth', 'ok');
-    errEl.style.display = 'none';
-    const overlay = document.getElementById('admin-login-overlay');
-    const main = document.getElementById('admin-main-content');
-    overlay.style.transition = 'opacity .4s';
-    overlay.style.opacity = '0';
-    main.style.display = 'block';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      document.documentElement.classList.add('admin-authenticated');
-    }, 400);
-  } else {
-    errEl.style.display = 'block';
-    const card = document.querySelector('.login-card');
-    card.style.animation = 'none';
-    setTimeout(() => { card.style.animation = 'admin-shake .4s ease'; }, 10);
-    document.getElementById('admin-pw-input').value = '';
-  }
-};
-document.addEventListener('DOMContentLoaded', () => {
-  const pwInput = document.getElementById('admin-pw-input');
-  if (pwInput) pwInput.focus();
-});
-
-// ── 서브탭
-function switchSubTab(name) {
-  document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.sub-tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('stb-'+name)?.classList.add('active');
-  document.getElementById('sub-tab-'+name)?.classList.add('active');
-  if (name === 'delivery') renderDeliveryCalendar();
-  if (name === 'calendar') {
-    renderCalendar();
-    renderTodaySummary();
-    renderDayReservations(window._calSelectedDate);
-    renderMonthStats();
-  }
-}
-window.switchSubTab = switchSubTab;
 
 // ── 탭
-function switchTab(btn, name) {
+window.switchTab=(btn,name)=>{
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='schedule'){
-    renderCalendar();
-    renderTodaySummary();
-    renderDayReservations(window._calSelectedDate);
-    renderMonthStats();
-  }
-  if(name==='health'){
-    renderHealthTab();
-  }
-  if(name==='treatment'){
-    initTreatmentTab();
-  }
-}
-window.switchTab = switchTab;
-
-// ── SWR 로컬 캐시 부스터 (체감 로딩 속도 0.01초 단축)
-function saveLocalCache(key, data) {
-  try {
-    localStorage.setItem('goldi_admin_cache_' + key, JSON.stringify(data));
-  } catch(e) {
-    console.warn(`[Cache Limit] Admin ${key} 저장 제한:`, e);
-  }
-}
-
-function restoreLocalCache() {
-  try {
-    const cachedLitters = localStorage.getItem('goldi_admin_cache_litters');
-    const cachedContracts = localStorage.getItem('goldi_admin_cache_contracts');
-    const cachedReservations = localStorage.getItem('goldi_admin_cache_reservations');
-    const cachedDeliveries = localStorage.getItem('goldi_admin_cache_deliveries');
-    const cachedTreatments = localStorage.getItem('goldi_admin_cache_treatments');
-    
-    if (cachedLitters) window._litters = JSON.parse(cachedLitters);
-    if (cachedContracts) window._contracts = JSON.parse(cachedContracts);
-    if (cachedReservations) window._reservations = JSON.parse(cachedReservations);
-    if (cachedDeliveries) window._deliveries = JSON.parse(cachedDeliveries);
-    if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
-
-    // ⚡ 캐시 복원 즉시 UI 렌더링 (빈 데이터라도 올바른 안내 화면 렌더링)
-    renderPuppyGroups();
-    renderManageList();
-    renderDB();
-    updateStats();
-    fillTreatmentSelects();
-
-    if (initLitter && initPuppy && !window._autoSelectedTriggered && Object.keys(window._litters).length) {
-      window._autoSelectedTriggered = true;
-      selectPuppy(initLitter, initPuppy);
-    }
-  } catch(e) {
-    console.error('[Admin Cache Restore Error]:', e);
-  }
-}
-
-// 스크립트 실행 즉시 캐시 복원
-restoreLocalCache();
-
-// ⚡ 1.5초 네트워크 지연 가드: 어떤 상황에서도 로딩 스피너가 무한 유지되지 않도록 가동
-setTimeout(() => {
-  const pl = document.getElementById('puppyLoading');
-  if (pl && pl.style.display !== 'none') {
-    pl.style.display = 'none';
-    renderPuppyGroups();
-    renderManageList();
-    renderDB();
-  }
-}, 1500);
-
-// ⚡ 초고속 REST get() 1회성 로드 (WebSocket 지연 대비)
-(async () => {
-  try {
-    const littersSnap = await get(ref(db, 'litters'));
-    if (littersSnap.exists()) {
-      window._litters = littersSnap.val() || {};
-      saveLocalCache('litters', window._litters);
-      renderPuppyGroups();
-      renderManageList();
-      updateStats();
-      fillTreatmentSelects();
-    } else {
-      const pl = document.getElementById('puppyLoading');
-      if (pl) pl.style.display = 'none';
-    }
-  } catch(e) {
-    console.warn('REST get litters warning:', e);
-    const pl = document.getElementById('puppyLoading');
-    if (pl) pl.style.display = 'none';
-  }
-})();
-
-function showAdminFirebaseError(error) {
-  console.error("Firebase Database Error:", error);
-  const puppyLoading = document.getElementById('puppyLoading');
-  if (puppyLoading) {
-    puppyLoading.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터베이스 연결 실패 (권한 오류)<br><small>Firebase 권한 만료 또는 오류입니다. Realtime DB 규칙 설정을 확인해주세요.</small></div>`;
-  }
-  const manageList = document.getElementById('manageList');
-  if (manageList) {
-    manageList.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터 로드 실패</div>`;
-  }
-  const dbList = document.getElementById('dbList');
-  if (dbList) {
-    dbList.innerHTML = `<div style="color:var(--red); font-weight:bold; padding:20px; text-align:center;">⚠️ 데이터 로드 실패</div>`;
-  }
-  toast('⚠️ Firebase 권한 오류가 발생했습니다.');
-}
+};
 
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
-  saveLocalCache('litters', window._litters);
   renderPuppyGroups();
   renderManageList();
   updateStats();
-  fillTreatmentSelects();
-  // health 탭 활성화 시 실시간 업데이트
-  if(document.getElementById('tab-health')?.classList.contains('active')){
-    renderHealthTab();
-  }
-  // 캐시되지 않았던 경우의 파라미터 자동 선택 연동
-  if (initLitter && initPuppy && !window._autoSelectedTriggered && Object.keys(window._litters).length) {
-    window._autoSelectedTriggered = true;
-    selectPuppy(initLitter, initPuppy);
-  }
-}, error => {
-  showAdminFirebaseError(error);
 });
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};
   let ls={};
   try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
   window._contracts={...ls,...fb};
-  saveLocalCache('contracts', window._contracts);
   renderDB();
-}, error => {
-  showAdminFirebaseError(error);
 });
 
-// ── Firebase 예약 구독
-onValue(ref(db,'reservations'),snap=>{
-  window._reservations=snap.val()||{};
-  saveLocalCache('reservations', window._reservations);
-  // 캘린더 탭이 활성화된 경우에만 렌더링
-  if(document.getElementById('tab-calendar')?.classList.contains('active')){
-    renderCalendar();
-    renderTodaySummary();
-    renderDayReservations(window._calSelectedDate);
-    renderMonthStats();
-  }
-}, error => {
-  showAdminFirebaseError(error);
-});
-
-// ── Firebase 배송 구독
-onValue(ref(db,'deliveries'),snap=>{
-  window._deliveries=[];
-  snap.forEach(child=>{
-    window._deliveries.push({_key:child.key,...child.val()});
-  });
-  saveLocalCache('deliveries', window._deliveries);
-  if(document.getElementById('tab-delivery')?.classList.contains('active')){
-    renderDeliveryCalendar();
-  }
-}, error => {
-  showAdminFirebaseError(error);
-});
-// ── Firebase 치료 기록 구독
-window._treatments = [];
-onValue(ref(db, 'treatments'), snap => {
-  window._treatments = [];
-  snap.forEach(child => {
-    window._treatments.push({ _key: child.key, ...child.val() });
-  });
-  saveLocalCache('treatments', window._treatments);
-  if (document.getElementById('tab-treatment')?.classList.contains('active')) {
-    renderTreatmentList();
-  }
-}, error => {
-  showAdminFirebaseError(error);
-});
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
   document.getElementById('puppyLoading').style.display='none';
@@ -1533,8 +322,7 @@ window.selectPuppy=(lid,pid)=>{
     <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
     <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${l.femaleCode||'—'}</span></div>
     <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
-    <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>
-    <div class="chip"><span class="chip-k">구충3차</span><span class="chip-v">${fmt(l.deworm3)}</span></div>`;
+    <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
   document.getElementById('sendForm').style.display='block';
   document.getElementById('linkCard').style.display='none';
@@ -1546,7 +334,6 @@ window.generateLink=()=>{
   if(!sel){toast('새끼를 먼저 선택해주세요.');return;}
   const price=document.getElementById('s_price').value;
   const saledate=document.getElementById('s_saledate').value;
-  const memo=document.getElementById('s_memo').value.trim();
   if(!price||!saledate){toast('분양가와 분양 예정일을 입력해주세요.');return;}
 
   const {litterId:lid,puppyId:pid,litter:l,puppy:p}=sel;
@@ -1557,13 +344,10 @@ window.generateLink=()=>{
     birthB:l.birthB||'',
     deworm1:l.deworm1||'',
     deworm2:l.deworm2||'',
-    deworm3:l.deworm3||'',
     femaleCode:l.femaleCode||'',
     maleCode:l.maleCode||'',
     price, saledate
   });
-  if (memo) params.set('memo', memo);
-  
   // 안전한 URL 생성 (hash/query 오염 방지)
   const baseUrl=new URL('goldi_contract_form.html',location.href.split('?')[0].split('#')[0]);
   baseUrl.search=params.toString();
@@ -1603,13 +387,6 @@ async function safeCopy(text){
     return false;
   }
 }
-window.previewLink=()=>{
-  if(window._contractUrl){
-    window.open(window._contractUrl,'_blank');
-  }else{
-    toast('링크가 생성되지 않았습니다.');
-  }
-};
 window.copyLink=async()=>{const ok=await safeCopy(window._contractUrl);toast(ok?'링크 복사됐습니다.':'위 창에서 직접 복사해주세요.');};
 window.toggleQR=()=>{const q=document.getElementById('qrWrap');q.style.display=q.style.display==='none'?'block':'none';};
 window.sendKakao=async()=>{
@@ -1679,9 +456,8 @@ window.openEditLitter=(lid)=>{
     <div class="ffield"><label>출생일 B (계약서용)</label><input id="e_birthB" type="date" value="${l.birthB||''}"></div>
     <div class="ffield"><label>모견 코드</label><input id="e_femaleCode" value="${l.femaleCode||''}"></div>
     <div class="ffield"><label>부견 코드</label><input id="e_maleCode" value="${l.maleCode||''}"></div>
-    <div class="ffield"><label>구충 1차 (25일째)</label><input id="e_deworm1" type="date" value="${l.deworm1||''}"></div>
-    <div class="ffield"><label>구충 2차 (40일째)</label><input id="e_deworm2" type="date" value="${l.deworm2||''}"></div>
-    <div class="ffield"><label>구충 3차 (55일째)</label><input id="e_deworm3" type="date" value="${l.deworm3||''}"></div>
+    <div class="ffield"><label>구충 1차</label><input id="e_deworm1" type="date" value="${l.deworm1||''}"></div>
+    <div class="ffield"><label>구충 2차</label><input id="e_deworm2" type="date" value="${l.deworm2||''}"></div>
     <div class="ffield"><label>백신 1차</label><input id="e_vax1" type="date" value="${l.vax1||''}"></div>
     <div class="ffield"><label>백신 2차</label><input id="e_vax2" type="date" value="${l.vax2||''}"></div>
     <div class="ffield"><label>백신 3차</label><input id="e_vax3" type="date" value="${l.vax3||''}"></div>
@@ -1707,16 +483,6 @@ window.openEditLitter=(lid)=>{
   document.getElementById('editModalTitle').textContent=`그룹 수정 — ♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'}`;
   document.getElementById('editModalBody').innerHTML=html;
   document.getElementById('editModal').classList.add('open');
-
-  // 출생일 B 변경 시 보름 간격(25일, 40일, 55일)으로 구충 날짜 실시간 자동 입력 리스너 바인딩
-  document.getElementById('e_birthB').addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (val) {
-      document.getElementById('e_deworm1').value = addDays(val, 25);
-      document.getElementById('e_deworm2').value = addDays(val, 40);
-      document.getElementById('e_deworm3').value = addDays(val, 55);
-    }
-  });
 };
 
 window.saveLitterEdit=async(lid)=>{
@@ -1727,2496 +493,229 @@ window.saveLitterEdit=async(lid)=>{
     maleCode:document.getElementById('e_maleCode').value,
     deworm1:document.getElementById('e_deworm1').value,
     deworm2:document.getElementById('e_deworm2').value,
-    deworm3:document.getElementById('e_deworm3').value,
     vax1:document.getElementById('e_vax1').value,
     vax2:document.getElementById('e_vax2').value,
     vax3:document.getElementById('e_vax3').value,
     count:Number(document.getElementById('e_count').value)||0
   };
-  // 동기화 비교용 이전 데이터
-  const oldLitter=window._litters[lid]||{};
-  const oldFemaleCode=oldLitter.femaleCode||'';
-  const oldMaleCode=oldLitter.maleCode||'';
-  const newFemaleCode=data.femaleCode;
-  const newMaleCode=data.maleCode;
-  const codeChanged=oldFemaleCode!==newFemaleCode||oldMaleCode!==newMaleCode;
   await update(ref(db,`litters/${lid}`),data);
-  // 새끼 저장 + 이름 변경 시 contracts.dogname 및 deliveries.dogname 및 reservations.puppyName 동기화
   const rows=document.querySelectorAll('#editPuppies .edit-puppy');
   for(const row of rows){
     const pid=row.dataset.pid;
     const name=row.querySelector('.ep-name').value;
     const sex=row.querySelector('.ep-sex').value;
     await update(ref(db,`litters/${lid}/puppies/${pid}`),{name,sex});
-    const oldName=(oldLitter.puppies?.[pid]?.name)||'';
-    const oldSex=(oldLitter.puppies?.[pid]?.sex)||'';
-    const nameChanged=name && oldName!==name;
-    const sexChanged=sex && oldSex!==sex;
-    if(nameChanged || sexChanged){
-      const mC=Object.entries(window._contracts).filter(([,c])=>c.litter===lid&&c.puppy===pid);
-      for(const [cid] of mC) {
-        const updates={};
-        if(nameChanged) updates.dogname=name;
-        if(sexChanged) updates.sex=sex;
-        await update(ref(db,`contracts/${cid}`),updates);
-        if(nameChanged){
-          // deliveries 동기화
-          const matchingDeliveries = (window._deliveries || []).filter(d => d.contractId === cid);
-          for(const dev of matchingDeliveries) {
-            await update(ref(db, `deliveries/${dev._key}`), {dogname:name});
-          }
-        }
-      }
-      if(nameChanged){
-        // reservations 동기화
-        const reservations = window._reservations || {};
-        for(const [rid, r] of Object.entries(reservations)){
-          if(r.puppies && Array.isArray(r.puppies)){
-            let updated = false;
-            const updatedPuppies = r.puppies.map(p => {
-              if(p.litterId===lid && p.puppyId===pid){
-                const newP = { ...p, puppyName: name };
-                updated = true;
-                return newP;
-              }
-              return p;
-            });
-            if(updated){
-              await update(ref(db,`reservations/${rid}`),{puppies:updatedPuppies});
-            }
-          }
-        }
-      }
-    }
-  }
-  // 모견/부견 코드 변경 시 contracts 전체 동기화
-  if(codeChanged){
-    const mC=Object.entries(window._contracts).filter(([,c])=>
-      c.litter===lid||(oldFemaleCode&&c.femaleCode===oldFemaleCode&&c.maleCode===oldMaleCode)
-    );
-    for(const [cid] of mC) await update(ref(db,`contracts/${cid}`),{femaleCode:newFemaleCode,maleCode:newMaleCode});
-    toast(mC.length>0?`✅ 수정 + 계약 ${mC.length}건 코드 동기화 완료!`:'정보가 수정됩니다.');
-  } else {
-    toast('정보가 수정됩니다!');
   }
   closeEditModal();
+  toast('정보가 수정됐습니다!');
 };
 
 window.closeEditModal=()=>document.getElementById('editModal').classList.remove('open');
 
 // ── TAB3: 계약 DB
-// ── TAB3: 계약 DB 관련 캘린더 및 대시보드 로직
-const DB_DAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
-
-function addDays(d, n) {
-  if (!d) return '';
-  const dt = new Date(d + 'T00:00:00');
-  dt.setDate(dt.getDate() + n);
-  return dt.toISOString().slice(0, 10);
-}
-
-function updateDbDashboard() {
-  const currentPrefix = `${window._dbCalYear}-${String(window._dbCalMonth + 1).padStart(2, '0')}`;
-  let count = 0;
-  let revenue = 0;
-  let pending = 0;
-
-  Object.values(window._contracts).forEach(c => {
-    if (c.contract_date && c.contract_date.startsWith(currentPrefix)) {
-      count++;
-      revenue += (c.price || 0);
-      const isPaid = (c.deposit || 0) >= (c.price || 0);
-      if (!isPaid) {
-        pending += ((c.price || 0) - (c.deposit || 0));
-      }
-    }
+window.renderDB=()=>{
+  const kw=(document.getElementById('dbSearch')?.value||'').toLowerCase();
+  const list=Object.entries(window._contracts).filter(([,c])=>{
+    if(!kw) return true;
+    return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw);
   });
-
-  const countEl = document.getElementById('db-stat-count');
-  const revEl = document.getElementById('db-stat-revenue');
-  const pendEl = document.getElementById('db-stat-pending');
-  
-  if (countEl) countEl.textContent = count + '건';
-  if (revEl) revEl.textContent = revenue.toLocaleString('ko-KR') + '원';
-  if (pendEl) pendEl.textContent = pending.toLocaleString('ko-KR') + '원';
-}
-
-function renderDbCalendar() {
-  const y = window._dbCalYear;
-  const m = window._dbCalMonth;
-  const titleEl = document.getElementById('dbCalTitle');
-  if (titleEl) titleEl.textContent = `${y}년 ${m + 1}월`;
-  
-  const grid = document.getElementById('dbCalGrid');
-  if (!grid) return;
-  
-  let html = DB_DAYS_KO.map((d, i) => `<div class="db-cal-head${i === 0 ? ' sun' : ''}${i === 6 ? ' sat' : ''}">${d}</div>`).join('');
-  
-  const firstDay = new Date(y, m, 1).getDay();
-  const lastDate = new Date(y, m + 1, 0).getDate();
-  const prevLast = new Date(y, m, 0).getDate();
-  
-  // 이전 달 빈칸
-  for (let i = firstDay - 1; i >= 0; i--) {
-    const d = prevLast - i;
-    html += `<div class="db-cal-cell other"><div class="db-cal-day">${d}</div></div>`;
-  }
-  
-  // 이번 달
-  for (let d = 1; d <= lastDate; d++) {
-    const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isSel = ds === window._dbSelectedDate;
-    const dayOfWeek = new Date(y, m, d).getDay();
-    
-    // 이 날짜의 계약 수 스캔
-    const dayContracts = Object.values(window._contracts).filter(c => c.contract_date === ds);
-    
-    let dotHtml = '';
-    if (dayContracts.length) {
-      dotHtml = `<div class="db-cal-dots"><div class="db-cal-dot"></div></div><div class="db-cal-count">${dayContracts.length}건</div>`;
-    }
-    
-    html += `<div class="db-cal-cell${isSel ? ' selected' : ''}${dayOfWeek === 0 ? ' sun' : ''}${dayOfWeek === 6 ? ' sat' : ''}" onclick="selectDbCalDate('${ds}')">
-      <div class="db-cal-day">${d}</div>${dotHtml}</div>`;
-  }
-  
-  // 다음 달 빈칸
-  const totalCells = firstDay + lastDate;
-  const remaining = totalCells % 7 === 0 ? 0 : 7 - totalCells % 7;
-  for (let i = 1; i <= remaining; i++) {
-    html += `<div class="db-cal-cell other"><div class="db-cal-day">${i}</div></div>`;
-  }
-  
-  grid.innerHTML = html;
-}
-
-window.dbCalPrev = () => {
-  window._dbCalMonth--;
-  if (window._dbCalMonth < 0) { window._dbCalMonth = 11; window._dbCalYear--; }
-  renderDB();
-};
-
-window.dbCalNext = () => {
-  window._dbCalMonth++;
-  if (window._dbCalMonth > 11) { window._dbCalMonth = 0; window._dbCalYear++; }
-  renderDB();
-};
-
-function selectDbCalDate(ds) {
-  if (window._dbSelectedDate === ds) {
-    window._dbSelectedDate = ''; // 토글 해제
-  } else {
-    window._dbSelectedDate = ds;
-  }
-  renderDB();
-}
-window.selectDbCalDate = selectDbCalDate;
-
-function resetDbCalFilter() {
-  window._dbSelectedDate = '';
-  renderDB();
-}
-window.resetDbCalFilter = resetDbCalFilter;
-
-function renderDB() {
-  const kw = (document.getElementById('dbSearch')?.value || '').toLowerCase();
-  
-  // 대시보드 및 캘린더 실시간 업데이트
-  updateDbDashboard();
-  renderDbCalendar();
-
-  const filterPayment = document.getElementById('dbFilterPayment')?.value || '';
-  const filterStatus = document.getElementById('dbFilterStatus')?.value || '';
-
-  const list = Object.entries(window._contracts).filter(([, c]) => {
-    // 검색어 필터
-    if (kw && !(c.buyer_name || '').toLowerCase().includes(kw) && !(c.buyer_phone || '').includes(kw) && !(c.dogname || '').toLowerCase().includes(kw)) {
-      return false;
-    }
-    
-    // 날짜 필터 (선택 시)
-    if (window._dbSelectedDate && c.contract_date !== window._dbSelectedDate) {
-      return false;
-    }
-
-    // 결제 방법 필터
-    if (filterPayment && c.payment !== filterPayment) {
-      return false;
-    }
-
-    // 수금 상태 필터
-    if (filterStatus) {
-      const isPaid = (c.deposit || 0) >= (c.price || 0);
-      if (filterStatus === '완납' && !isPaid) return false;
-      if (filterStatus === '잔금대기' && isPaid) return false;
-    }
-
-    return true;
-  });
-
-  // 날짜 필터 초기화 버튼 보이기/숨기기
-  const resetBtn = document.getElementById('btnDbCalReset');
-  if (resetBtn) {
-    resetBtn.style.display = window._dbSelectedDate ? 'inline-block' : 'none';
-  }
-
-  // 계약 리스트 타이틀 변경
-  const listTitle = document.getElementById('dbListTitle');
-  if (listTitle) {
-    listTitle.textContent = window._dbSelectedDate 
-      ? `📅 ${fmt(window._dbSelectedDate)} 계약 내역 (${list.length}건)`
-      : `계약 내역 (${list.length}건)`;
-  }
-
-  const el = document.getElementById('dbList');
-  if (!list.length) { el.innerHTML = '<div class="loading">계약 내역이 없습니다.</div>'; return; }
-  
-  el.innerHTML = `<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>정산 상태</th><th></th></tr></thead><tbody>
-    ${list.sort(([, a], [, b]) => (b.contract_date || '').localeCompare(a.contract_date || '')).map(([id, c]) => {
-      const isPaid = (c.deposit || 0) >= (c.price || 0);
-      const balance = (c.price || 0) - (c.deposit || 0);
-      const statusBadge = isPaid 
-        ? '<span class="badge-balance-paid">완납 ✓</span>' 
-        : `<span class="badge-balance-due">잔금 ₩${balance.toLocaleString('ko-KR')} 대기</span>`;
-      return `
-      <tr>
-        <td>${fmt(c.contract_date)}</td>
-        <td><strong>${c.dogname || '—'}</strong><br><span style="font-size:11px;color:var(--gray)">${c.price ? numFmt(c.price) : '—'}</span></td>
-        <td>${c.buyer_name || '—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone || ''}</span></td>
-        <td>${statusBadge}</td>
-        <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
-      </tr>`}).join('')}
+  const el=document.getElementById('dbList');
+  if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
+  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th></th></tr></thead><tbody>
+    ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
+    <tr>
+      <td>${fmt(c.contract_date)}</td>
+      <td><strong>${c.dogname||'—'}</strong></td>
+      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
+      <td>${c.price?numFmt(c.price):'—'}</td>
+      <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
+    </tr>`).join('')}
   </tbody></table>`;
-}
-window.renderDB = renderDB;
+};
 
-window.showDetail = id => {
-  window._selectedContractId = id;
-  const c = window._contracts[id]; if (!c) return;
-  const balance = (c.price || 0) - (c.deposit || 0);
-  const payStatus = balance <= 0 ? '완납 ✓' : `잔금 대기 (₩${balance.toLocaleString('ko-KR')} 남음)`;
-  
-  // 구충 정보 보름 간격 계산 매핑
-  const dw1 = c.birthB ? addDays(c.birthB, 25) : (c.deworm1 || '');
-  const dw2 = c.birthB ? addDays(c.birthB, 40) : (c.deworm2 || '');
-  const dw3 = c.birthB ? addDays(c.birthB, 55) : (c.deworm3 || '');
-
-  const rows = [
-    ['강아지', c.dogname], ['성별', genderTxt(c.sex)], ['출생일', fmt(c.birthB)], ['모견 코드', c.femaleCode], ['부견 코드', c.maleCode],
-    ['구충 1차 (생후 25일)', dewormShow(dw1)], ['구충 2차 (생후 40일)', dewormShow(dw2)], ['구충 3차 (생후 55일)', dewormShow(dw3)],
-    ['구매자명', c.buyer_name], ['연락처', c.buyer_phone], ['주소', c.buyer_addr],
-    ['분양가', c.price ? numFmt(c.price) : '—'], ['계약금', c.deposit ? numFmt(c.deposit) : '—'], ['잔금 정산 상태', payStatus],
-    ['잔금납부일', fmt(c.balance_date)], ['결제방법', c.payment], ['이체자', c.transfer_name],
-    ['계약일', fmt(c.contract_date)], ['특이사항', c.special_memo || c.memo]
-  ].filter(([, v]) => v && v !== '—' && v !== 'undefined' && v !== 'null');
-  
-  document.getElementById('modalBody').innerHTML = rows.map(([k, v]) => `
+window.showDetail=id=>{
+  const c=window._contracts[id];if(!c)return;
+  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',c.femaleCode],
+    ['구매자',c.buyer_name],['연락처',c.buyer_phone],['주소',c.buyer_addr],
+    ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
+    ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
+  ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
+  document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
-  
-  const btnMarkPaid = document.getElementById('btnMarkPaid');
-  if (btnMarkPaid) {
-    btnMarkPaid.style.display = balance <= 0 ? 'none' : 'inline-block';
-  }
-
   document.getElementById('detailModal').classList.add('open');
 };
-
-window.closeModal = () => document.getElementById('detailModal').classList.remove('open');
-
-const GOLDI_SEAL_B64 = 'goldi_seal.png';
-
-// ── 실시간 PDF 렌더링 및 다운로드 / 누락 계약 DB 백필(Self-healing) 로직 ──
-window.downloadContractPdfFromAdmin = async () => {
-  const id = window._selectedContractId;
-  const c = window._contracts[id];
-  if (!c) return;
-
-  const btn = document.getElementById('btnDetailPdf');
-  const originalText = btn.textContent;
-  btn.textContent = '⏳ PDF 준비 중...';
-  btn.disabled = true;
-
-  try {
-    // 실시간 계약 데이터와 공식 직인 도장을 포함하여 동적 PDF 렌더링 빌드
-    let previewEl = document.getElementById('adminContractPreviewTemp');
-    if (!previewEl) {
-      previewEl = document.createElement('div');
-      previewEl.id = 'adminContractPreviewTemp';
-      previewEl.style.cssText = 'position:fixed; left:-9999px; top:0; z-index:-1; width:794px; background:#fff; font-family:\'Noto Sans KR\', sans-serif;';
-      document.body.appendChild(previewEl);
-    }
-
-    const memo = c.special_memo || c.memo || '';
-    const specialMemoSection = memo ? `
-<div class="cv-section" style="font-size:13px;font-weight:800;color:#fff;background:#5C3D1E;padding:6px 10px;margin:14px 0 6px;letter-spacing:.5px;border-radius:4px">특별 합의 및 특이사항 조항</div>
-<div style="padding:12px 14px; background:#FDF5E0; border:1.5px solid var(--gold-l); border-radius:6px; font-size:12px; margin-bottom:12px">
-  <div style="font-weight:700; margin-bottom:6px; color:#5C3D1E;">📝 분양자 기재 특이사항:</div>
-  <div style="line-height:1.7; margin-bottom:12px; font-weight:500;">${esc(memo)}</div>
-  
-  <div style="display:flex; justify-content:flex-end; align-items:center; gap:12px; border-top:1px dashed #ddd; padding-top:10px;">
-    <div style="font-size:11px; color:#6B6B6B; font-weight:700;">위 특이사항 확인 및 합의 서명:</div>
-    <div style="min-width:120px; height:45px; border:none; display:flex; align-items:center; justify-content:center;">
-      ${c.signature_memo ? `<img src="${c.signature_memo}" style="max-height:40px; border-radius:3px;">` : '<span style="font-size:10px; color:#aaa;">(서명 없음)</span>'}
-    </div>
-  </div>
-</div>` : '';
-
-    const computedDw1 = c.birthB ? addDays(c.birthB, 25) : (c.deworm1 || '');
-    const computedDw2 = c.birthB ? addDays(c.birthB, 40) : (c.deworm2 || '');
-    const computedDw3 = c.birthB ? addDays(c.birthB, 55) : (c.deworm3 || '');
-
-    previewEl.innerHTML = `
-<style>
-  #adminContractPreviewTemp {
-    padding: 40px;
-    background: #fff;
-    color: #2C1A0E;
-    line-height: 1.6;
-    font-size: 12px;
-  }
-  .cv-header{text-align:center;margin-bottom:22px;border-bottom:2px solid #5C3D1E;padding-bottom:14px}
-  .cv-header h1{font-size:22px;font-weight:900;letter-spacing:3px;color:#5C3D1E;margin: 0 0 4px 0}
-  .cv-header p{font-size:11px;color:#888;margin: 2px 0}
-  .cv-table{width:100%;border-collapse:collapse;margin-bottom:18px;font-size:12px}
-  .cv-table th{background:#5C3D1E;color:#F0BE5A;padding:7px 10px;text-align:left;font-weight:700;border:1px solid #ddd;}
-  .cv-table td{padding:7px 10px;border:1px solid #ddd;vertical-align:top;background:#fff;}
-  .cv-table tr:nth-child(even) td{background:#fafafa}
-  .cv-table-kv th{width:110px !important;}
-  .cv-section{font-size:13px;font-weight:800;color:#fff;background:#5C3D1E;padding:6px 10px;margin:14px 0 6px;letter-spacing:.5px;border-radius:4px}
-  .cv-clause{margin-bottom:6px;padding:7px 10px;background:#FDF5E0;border-left:3px solid #C8931A;border-radius:0 4px 4px 0;font-size:11.5px;text-align:justify;}
-  .cv-clause strong{font-weight:800}
-  .cv-legal{background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 12px;font-size:11px;color:#555;margin-top:10px;line-height:1.7;text-align:justify;}
-  .cv-sign{display:flex;justify-content:space-between;gap:20px;margin-top:20px;border-top:1px solid #ddd;padding-top:16px}
-  .sign-box{width:48%;border:1px solid #E8E6E0;padding:12px;border-radius:6px;background:#FAFAF7}
-  .s-label{font-size:11px;font-weight:700;color:#6B6B6B;margin-bottom:4px}
-  .s-name{font-size:14px;font-weight:700;color:#5C3D1E}
-  .s-date{font-size:11px;color:#6B6B6B}
-</style>
-
-<div style="padding:40px; color:#2C1A0E; line-height:1.6;">
-  <div class="cv-header">
-    <h1>골든리트리버 분양 계약서</h1>
-    <p>골디 쉼터 Goldi Shelter | 전문 소규모 브리더 | 소규모 동물생산업 허가 보유</p>
-    <p style="font-size:10px;color:#aaa;margin-top:3px">본 계약서는 「동물보호법」 및 「소비자기본법」에 의거하여 작성되며, 2부를 작성하여 분양자·구매자 각 1통씩 보관합니다.</p>
-  </div>
-
-  <div class="cv-section">1. 분양자 정보</div>
-  <table class="cv-table cv-table-kv">
-    <tr><th>업소명</th><td>골디 쉼터 (Goldi Shelter)</td><th>생산업 허가번호</th><td>제 4170000-037-2023-0011</td></tr>
-    <tr><th>연락처</th><td>010-6508-5901</td><th>카카오 상담</th><td>open.kakao.com/o/sxGtK0ri</td></tr>
-  </table>
-
-  <div class="cv-section">2. 분양 동물 정보 <span style="font-size:10px;font-weight:400;color:#ddd">(동물보호법 시행규칙 [별표12] 법정 필수 기재사항)</span></div>
-  <table class="cv-table cv-table-kv">
-    <tr><th>축종 / 품종</th><td colspan="3">개 (Canis lupus familiaris) / 골든리트리버 (Golden Retriever)</td></tr>
-    <tr><th>성별</th><td>${genderTxt(c.sex)}</td><th>출생일</th><td>${fmt(c.birthB)}</td></tr>
-    <tr><th>색상</th><td>크림빛 황금색</td><th>건강상태</th><td>양호</td></tr>
-    <tr><th>동물등록번호</th><td colspan="3">분양 후 30일 이내 등록 의무 (동물보호법 제12조)</td></tr>
-  </table>
-
-  <div class="cv-section">3. 구충 기록</div>
-  <table class="cv-table">
-    <thead>
-      <tr style="background:#F4F3EF">
-        <th>구분</th>
-        <th style="text-align:center">1차 (생후 25일)</th>
-        <th style="text-align:center">2차 (생후 40일)</th>
-        <th style="text-align:center">3차 (생후 55일)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>종합 구충제</td>
-        <td style="text-align:center">${dewormShow(computedDw1)}</td>
-        <td style="text-align:center">${dewormShow(computedDw2)}</td>
-        <td style="text-align:center">${dewormShow(computedDw3)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="cv-section">4. 분양 조건</div>
-  <table class="cv-table cv-table-kv">
-    <tr><th>분양일</th><td>${fmt(c.saledate)}</td><th>결제방법</th><td>${esc(c.payment)}${c.transfer_name?' (이체자: '+esc(c.transfer_name)+')':''}</td></tr>
-    <tr><th>분양금액</th><td colspan="3"><strong>${numFmt(c.price)}</strong>${c.deposit?' (계약금: '+numFmt(c.deposit)+', 잔금납부일: '+fmt(c.balance_date)+')':''}</td></tr>
-  </table>
-
-  <div class="cv-section">5. 품질 보증 및 분쟁 해결 조항</div>
-  <div class="cv-clause"><strong>① 잠복기 있는 질병 보증 (분양 후 15일 이내)</strong><br>분양 후 15일 이내에 잠복기가 있는 질병(파보장염·코로나장염·홍역 등 바이러스성 전염병)이 발병한 경우, 분양자가 무상으로 회복시켜 30일 이내에 인도해 드립니다. 해당 질병으로 15일 이내 폐사할 경우 동종의 반려동물로 무상 재분양해 드립니다.</div>
-  <div class="cv-clause"><strong>② 잠복기 없는 질병 — 소비자 귀책사유 (보상 제외)</strong><br>잠복기가 있는 전염성 질병 외에, 소비자의 관리 미숙이나 새로운 환경 적응 과정에서 발생한 질병은 소비자의 귀책사유에 해당하므로 보상되지 않습니다. 해당 질병 예시: 호흡기 질환(감기·기관지염·폐렴), 소화기 질환(설사·구토·세균성 장염·스트레스성 장염), 저혈당증, 식욕부진 등. 단, 분양 직후부터 설사·기침 등의 문제가 있었다면 분양 시점으로부터 24시간 이내에 분양자에게 유선 통보하셔야 합니다.</div>
-  <div class="cv-clause"><strong>③ 보상 제외 항목 (소비자 귀책)</strong><br>다음의 경우 보상에서 제외됩니다. · 방치: 설사·기침 등 이상 증상이 있는데 전화 상담도 받지 않고 조치를 취하지 않은 경우 · 소비자의 과실로 인한 사고 또는 관리 소홀로 인한 경우 · 분양자의 상호 동의 없이 지출된 동물병원 진료비·치료비·검사비용 (응급상황 포함 어떠한 경우라도 미보상)</div>
-  <div class="cv-clause"><strong>④ 교환·환불·파양 불가</strong><br>반려동물은 물건이 아닌 생명입니다. 분양 후 개인 사정이나 변심 등 반려동물의 생명에 관련되지 않은 이유로는 교환·환불이 절대 불가합니다. 파양은 절대 받지 않습니다.</div>
-  <div class="cv-clause"><strong>⑤ 분양 후 15일 이후 발생 질병</strong><br>분양 후 15일 이후에 발생하는 모든 책임과 의무는 소비자에게 있으며, 분양자는 책임지지 않습니다. 성장기 어린 반려동물의 경우 분양 당시 확인할 수 없는 선천적 결함(간질·심혈관계통·고관절 이상 등), 성견 시 크기·인물·탈장·잠복고환 등 분양 후 15일 이후 발생하는 모든 상황에 대해서는 보상되지 않습니다.</div>
-  <div class="cv-clause"><strong>⑥ 중대 질병 발생 시 처리 의무</strong><br>분양 후 중대 질병이 발생했을 경우 반드시 분양자에게 반려동물을 인계하여 회복시키도록 합니다. 소비자가 이에 따르지 않을 경우 보상을 거부하는 것으로 판단합니다. 단, 협의 후 개인 치료는 인정됩니다. 보상기간 15일 안에 질병 발생 또는 폐사를 반드시 분양자에게 통보하셔야만 보상받으실 수 있습니다.</div>
-
-  <div class="cv-section">6. 소비자 분쟁해결 기준 <span style="font-size:10px;font-weight:400;color:#888">(공정거래위원회 고시)</span></div>
-  <table class="cv-table">
-    <tr style="background:#F4F3EF">
-      <th>구분</th>
-      <th>내용</th>
-      <th>해결 기준</th>
-    </tr>
-    <tr><td>15일 이내 동물 사망</td><td colspan="2">동종 교환 또는 구입가 환불 (소비자 중대 과실 시 제외)</td></tr>
-    <tr><td>15일 이내 질병 발생</td><td colspan="2">분양자 비용부담 치료 후 인도 (30일 초과·치료 중 사망 시 교환 또는 환불)</td></tr>
-  </table>
-
-  <div class="cv-section">7. 구매자(입양인) 정보</div>
-  <table class="cv-table cv-table-kv">
-    <tr><th>성명</th><td>${esc(c.buyer_name)} <span style="font-size:10px;color:#888">(서명란 참조)</span></td><th>연락처</th><td>${esc(c.buyer_phone)}</td></tr>
-    <tr><th>주소</th><td colspan="3">${esc(c.buyer_addr || '—')}</td></tr>
-  </table>
-
-  ${specialMemoSection}
-
-  <div class="cv-legal">
-    분양자와 구매자는 위 계약 내용을 숙지하고 모든 조항에 동의하며 서명 날인합니다.<br><br>
-    【법적 고지】 본 계약서는 「동물보호법」 시행규칙 [별표12] 및 「소비자기본법 시행령」 제8조 소비자분쟁해결기준에 의거합니다. 분양받은 날로부터 30일 이내 동물등록 신청 의무가 있습니다 (동물보호법 제12조). 이 계약과 관련하여 발생하는 모든 분쟁은 상호 협의하여 해결하며, 협의에 의해 해결되지 않아 소송이 제기되어야 하는 경우 분양자의 소재지를 관할하는 법원을 관할 법원으로 합니다. 분쟁 발생 시 소비자분쟁조정위원회 (국번없이 1372) 문의 가능합니다.
-  </div>
-
-  <div class="cv-sign">
-    <div class="sign-box">
-      <div class="s-label">구매자 (입양인)</div>
-      <div class="s-name">${esc(c.buyer_name)}</div>
-      <div class="s-date">분양일: ${fmt(c.saledate)}</div>
-      <div style="margin-top:8px">
-        ${c.signature ? `<img src="${c.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">` : '<span style="font-size:11px;color:#aaa;">(서명 없음)</span>'}
-      </div>
-    </div>
-    <div class="sign-box" style="position:relative; min-height:115px; padding-bottom:14px;">
-      <div class="s-label">분양자 (골디 쉼터)</div>
-      <div class="s-name" style="position:relative; display:inline-block; margin-top:4px;">
-        골디 쉼터
-        <img src="${GOLDI_SEAL_B64}" alt="골디쉼터 직인" style="position:absolute; right:-32px; top:-12px; width:56px; height:56px; pointer-events:none; opacity:0.95;" onerror="this.src='goldi_seal.png'">
-      </div>
-      <div class="s-date" style="margin-top:14px;">분양일: ${fmt(c.saledate)}</div>
-    </div>
-  </div>
-  <div style="text-align:center;margin-top:20px;font-size:10px;color:#aaa">골디 쉼터 | 소규모지만 윤리적으로 키운 아이들 | 010-6508-5901 | @iam_7707 | open.kakao.com/o/sxGtK0ri</div>
-</div>`;
-
-    await new Promise(r => setTimeout(r, 200));
-    const cvs = await html2canvas(previewEl, {scale: 1.2, useCORS: true, backgroundColor: '#fff', width: 794, windowWidth: 794});
-    
-    previewEl.innerHTML = '';
-    const imgData = cvs.toDataURL('image/jpeg', 0.7);
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgH = (cvs.height * pageW) / cvs.width;
-    let offsetY = 0;
-    while (offsetY < imgH) {
-      if (offsetY > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, -offsetY, pageW, imgH);
-      offsetY += pageH;
-    }
-
-    const pdfBase64 = pdf.output('datauristring');
-    
-    // DB 백필 자가 치유 작동
-    await update(ref(db, `contracts/${id}`), {pdf_document: pdfBase64});
-    c.pdf_document = pdfBase64;
-    
-    downloadBase64Pdf(pdfBase64, `골디쉼터_계약서_${c.buyer_name || ''}_${c.dogname || ''}.pdf`);
-
-  } catch(e) {
-    console.error('PDF 동적 생성 실패:', e);
-    toast('PDF 파일 생성 중 에러가 발생했습니다.');
-  } finally {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
-};
-
-function downloadBase64Pdf(dataUri, filename) {
-  const a = document.createElement('a');
-  a.href = dataUri;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  toast('계약서 PDF가 기기에 저장되었습니다! 🐾');
-}
-
-window.deleteContractFromAdmin = async () => {
-  const id = window._selectedContractId;
-  const c = window._contracts[id];
-  if (!c) return;
-
-  const msg = `⚠ 정말로 이 계약을 삭제하시겠습니까?\n\n[구매자]: ${c.buyer_name || ''}\n[강아지]: ${c.dogname || ''}\n\n삭제 시 해당 강아지는 자동으로 '분양 전' 상태로 복구되며, 이번 달 매출 통계에서도 제외됩니다.`;
-  if (!confirm(msg)) return;
-
-  const btn = document.getElementById('btnDeleteContract');
-  const originalText = btn.textContent;
-  btn.textContent = '⏳ 삭제 중...';
-  btn.disabled = true;
-
-  try {
-    // 1. Firebase에서 계약 삭제
-    await remove(ref(db, `contracts/${id}`));
-
-    // 2. localStorage 백업에서도 삭제
-    try {
-      const ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}');
-      if (ls[id]) {
-        delete ls[id];
-        localStorage.setItem('goldi_contracts', JSON.stringify(ls));
-      }
-    } catch(e) {}
-
-    // 3. 해당하는 새끼 강아지(puppy) 상태를 "분양 전"으로 자동 복구
-    if (c.litter && c.puppy) {
-      await update(ref(db, `litters/${c.litter}/puppies/${c.puppy}`), {status: '분양 전'});
-    }
-
-    toast('계약이 안전하게 삭제되었으며 강아지 상태가 복구되었습니다. 🐾');
-    closeModal();
-  } catch(e) {
-    console.error('Contract deletion failed:', e);
-    toast('⚠ 계약 삭제에 실패했습니다.');
-  } finally {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
-};
-
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
-window.markContractAsPaid = async () => {
-  const id = window._selectedContractId;
-  const c = window._contracts[id];
-  if (!c) return;
+// ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
+window._schedules = {};
+window._calFilter = 'all';
 
-  const balance = (c.price || 0) - (c.deposit || 0);
-  const msg = `💰 이 계약을 완납 처리하시겠습니까?\n\n[구매자]: ${c.buyer_name || ''}\n[남은 잔금]: ₩${balance.toLocaleString('ko-KR')}\n\n완납 처리 시 계약금액이 총액 분양가(₩${(c.price || 0).toLocaleString('ko-KR')})로 전액 입금 완료 처리되며, 매출 분석 및 수금 통계에 실시간 반영됩니다.`;
-  if (!confirm(msg)) return;
+import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  const btn = document.getElementById('btnMarkPaid');
-  const originalText = btn.textContent;
-  btn.textContent = '⏳ 처리 중...';
-  btn.disabled = true;
+onValue(ref(db, 'schedules'), snap => {
+  window._schedules = snap.val() || {};
+  renderCalendarEvents();
+});
 
-  try {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    await update(ref(db, `contracts/${id}`), {
-      deposit: c.price || 0,
-      balance_date: todayStr
-    });
-
-    try {
-      const ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}');
-      if (ls[id]) {
-        ls[id].deposit = c.price || 0;
-        ls[id].balance_date = todayStr;
-        localStorage.setItem('goldi_contracts', JSON.stringify(ls));
-      }
-    } catch(e) {}
-
-    toast('💰 잔금이 완납 처리되어 정산이 완료되었습니다! 🐾');
-    closeModal();
-  } catch(e) {
-    console.error('Failed to mark contract as paid:', e);
-    toast('⚠ 완납 처리에 실패했습니다.');
-  } finally {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
-};
-
-window.exportCSV=()=>{
-  const rows=[['계약일','강아지','성별','출생일','구매자','연락처','주소','분양가','계약금','결제방법']];
-  Object.values(window._contracts).forEach(c=>{
-    rows.push([c.contract_date,c.dogname,genderTxt(c.sex),c.birthB,c.buyer_name,c.buyer_phone,c.buyer_addr,c.price,c.deposit,c.payment]);
-  });
-  const csv=rows.map(r=>r.map(v=>`"${v||''}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='goldi_contracts_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-};
-
-// ═══════════════════════════════════════════════
-//  TAB4: 예약 캘린더
-// ═══════════════════════════════════════════════
-
-const DAYS_KO=['일','월','화','수','목','금','토'];
-
-function getReservationsForDate(dateStr){
-  return Object.entries(window._reservations).filter(([,r])=>r.date===dateStr).sort(([,a],[,b])=>{
-    if(!a.timeStart&&!b.timeStart) return 0;
-    if(!a.timeStart) return 1;
-    if(!b.timeStart) return -1;
-    return a.timeStart.localeCompare(b.timeStart);
-  });
-}
-
-function getReservationsForMonth(y,m){
-  const prefix=`${y}-${String(m+1).padStart(2,'0')}`;
-  return Object.entries(window._reservations).filter(([,r])=>r.date&&r.date.startsWith(prefix));
-}
-
-// ── 캘린더 렌더링
-function renderCalendar(){
-  const y=window._calYear, m=window._calMonth;
-  document.getElementById('calTitle').textContent=`${y}년 ${m+1}월`;
-  const grid=document.getElementById('calGrid');
-  
-  // 요일 헤더
-  let html=DAYS_KO.map((d,i)=>`<div class="cal-head${i===0?' sun':''}${i===6?' sat':''}">${d}</div>`).join('');
-  
-  const firstDay=new Date(y,m,1).getDay();
-  const lastDate=new Date(y,m+1,0).getDate();
-  const prevLast=new Date(y,m,0).getDate();
-  const todayStr=new Date().toISOString().slice(0,10);
-  
-  // 이전 달 빈칸
-  for(let i=firstDay-1;i>=0;i--){
-    const d=prevLast-i;
-    html+=`<div class="cal-cell other"><div class="cal-day">${d}</div></div>`;
-  }
-  
-  // 이번 달
-  for(let d=1;d<=lastDate;d++){
-    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday=ds===todayStr;
-    const isSel=ds===window._calSelectedDate;
-    const dayOfWeek=new Date(y,m,d).getDay();
-    const rsvs=getReservationsForDate(ds);
-    
-    let dotHtml='';
-    if(rsvs.length){
-      const hasConfirmed=rsvs.some(([,r])=>r.status==='예약 확정');
-      const hasCompleted=rsvs.some(([,r])=>r.status==='방문 완료');
-      const hasCancelled=rsvs.some(([,r])=>r.status==='취소');
-      dotHtml='<div class="cal-dots">';
-      if(hasConfirmed) dotHtml+='<div class="cal-dot dot-confirmed"></div>';
-      if(hasCompleted) dotHtml+='<div class="cal-dot dot-completed"></div>';
-      if(hasCancelled) dotHtml+='<div class="cal-dot dot-cancelled"></div>';
-      dotHtml+=`</div><div class="cal-count">${rsvs.length}건</div>`;
-    }
-    
-    html+=`<div class="cal-cell${isToday?' today':''}${isSel?' selected':''}${dayOfWeek===0?' sun':''}${dayOfWeek===6?' sat':''}" onclick="selectCalDate('${ds}')">
-      <div class="cal-day">${d}</div>${dotHtml}</div>`;
-  }
-  
-  // 다음 달 빈칸
-  const totalCells=firstDay+lastDate;
-  const remaining=totalCells%7===0?0:7-totalCells%7;
-  for(let i=1;i<=remaining;i++){
-    html+=`<div class="cal-cell other"><div class="cal-day">${i}</div></div>`;
-  }
-  
-  grid.innerHTML=html;
-}
-
-window.calPrev=()=>{
-  window._calMonth--;
-  if(window._calMonth<0){window._calMonth=11;window._calYear--;}
-  renderCalendar();renderMonthStats();
-};
-window.calNext=()=>{
-  window._calMonth++;
-  if(window._calMonth>11){window._calMonth=0;window._calYear++;}
-  renderCalendar();renderMonthStats();
-};
-window.selectCalDate=(ds)=>{
-  window._calSelectedDate=ds;
-  renderCalendar();
-  renderDayReservations(ds);
-};
-
-// ── 오늘의 예약 요약
-function renderTodaySummary(){
-  const todayStr=new Date().toISOString().slice(0,10);
-  const rsvs=getReservationsForDate(todayStr).filter(([,r])=>r.status!=='취소');
-  const el=document.getElementById('todayBannerList');
-  if(!rsvs.length){
-    el.innerHTML='<div class="today-banner-empty">오늘 예약 없음 🎉</div>';
-    return;
-  }
-  el.innerHTML=rsvs.map(([,r])=>{
-    const time=r.timeStart?`🕐 ${r.timeStart}${r.timeEnd?'~'+r.timeEnd:''}`:'🕐 시간 미정';
-    const pups=(r.puppies||[]).map(p=>p.puppyName).join(', ');
-    return `<div class="today-banner-item">${time} <strong>${esc(r.visitorName)}</strong>${pups?' · '+esc(pups):''}</div>`;
-  }).join('');
-}
-
-// ── 일별 예약 목록
-function renderDayReservations(dateStr){
-  const panel=document.getElementById('dayPanel');
-  const rsvs=getReservationsForDate(dateStr);
-  const dateObj=new Date(dateStr+'T00:00:00');
-  const dayName=DAYS_KO[dateObj.getDay()];
-  const [,mm,dd]=dateStr.split('-');
-  
-  let html=`<div class="day-panel-header">📅 ${parseInt(mm)}월 ${parseInt(dd)}일 (${dayName}) <span class="day-count">${rsvs.length}건</span></div>`;
-  
-  if(!rsvs.length){
-    html+='<div class="no-rsv">이 날짜에 예약이 없습니다.</div>';
-  } else {
-    rsvs.forEach(([id,r])=>{
-      const timeLabel=r.timeStart?`${r.timeStart}${r.timeEnd?' ~ '+r.timeEnd:''}`:'시간 미정';
-      const stClass=r.status==='방문 완료'?'st-completed':r.status==='취소'?'st-cancelled':'';
-      const stBadge=r.status==='방문 완료'?'rsv-sb-completed':r.status==='취소'?'rsv-sb-cancelled':'rsv-sb-confirmed';
-      
-      let contactHtml='';
-      if(r.visitorPhone) contactHtml+=`<span>📞 ${esc(r.visitorPhone)}</span>`;
-      if(r.visitorKakao) contactHtml+=`<span>💬 ${esc(r.visitorKakao)}</span>`;
-      
-      let puppyHtml='';
-      if(r.puppies&&r.puppies.length){
-        puppyHtml='<div class="rsv-puppies">'+r.puppies.map(p=>{
-          const litter=window._litters[p.litterId];
-          const parentInfo=litter?` (${esc(litter.femaleCode||'?')}×${esc(litter.maleCode||'?')})`:'';
-          const pData=litter?.puppies?.[p.puppyId];
-          const sexIcon=pData?(pData.sex==='female'?'♀':'♂'):'';
-          return `<span class="rsv-puppy-chip">🐶 ${esc(p.puppyName)} <span class="p-sex">${sexIcon}</span>${parentInfo}</span>`;
-        }).join('')+'</div>';
-      }
-      
-      let memoHtml='';
-      if(r.memo) memoHtml=`<div class="rsv-memo">📝 ${esc(r.memo)}</div>`;
-      
-      html+=`<div class="rsv-card ${stClass}">
-        <div class="rsv-time"><span class="time-icon">🕐</span> ${esc(timeLabel)}</div>
-        <div class="rsv-visitor">👤 ${esc(r.visitorName)}</div>
-        ${contactHtml?'<div class="rsv-contact">'+contactHtml+'</div>':''}
-        ${puppyHtml}
-        ${memoHtml}
-        <div class="rsv-actions">
-          <span class="rsv-status-badge ${stBadge}">${esc(r.status||'예약 확정')}</span>
-          <select class="rsv-status-sel" onchange="updateRsvStatus('${id}',this.value)">
-            <option value="예약 확정"${r.status==='예약 확정'||!r.status?' selected':''}>예약 확정</option>
-            <option value="방문 완료"${r.status==='방문 완료'?' selected':''}>방문 완료</option>
-            <option value="취소"${r.status==='취소'?' selected':''}>취소</option>
-          </select>
-          <button class="btn btn-gray btn-sm" onclick="copyRsvMessage('${id}')">📋 안내</button>
-          <button class="btn btn-gray btn-sm" onclick="openRsvModal('${dateStr}','${id}')">✏ 수정</button>
-          <button class="btn btn-gray btn-sm" style="color:var(--red)" onclick="deleteReservation('${id}')">🗑</button>
-        </div>
-      </div>`;
-    });
-  }
-  
-  panel.innerHTML=html;
-  panel.style.display='block';
-}
-
-// ── 월별 통계
-function renderMonthStats(){
-  const rsvs=getReservationsForMonth(window._calYear,window._calMonth);
-  const total=rsvs.length;
-  const confirmed=rsvs.filter(([,r])=>r.status==='예약 확정'||!r.status).length;
-  const completed=rsvs.filter(([,r])=>r.status==='방문 완료').length;
-  const cancelled=rsvs.filter(([,r])=>r.status==='취소').length;
-  document.getElementById('monthStats').innerHTML=
-    `📊 이번 달: <span>전체 ${total}건</span> · <span style="color:#E67E22">확정 ${confirmed}건</span> · <span style="color:var(--green)">완료 ${completed}건</span> · <span style="color:#888">취소 ${cancelled}건</span>`;
-}
-
-// ── 예약 모달
-window.openRsvModal=(dateStr,editId)=>{
-  window._rsvSelectedPuppies=[];
-  document.getElementById('rsv_editId').value=editId||'';
-  document.getElementById('rsvModalTitle').textContent=editId?'📅 예약 수정':'📅 예약 등록';
-  
-  if(editId&&window._reservations[editId]){
-    const r=window._reservations[editId];
-    document.getElementById('rsv_date').value=r.date||'';
-    document.getElementById('rsv_timeStart').value=r.timeStart||'';
-    document.getElementById('rsv_timeEnd').value=r.timeEnd||'';
-    document.getElementById('rsv_name').value=r.visitorName||'';
-    document.getElementById('rsv_phone').value=r.visitorPhone||'';
-    document.getElementById('rsv_kakao').value=r.visitorKakao||'';
-    document.getElementById('rsv_memo').value=r.memo||'';
-    window._rsvSelectedPuppies=(r.puppies||[]).map(p=>({...p}));
-  } else {
-    document.getElementById('rsv_date').value=dateStr||window._calSelectedDate||new Date().toISOString().slice(0,10);
-    document.getElementById('rsv_timeStart').value='';
-    document.getElementById('rsv_timeEnd').value='';
-    document.getElementById('rsv_name').value='';
-    document.getElementById('rsv_phone').value='';
-    document.getElementById('rsv_kakao').value='';
-    document.getElementById('rsv_memo').value='';
-  }
-  
-  document.getElementById('pselSearch').value='';
-  document.getElementById('rsvOverlapWarn').style.display='none';
-  renderPuppySelector();
-  renderSelectedPuppyTags();
-  document.getElementById('rsvModal').classList.add('open');
-};
-window.closeRsvModal=()=>document.getElementById('rsvModal').classList.remove('open');
-
-// ── 강아지 선택 카드 렌더링
-window.renderPuppySelector=()=>{
-  const kw=(document.getElementById('pselSearch')?.value||'').toLowerCase();
-  const litters=window._litters;
-  const container=document.getElementById('pselGroups');
-  if(!Object.keys(litters).length){container.innerHTML='<div class="no-rsv">등록된 강아지가 없습니다.</div>';return;}
-  
-  const sorted=Object.entries(litters).sort(([,a],[,b])=>(b.birthB||'').localeCompare(a.birthB||''));
-  let html='';
-  let hasResults=false;
-  
-  sorted.forEach(([lid,l])=>{
-    const puppies=Object.entries(l.puppies||{}).filter(([,p])=>{
-      if(p.status==='분양 완료') return false;
-      if(!kw) return true;
-      return (p.name||'').toLowerCase().includes(kw)||(l.femaleCode||'').toLowerCase().includes(kw)||(l.maleCode||'').toLowerCase().includes(kw);
-    });
-    if(!puppies.length) return;
-    hasResults=true;
-    
-    html+=`<div class="psel-group-hdr">♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} · ${fmt(l.birthB)}</div>`;
-    html+='<div class="psel-grid">';
-    puppies.forEach(([pid,p])=>{
-      const chosen=window._rsvSelectedPuppies.some(sp=>sp.litterId===lid&&sp.puppyId===pid);
-      const photoEl=p.photo?`<img class="psel-photo" src="${p.photo}" alt="${esc(p.name||pid)}">`:`<div class="psel-placeholder">🐶</div>`;
-      const sexTxt=p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'—';
-      html+=`<div class="psel-card${chosen?' chosen':''}" onclick="togglePuppySel('${lid}','${pid}','${esc(p.name||pid)}')">
-        <div class="psel-check">${chosen?'✓':''}</div>
-        ${photoEl}
-        <div class="psel-name">${esc(p.name||pid)}</div>
-        <div class="psel-sex">${sexTxt}</div>
-      </div>`;
-    });
-    html+='</div>';
-  });
-  
-  if(!hasResults) html='<div class="no-rsv">검색 결과가 없습니다.</div>';
-  container.innerHTML=html;
-};
-
-window.togglePuppySel=(lid,pid,name)=>{
-  const idx=window._rsvSelectedPuppies.findIndex(p=>p.litterId===lid&&p.puppyId===pid);
-  if(idx>=0) window._rsvSelectedPuppies.splice(idx,1);
-  else window._rsvSelectedPuppies.push({litterId:lid,puppyId:pid,puppyName:name});
-  renderPuppySelector();
-  renderSelectedPuppyTags();
-};
-
-function renderSelectedPuppyTags(){
-  const el=document.getElementById('pselSelected');
-  if(!window._rsvSelectedPuppies.length){el.innerHTML='';return;}
-  el.innerHTML=window._rsvSelectedPuppies.map(p=>
-    `<span class="psel-tag">${esc(p.puppyName)} <span class="tag-x" onclick="togglePuppySel('${p.litterId}','${p.puppyId}','${esc(p.puppyName)}')">✕</span></span>`
-  ).join('');
-}
-
-// ── 시간 겹침 검사
-function checkTimeOverlap(dateStr,startTime,endTime,excludeId){
-  if(!startTime||!endTime) return false;
-  const rsvs=getReservationsForDate(dateStr);
-  return rsvs.some(([id,r])=>{
-    if(id===excludeId) return false;
-    if(r.status==='취소') return false;
-    if(!r.timeStart||!r.timeEnd) return false;
-    return startTime<r.timeEnd && endTime>r.timeStart;
-  });
-}
-
-// ── 예약 저장
-window.saveReservation=async()=>{
-  const editId=document.getElementById('rsv_editId').value;
-  const dateVal=document.getElementById('rsv_date').value;
-  const timeStart=document.getElementById('rsv_timeStart').value;
-  const timeEnd=document.getElementById('rsv_timeEnd').value;
-  const nameVal=document.getElementById('rsv_name').value.trim();
-  const phoneVal=document.getElementById('rsv_phone').value.trim();
-  const kakaoVal=document.getElementById('rsv_kakao').value.trim();
-  const memoVal=document.getElementById('rsv_memo').value.trim();
-  
-  if(!dateVal||!nameVal){toast('날짜와 방문자 이름은 필수입니다.');return;}
-  
-  // 시간 겹침 검사
-  if(timeStart&&timeEnd){
-    if(timeStart>=timeEnd){toast('종료 시간은 시작 시간보다 뒤여야 합니다.');return;}
-    if(checkTimeOverlap(dateVal,timeStart,timeEnd,editId||null)){
-      document.getElementById('rsvOverlapWarn').style.display='block';
-      toast('⚠ 해당 시간대에 기존 예약이 겹칩니다.');return;
+// Google Calendar 1-Click URL Generator
+window.buildGCalUrl = function(title, details, location, startDateStr) {
+  const t = encodeURIComponent(title || '[골디쉼터 일정]');
+  const d = encodeURIComponent(details || '');
+  const l = encodeURIComponent(location || '');
+  let datesParam = '';
+  if (startDateStr) {
+    const clean = startDateStr.replace(/[^0-9]/g, '');
+    if (clean.length === 8) {
+      datesParam = `&dates=${clean}/${clean}`;
+    } else if (clean.length >= 12) {
+      const ymd = clean.slice(0, 8);
+      const hm = clean.slice(8, 12);
+      datesParam = `&dates=${ymd}T${hm}00Z/${ymd}T${hm}00Z`;
     }
   }
-  document.getElementById('rsvOverlapWarn').style.display='none';
-  
-  const data={
-    date:dateVal,
-    timeStart:timeStart||'',
-    timeEnd:timeEnd||'',
-    visitorName:nameVal,
-    visitorPhone:phoneVal,
-    visitorKakao:kakaoVal,
-    memo:memoVal,
-    status:editId&&window._reservations[editId]?window._reservations[editId].status:'예약 확정',
-    puppies:window._rsvSelectedPuppies,
-    updatedAt:new Date().toISOString()
-  };
-  
-  try{
-    if(editId){
-      await update(ref(db,`reservations/${editId}`),data);
-      toast('예약이 수정되었습니다.');
-    } else {
-      data.createdAt=new Date().toISOString();
-      await push(ref(db,'reservations'),data);
-      toast('예약이 등록되었습니다!');
-    }
-    closeRsvModal();
-    window._calSelectedDate=dateVal;
-    const d=new Date(dateVal+'T00:00:00');
-    window._calYear=d.getFullYear();
-    window._calMonth=d.getMonth();
-    renderCalendar();renderTodaySummary();renderDayReservations(dateVal);renderMonthStats();
-  }catch(e){
-    console.error('예약 저장 실패:',e);
-    toast('⚠ 예약 저장에 실패했습니다.');
-  }
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${t}&details=${d}&location=${l}${datesParam}`;
 };
 
-// ── 예약 삭제
-window.deleteReservation=async(id)=>{
-  if(!confirm('이 예약을 삭제하시겠습니까?')) return;
-  try{
-    await remove(ref(db,`reservations/${id}`));
-    toast('예약이 삭제되었습니다.');
-  }catch(e){
-    console.error('예약 삭제 실패:',e);
-    toast('⚠ 예약 삭제에 실패했습니다.');
-  }
+window.filterCalCategory = function(cat) {
+  window._calFilter = cat;
+  document.querySelectorAll('.status-opt[id^="cal-filter-"]').forEach(btn => btn.classList.remove('active'));
+  const targetBtn = document.getElementById(`cal-filter-${cat}`);
+  if (targetBtn) targetBtn.classList.add('active');
+  renderCalendarEvents();
 };
 
-// ── 예약 상태 변경
-window.updateRsvStatus=async(id,status)=>{
-  try{
-    await update(ref(db,`reservations/${id}`),{status,updatedAt:new Date().toISOString()});
-    toast(`"${status}"로 변경되었습니다.`);
-  }catch(e){
-    console.error('상태 변경 실패:',e);
-    toast('⚠ 상태 변경에 실패했습니다.');
-  }
-};
-
-// ── 카카오 안내 메시지 복사
-window.copyRsvMessage=(id)=>{
-  const r=window._reservations[id];
-  if(!r) return;
-  
-  const dateObj=new Date(r.date+'T00:00:00');
-  const dayName=DAYS_KO[dateObj.getDay()];
-  const [yy,mm,dd]=r.date.split('-');
-  
-  let timeInfo='';
-  if(r.timeStart&&r.timeEnd){
-    timeInfo=`🕐 시간: ${r.timeStart} ~ ${r.timeEnd}`;
-  } else if(r.timeStart){
-    timeInfo=`🕐 시간: ${r.timeStart}~`;
-  } else {
-    timeInfo='🕐 시간: 추후 안내';
-  }
-  
-  const puppyNames=(r.puppies||[]).map(p=>p.puppyName).join(', ');
-  
-  const msg=`[골디쉼터 방문 예약 안내] 🐾\n\n안녕하세요, 골디 쉼터입니다.\n방문 예약이 확정되어 안내드립니다.\n\n📅 방문일: ${yy}년 ${parseInt(mm)}월 ${parseInt(dd)}일 (${dayName})\n${timeInfo}\n${puppyNames?'🐶 보실 아이: '+puppyNames+'\n':''}\n⏰ 방문 시간은 약 1시간 30분 단위로 안내드리고 있습니다.\n정확한 시간에 맞춰 방문해 주시면 감사하겠습니다.\n\n❓ 문의: 010-6508-5901\n💬 카카오 상담: open.kakao.com/o/sxGtK0ri\n\n골디 쉼터 🐾\n소규모지만 윤리적으로 키운 아이들`;
-  
-  navigator.clipboard.writeText(msg);
-  toast('안내 메시지가 복사되었습니다. 카카오톡에 붙여넣기 하세요!');
-};
-
-// ── 배송 캘린더 기능 추가 ──
-window.renderDeliveryCalendar = function() {
-  const grid = document.getElementById('calendar-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  
-  const dateLabel = document.getElementById('calendar-month-year');
-  const year = window._currentDeliveryCalendarDate.getFullYear();
-  const month = window._currentDeliveryCalendarDate.getMonth();
-  
-  dateLabel.textContent = `${year}년 ${(month + 1).toString().padStart(2, '0')}월`;
-  
-  const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
-  daysOfWeek.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'calendar-day-header';
-    el.textContent = d;
-    grid.appendChild(el);
-  });
-  
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  
-  for (let i = firstDayIndex - 1; i >= 0; i--) {
-    const el = document.createElement('div');
-    el.className = 'calendar-day empty';
-    grid.appendChild(el);
-  }
-  
-  const todayStr = new Date().toISOString().slice(0, 10);
-  
-  for (let day = 1; day <= totalDays; day++) {
-    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    const isToday = dayDateStr === todayStr;
-    
-    const dayCell = document.createElement('div');
-    dayCell.className = `calendar-day${isToday ? ' today' : ''}`;
-    dayCell.onclick = () => window.openAddDeliveryModal(dayDateStr);
-    
-    const numEl = document.createElement('div');
-    numEl.className = 'calendar-day-num';
-    numEl.textContent = day;
-    dayCell.appendChild(numEl);
-    
-    const chipsContainer = document.createElement('div');
-    chipsContainer.className = 'calendar-chips';
-    
-    // 1. 배송 일정 (🚗)
-    const dayDeliveries = (window._deliveries || [])
-      .filter(d => d.date === dayDateStr)
-      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-      
-    dayDeliveries.forEach(dev => {
-      const chip = document.createElement('div');
-      chip.className = `delivery-chip${dev.status === '완료' ? ' completed' : ''}`;
-      const timeStr = dev.time ? `${dev.time} ` : '';
-      chip.textContent = `🚗 ${timeStr}${dev.buyer_name || '입양인'}`;
-      chip.onclick = (e) => {
-        e.stopPropagation();
-        window.openEditDeliveryModal(dev._key);
-      };
-      chipsContainer.appendChild(chip);
-    });
-
-    // 2. 치료/투약 일정 (🩺)
-    const dayTreatments = (window._treatments || []).filter(t => {
-      if (!t || !t.startDate) return false;
-      const s = t.startDate;
-      const e = t.endDate || t.startDate;
-      return dayDateStr >= s && dayDateStr <= e;
-    });
-
-    dayTreatments.forEach(t => {
-      const chip = document.createElement('div');
-      chip.className = `delivery-chip${t.status === '완료' ? ' completed' : ''}`;
-      chip.style.background = '#FFFDF0';
-      chip.style.color = '#D35400';
-      chip.style.borderLeft = '3px solid #E67E22';
-      chip.textContent = `🩺 ${t.targetName || '치료'}`;
-      chip.title = `치료 메모: ${t.memo || ''}`;
-      chip.onclick = (e) => {
-        e.stopPropagation();
-        if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="treatment"]'), 'treatment');
-      };
-      chipsContainer.appendChild(chip);
-    });
-
-    // 3. 방역(백신/구충) 일정 (💉 / 🪱)
-    const littersMap = window._litters || {};
-    Object.values(littersMap).forEach(lt => {
-      if (!lt || !lt.birthA) return;
-      const parentLabel = `${lt.femaleCode || '?'}×${lt.maleCode || '?'}`;
-      const vax1 = dateToStr(addDaysDate(lt.birthA, 25));
-      const vax2 = dateToStr(addDaysDate(lt.birthA, 35));
-      const vax3 = dateToStr(addDaysDate(lt.birthA, 45));
-      
-      let vaxText = '';
-      if (vax1 === dayDateStr) vaxText = '💉 1차백신';
-      else if (vax2 === dayDateStr) vaxText = '💉 2차백신';
-      else if (vax3 === dayDateStr) vaxText = '💉 3차백신';
-
-      if (vaxText) {
-        const chip = document.createElement('div');
-        chip.className = 'delivery-chip';
-        chip.style.background = '#EEF7E0';
-        chip.style.color = '#5A9E1A';
-        chip.style.borderLeft = '3px solid #8BC34A';
-        chip.textContent = `${vaxText} (${parentLabel})`;
-        chip.onclick = (e) => {
-          e.stopPropagation();
-          if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="health"]'), 'health');
-        };
-        chipsContainer.appendChild(chip);
-      }
-
-      // 구충일 (생후 30~43일 짝수날)
-      for (let i = 0; i < 14; i += 2) {
-        const dwDate = dateToStr(addDaysDate(lt.birthA, 30 + i));
-        if (dwDate === dayDateStr) {
-          const chip = document.createElement('div');
-          chip.className = 'delivery-chip';
-          chip.style.background = '#EEF7E0';
-          chip.style.color = '#5A9E1A';
-          chip.style.borderLeft = '3px solid #8BC34A';
-          chip.textContent = `🪱 구충 (${parentLabel})`;
-          chip.onclick = (e) => {
-            e.stopPropagation();
-            if (typeof switchTab === 'function') switchTab(document.querySelector('.tab-btn[onclick*="health"]'), 'health');
-          };
-          chipsContainer.appendChild(chip);
-          break;
-        }
-      }
-    });
-    
-    dayCell.appendChild(chipsContainer);
-    grid.appendChild(dayCell);
-  }
-  
-  const totalGridCells = firstDayIndex + totalDays;
-  const remainingCells = (7 - (totalGridCells % 7)) % 7;
-  for (let i = 0; i < remainingCells; i++) {
-    const el = document.createElement('div');
-    el.className = 'calendar-day empty';
-    grid.appendChild(el);
-  }
-};
-
-window.changeCalendarMonth = function(offset) {
-  window._currentDeliveryCalendarDate.setMonth(window._currentDeliveryCalendarDate.getMonth() + offset);
-  window.renderDeliveryCalendar();
-};
-
-window.closeDeliveryModal = function() {
-  document.getElementById('delivery-modal').classList.remove('open');
-};
-
-window.handleDeliveryModalOverlay = function(e) {
-  if (e.target === document.getElementById('delivery-modal')) window.closeDeliveryModal();
-};
-
-window.searchDeliveryAddress = function() {
-  new window.daum.Postcode({
-    oncomplete: function(data) {
-      let addr = '';
-      if (data.userSelectedType === 'R') {
-        addr = data.roadAddress;
-      } else {
-        addr = data.jibunAddress;
-      }
-      document.getElementById('dev-addr').value = addr;
-    }
-  }).open();
-};
-
-window.openAddDeliveryModal = function(dateStr) {
-  window._deliveryModalMode = 'add';
-  window._deliveryEditKey = null;
-  
-  document.getElementById('delivery-modal-title').textContent = '🚗 배송 일정 등록';
-  document.getElementById('dev-del-btn').style.display = 'none';
-  document.getElementById('dev-status-group').style.display = 'none';
-  document.getElementById('dev-status').value = '예정';
-  
-  const contractsArray = Object.entries(window._contracts).map(([key, val]) => ({ _key: key, ...val }));
-  const sortedContracts = contractsArray.sort((a, b) => (b.created_at || b.contract_date || '').localeCompare(a.created_at || a.contract_date || ''));
-  const select = document.getElementById('dev-contract');
-  select.innerHTML = '<option value="">-- 계약 선택 --</option>' + 
-    sortedContracts.map(c => `<option value="${c._key}">[강아지: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})] ${c.buyer_name} - ${c.buyer_phone}</option>`).join('');
-  select.disabled = false;
-  
-  const todayStr = new Date().toISOString().slice(0, 10);
-  document.getElementById('dev-date').value = dateStr || todayStr;
-  document.getElementById('dev-time').value = '12:00';
-  document.getElementById('dev-addr').value = '';
-  document.getElementById('dev-addr-detail').value = '';
-  document.getElementById('dev-memo').value = '';
-  
-  document.getElementById('delivery-modal').classList.add('open');
-};
-
-window.openEditDeliveryModal = function(dKey) {
-  window._deliveryModalMode = 'edit';
-  window._deliveryEditKey = dKey;
-  
-  const dev = window._deliveries.find(d => d._key === dKey);
-  if (!dev) return;
-  
-  document.getElementById('delivery-modal-title').textContent = '🚗 배송 일정 수정';
-  document.getElementById('dev-del-btn').style.display = 'block';
-  document.getElementById('dev-status-group').style.display = 'block';
-  
-  const select = document.getElementById('dev-contract');
-  select.innerHTML = `<option value="${dev.contractId}">[강아지: ${dev.dogname} (계약완료)] ${dev.buyer_name} - ${dev.buyer_phone}</option>`;
-  select.value = dev.contractId;
-  select.disabled = true;
-  
-  document.getElementById('dev-date').value = dev.date || '';
-  document.getElementById('dev-time').value = dev.time || '';
-  document.getElementById('dev-addr').value = dev.address || '';
-  document.getElementById('dev-addr-detail').value = '';
-  document.getElementById('dev-memo').value = dev.memo || '';
-  document.getElementById('dev-status').value = dev.status || '예정';
-  
-  document.getElementById('delivery-modal').classList.add('open');
-};
-
-window.saveDelivery = async function() {
-  const contractId = document.getElementById('dev-contract').value;
-  const date = document.getElementById('dev-date').value;
-  const time = document.getElementById('dev-time').value;
-  const addr = document.getElementById('dev-addr').value.trim();
-  const addrDetail = document.getElementById('dev-addr-detail').value.trim();
-  const memo = document.getElementById('dev-memo').value.trim();
-  
-  if (!contractId) { toast('분양 계약건을 선택해주세요.'); return; }
-  if (!date || !time) { toast('배송 날짜와 시간을 입력해주세요.'); return; }
-  if (!addr) { toast('배송 주소를 입력해주세요.'); return; }
-  
-  const fullAddr = addr + (addrDetail ? ' ' + addrDetail : '');
-  const saveBtn = document.getElementById('dev-save-btn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = '저장 중...';
-  
-  try {
-    if (window._deliveryModalMode === 'add') {
-      const contract = window._contracts[contractId];
-      if (!contract) return;
-      
-      const newDev = {
-        contractId,
-        dogid: contract.dogid || '',
-        dogname: contract.dogname || '',
-        buyer_name: contract.buyer_name || '',
-        buyer_phone: contract.buyer_phone || '',
-        date,
-        time,
-        address: fullAddr,
-        memo,
-        status: '예정',
-        created_at: new Date().toISOString()
-      };
-      
-      await push(ref(db, 'deliveries'), newDev);
-      toast('✅ 배송 일정이 등록되었습니다!');
-    } else {
-      const updates = {
-        date,
-        time,
-        address: fullAddr,
-        memo,
-        status: document.getElementById('dev-status').value
-      };
-      await update(ref(db, `deliveries/${window._deliveryEditKey}`), updates);
-      toast('✅ 배송 일정이 수정되었습니다!');
-    }
-    window.closeDeliveryModal();
-    window.renderDeliveryCalendar();
-  } catch(e) {
-    console.error('배송 일정 저장 실패:', e);
-    toast('⚠ 저장 실패: ' + e.message);
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = '✅ 저장';
-  }
-};
-
-window.deleteDelivery = async function() {
-  if (!window._deliveryEditKey) return;
-  if (!confirm('정말로 이 배송 일정을 취소/삭제하시겠습니까?')) return;
-  
-  const delBtn = document.getElementById('dev-del-btn');
-  delBtn.disabled = true;
-  delBtn.textContent = '삭제 중...';
-  
-  try {
-    await remove(ref(db, `deliveries/${window._deliveryEditKey}`));
-    toast('🗑️ 배송 일정이 취소되었습니다.');
-    window.closeDeliveryModal();
-    window.renderDeliveryCalendar();
-  } catch(e) {
-    console.error('배송 일정 삭제 실패:', e);
-    toast('⚠ 삭제 실패: ' + e.message);
-  } finally {
-    delBtn.disabled = false;
-    delBtn.textContent = '🗑️ 삭제';
-  }
-};
-
-window.handleContractSelectChange = function(contractId) {
-  if (!contractId) {
-    document.getElementById('dev-addr').value = '';
-    return;
-  }
-  const contract = window._contracts[contractId];
-  if (contract) {
-    document.getElementById('dev-addr').value = contract.buyer_addr || '';
-  }
-};
-
-window.openTMapSearch = function(address) {
-  if (!address || !address.trim()) {
-    toast('주소를 먼저 입력해주세요.');
-    return;
-  }
-  const encoded = encodeURIComponent(address.trim());
-  window.location.href = `tmap://search?name=${encoded}`;
-};
-
-window.sendDeliveryKakao = async function(dKey) {
-  let dev = null;
-  const currentKey = dKey || window._deliveryEditKey;
-  if (currentKey) {
-    dev = (window._deliveries || []).find(d => d._key === currentKey);
-  }
-  
-  let contractId = document.getElementById('dev-contract')?.value;
-  if (!contractId && dev) contractId = dev.contractId;
-  
-  const contract = contractId ? (window._contracts || {})[contractId] : null;
-
-  let buyerName = (dev && dev.buyer_name) || (contract && contract.buyer_name) || '';
-  let buyerPhone = (dev && dev.buyer_phone) || (contract && contract.buyer_phone) || '';
-  let dogName = (dev && dev.dogname) || (contract && contract.dogname) || '';
-
-  let date = document.getElementById('dev-date')?.value || (dev && dev.date) || '';
-  let time = document.getElementById('dev-time')?.value || (dev && dev.time) || '';
-  
-  let addrMain = document.getElementById('dev-addr')?.value || '';
-  let addrDetail = document.getElementById('dev-addr-detail')?.value || '';
-  let address = (addrMain + (addrDetail ? ' ' + addrDetail : '')).trim();
-  if (!address && dev) address = dev.address || '';
-
-  let memo = document.getElementById('dev-memo')?.value;
-  if (memo === undefined || memo === '') {
-    if (dev && dev.memo) memo = dev.memo;
-  }
-
-  if (!date) {
-    toast('배송 날짜를 입력해주세요.');
-    return;
-  }
-  if (!address) {
-    toast('배송 주소를 입력해주세요.');
-    return;
-  }
-
-  const encodedAddr = encodeURIComponent(address);
-  const tmapBridgeUrl = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodedAddr}`;
-
-  let msg = `[골디쉼터] 🚗 배송 일정 안내\n\n`;
-  if (dogName) msg += `🐾 강아지: ${dogName}\n`;
-  msg += `📅 배송 일시: ${date}${time ? ' ' + time : ''}\n`;
-  if (buyerName || buyerPhone) {
-    msg += `👤 수령인: ${buyerName || '입양인'}${buyerPhone ? ' (' + buyerPhone + ')' : ''}\n`;
-  }
-  msg += `📍 배송 주소: ${address}\n\n`;
-  msg += `🚙 티맵 길안내 (클릭 시 티맵 앱 실행):\n${tmapBridgeUrl}`;
-  if (memo && memo.trim()) {
-    msg += `\n\n📝 메모: ${memo.trim()}`;
-  }
-
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: '골디쉼터 배송 일정',
-        text: msg
-      });
-      toast('💬 카카오톡 공유 창이 열렸습니다.');
-      return;
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.log('Web Share failed, copying text:', err);
-      } else {
-        return;
-      }
-    }
-  }
-
-  const ok = await safeCopy(msg);
-  toast(ok ? '💬 카톡 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송해주세요.' : '메시지 복사에 실패했습니다.');
-};
-
-// ═══════════════════════════════════════════════
-//  방역 관리 탭 (백신 + 구충제)
-// ═══════════════════════════════════════════════
-
-function addDaysDate(dateStr, n) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d;
-}
-function dateToStr(d) {
-  if (!d) return '';
-  return d.toISOString().slice(0, 10);
-}
-function fmtDate(d) {
-  if (!d) return '—';
-  const s = typeof d === 'string' ? d : dateToStr(d);
-  return s.replace(/-/g, '.');
-}
-function getDayStatus(dateStr) {
-  if (!dateStr) return 'upcoming';
-  const today = new Date().toISOString().slice(0, 10);
-  if (dateStr < today) return 'overdue';
-  if (dateStr === today) return 'today';
-  const diff = (new Date(dateStr) - new Date(today)) / 86400000;
-  if (diff <= 3) return 'soon';
-  return 'upcoming';
-}
-function getDayLabel(dateStr) {
-  if (!dateStr) return '';
-  const today = new Date().toISOString().slice(0, 10);
-  if (dateStr === today) return '🔔 오늘!';
-  const diff = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
-  if (diff < 0) return `D+${Math.abs(diff)}일 경과`;
-  if (diff === 0) return '오늘';
-  return `D-${diff}일`;
-}
-
-window.renderHealthTab = function() {
-  const el = document.getElementById('healthTabContent');
+window.renderCalendarEvents = function() {
+  const el = document.getElementById('calendarList');
   if (!el) return;
-  const litters = window._litters;
-  if (!Object.keys(litters).length) {
-    el.innerHTML = '<div class="health-empty">등록된 출산 그룹이 없습니다.</div>';
+
+  const rawList = Object.entries(window._schedules);
+  if (!rawList.length) {
+    el.innerHTML = `
+      <div class="card" style="text-align:center; padding:30px; color:var(--gray);">
+        📅 등록된 일정이 없습니다. 오른쪽 상단 '+ 일정 등록' 버튼으로 구글 캘린더 연동 일정을 추가해보세요!
+      </div>
+    `;
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const sorted = Object.entries(litters).sort(([,a],[,b]) => (b.birthA||b.birthB||'').localeCompare(a.birthA||a.birthB||''));
-
-  let html = '';
-  sorted.forEach(([lid, l]) => {
-    const birthA = l.birthA || '';
-    const birthB = l.birthB || '';
-    const baseDateForCalc = birthA || birthB;
-    if (!baseDateForCalc) return;
-
-    // ── 백신 일정 (birthA 기준: +25, +35, +45일)
-    const vaxSchedule = [
-      { label: '1차 백신', offset: 25, dbKey: 'vax1', checkedKey: 'vax1_done' },
-      { label: '2차 백신', offset: 35, dbKey: 'vax2', checkedKey: 'vax2_done' },
-      { label: '3차 백신', offset: 45, dbKey: 'vax3', checkedKey: 'vax3_done' },
-    ];
-
-    let vaxHtml = '<div class="vax-grid">';
-    vaxSchedule.forEach(v => {
-      const calcDate = dateToStr(addDaysDate(baseDateForCalc, v.offset));
-      const savedDate = l[v.dbKey] || calcDate;
-      const isDone = l[v.checkedKey] === true;
-      const status = isDone ? 'vax-done' : getDayStatus(savedDate);
-      const dayLabel = isDone ? '✅ 완료' : getDayLabel(savedDate);
-      vaxHtml += `
-        <div class="vax-chip ${status}">
-          <div class="vax-chip-label">${v.label} (+${v.offset}일)</div>
-          <div class="vax-chip-date">${fmtDate(savedDate)}</div>
-          <div class="vax-chip-day">${dayLabel}</div>
-          <div class="vax-check-row">
-            <button class="vax-check-btn${isDone?' checked':''}" onclick="toggleVaxDone('${lid}','${v.checkedKey}',${isDone})">
-              ${isDone?'✅ 완료':'⬜ 미완료'}
-            </button>
-          </div>
-        </div>`;
-    });
-    vaxHtml += '</div>';
-
-    // ── 구충제 일정 (birthA 기준: +30일부터 2주간)
-    // D+30: 구충제, D+31: 메트로니다졸, D+32: 구충제, D+33: 메트로니다졸 ... D+43 (14일)
-    let dwHtml = '<div class="deworming-timeline">';
-    for (let i = 0; i < 14; i++) {
-      const offset = 30 + i;
-      const isDewormer = i % 2 === 0;
-      const dwDate = dateToStr(addDaysDate(baseDateForCalc, offset));
-      const st = getDayStatus(dwDate);
-      const stClass = st === 'overdue' ? 'dw-overdue' : st === 'today' ? 'dw-today' : st === 'upcoming' && dwDate > todayStr ? 'dw-upcoming' : 'dw-done';
-      const typeClass = isDewormer ? 'dw-dewormer' : 'dw-metro';
-      const typeName = isDewormer ? '🟢 구충제 (Drontal 계열)' : '🩷 메트로니다졸';
-      const statusTxt = st === 'overdue' ? '경과' : st === 'today' ? '오늘!' : `D-${Math.round((new Date(dwDate)-new Date(todayStr))/86400000)}`;
-      const stTagClass = st === 'overdue' ? 'dw-overdue' : st === 'today' ? 'dw-today' : 'dw-upcoming';
-      dwHtml += `
-        <div class="dw-item ${stClass} ${typeClass}">
-          <span class="dw-day-badge">D+${offset}</span>
-          <span class="dw-date">${fmtDate(dwDate)}</span>
-          <span class="dw-type">${typeName}</span>
-          <span class="dw-status-tag ${stTagClass}">${statusTxt}</span>
-        </div>`;
-    }
-    dwHtml += '</div>';
-
-    const puppyCount = Object.keys(l.puppies || {}).length;
-    html += `
-      <div class="health-litter-card">
-        <div class="health-litter-header">
-          <h3>♀ ${esc(l.femaleCode||'—')} × ♂ ${esc(l.maleCode||'—')} &nbsp;|&nbsp; 출산A: ${fmtDate(birthA)} &nbsp;·&nbsp; 새끼 ${puppyCount}마리</h3>
-        </div>
-        <div class="health-litter-body">
-          <div class="health-section-title">💉 백신 일정 (생후 A 기준)</div>
-          ${vaxHtml}
-          <div class="health-section-title" style="margin-top:14px">🪱 구충제 일정 (생후 30~43일, 2주 사이클)</div>
-          ${dwHtml}
-        </div>
-      </div>`;
-  });
-
-  el.innerHTML = html || '<div class="health-empty">출산일(A) 데이터가 있는 그룹이 없습니다.</div>';
-};
-
-// 백신 완료 토글
-window.toggleVaxDone = async function(lid, key, current) {
-  try {
-    await update(ref(db, `litters/${lid}`), { [key]: !current });
-    toast(current ? '백신 완료 취소됐습니다.' : '✅ 백신 완료 처리됐습니다!');
-    renderHealthTab();
-  } catch(e) {
-    toast('⚠ 저장 실패: ' + e.message);
-  }
-};
-
-// ═══════════════════════════════════════════════
-//  구글 캘린더 API 연동 (Google Calendar API v3)
-// ═══════════════════════════════════════════════
-
-const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
-let gcalTokenClient = null;
-let gcalAccessToken = null;
-let gcalUserEmail = null;
-
-// GIS 라이브러리 로드
-(function loadGIS() {
-  if (document.querySelector('script[src*="accounts.google.com/gsi"]')) return;
-  const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client';
-  s.async = true; s.defer = true;
-  document.head.appendChild(s);
-})();
-
-// Client ID 로드/저장
-function getGcalClientId() {
-  return localStorage.getItem('goldi_gcal_client_id') || '';
-}
-window.saveGcalClientId = function() {
-  const val = (document.getElementById('gcal-client-id-input')?.value || '').trim();
-  if (!val || !val.includes('.apps.googleusercontent.com')) {
-    toast('⚠ 올바른 Client ID 형식이 아닙니다. (.apps.googleusercontent.com 포함)');
-    return;
-  }
-  localStorage.setItem('goldi_gcal_client_id', val);
-  toast('✅ Client ID가 저장되었습니다!');
-  updateGcalPanelUI();
-};
-window.toggleGcalManualArea = function() {
-  const area = document.getElementById('gcal-manual-area');
-  if (!area) return;
-  const isHidden = area.style.display === 'none' || !area.style.display;
-  area.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) {
-    const saved = getGcalClientId();
-    const inp = document.getElementById('gcal-client-id-input');
-    if (saved && inp) inp.value = saved;
-  }
-};
-
-// 패널 UI 상태 업데이트
-function updateGcalPanelUI() {
-  const isConnected = !!gcalAccessToken;
-  const hasClientId = !!getGcalClientId();
-  const connectBtn    = document.getElementById('gcal-connect-btn');
-  const syncBtn       = document.getElementById('gcal-sync-btn');
-  const disconnectBtn = document.getElementById('gcal-disconnect-btn');
-  const userInfo      = document.getElementById('gcal-user-info');
-  const statusText    = document.getElementById('gcal-status-text');
-  if (!connectBtn) return;
-
-  if (isConnected) {
-    connectBtn.style.display    = 'none';
-    syncBtn.style.display       = 'inline-flex';
-    disconnectBtn.style.display = 'inline-flex';
-    userInfo.style.display      = 'inline-flex';
-    userInfo.textContent        = '✅ ' + (gcalUserEmail || '연결됨');
-  } else {
-    connectBtn.style.display    = 'inline-flex';
-    syncBtn.style.display       = 'none';
-    disconnectBtn.style.display = 'none';
-    userInfo.style.display      = 'none';
-  }
-}
-
-// 구글 로그인
-window.connectGoogleCalendar = function() {
-  const clientId = getGcalClientId();
-  if (!clientId) {
-    toast('⚠ 먼저 ⚙ 설정에서 Client ID를 입력해주세요.');
-    window.toggleGcalSetup();
-    return;
-  }
-  if (typeof google === 'undefined' || !google.accounts?.oauth2) {
-    toast('⚠ 구글 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
-    return;
-  }
-  try {
-    gcalTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: GCAL_SCOPE,
-      callback: async (resp) => {
-        if (resp.error) {
-          toast('⚠ 로그인 실패: ' + resp.error);
-          return;
-        }
-        gcalAccessToken = resp.access_token;
-        // 이메일 가져오기
-        try {
-          const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: 'Bearer ' + gcalAccessToken }
-          });
-          const info = await r.json();
-          gcalUserEmail = info.email || '';
-        } catch(e) { gcalUserEmail = ''; }
-        updateGcalPanelUI();
-        toast('✅ 구글 캘린더에 연결되었습니다!');
-      }
-    });
-    gcalTokenClient.requestAccessToken({ prompt: 'consent' });
-  } catch(e) {
-    console.error('GCal connect error:', e);
-    toast('⚠ 연결 실패: ' + (e.message || String(e)));
-  }
-};
-
-// 연결 해제
-window.disconnectGoogleCalendar = function() {
-  if (gcalAccessToken && typeof google !== 'undefined') {
-    google.accounts.oauth2.revoke(gcalAccessToken, () => {});
-  }
-  gcalAccessToken = null;
-  gcalUserEmail   = null;
-  gcalTokenClient = null;
-  updateGcalPanelUI();
-  toast('🔔 구글 캘린더 연결이 해제되었습니다.');
-};
-
-// 캘린더 이벤트 생성 (단건)
-async function createGcalEvent(eventObj) {
-  const resp = await fetch(
-    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + gcalAccessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(eventObj)
-    }
-  );
-  if (!resp.ok) {
-    const errData = await resp.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `HTTP ${resp.status}`);
-  }
-  return resp.json();
-}
-
-// 전체 동기화
-window.syncAllToGoogleCalendar = async function() {
-  if (!gcalAccessToken) { toast('⚠ 먼저 구글 연결을 해주세요.'); return; }
-
-  const litters = window._litters || {};
-  const entries = Object.entries(litters).filter(([,l]) => l.birthA || l.birthB);
-  if (!entries.length) {
-    toast('동기화할 출산 기록이 없습니다. (출산일 A 또는 B가 필요합니다.)');
-    return;
-  }
-
-  // 진행바 표시
-  const progressEl  = document.getElementById('gcal-progress');
-  const progressTxt = document.getElementById('gcal-progress-text');
-  const progressBar = document.getElementById('gcal-progress-bar');
-  const syncBtn     = document.getElementById('gcal-sync-btn');
-  if (progressEl)  progressEl.style.display = 'block';
-  if (syncBtn)     { syncBtn.disabled = true; syncBtn.textContent = '동기화 중...'; }
-
-  // 날짜별로 일정을 그룹화하기 위한 객체
-  const dateMap = {};
-
-  for (const [, l] of entries) {
-    const base  = l.birthA || l.birthB;
-    const puppyCount = Object.keys(l.puppies || {}).length;
-    const fCode = l.femaleCode || '?';
-    const mCode = l.maleCode || '?';
-    const countLabel = puppyCount ? `${puppyCount}마리 ` : '';
-
-    // 백신 3회 (+25, +35, +45)
-    [
-      { n: 1, days: 25 },
-      { n: 2, days: 35 },
-      { n: 3, days: 45 }
-    ].forEach(v => {
-      const d = dateToStr(addDaysDate(base, v.days));
-      if (!d) return;
-      if (!dateMap[d]) dateMap[d] = [];
-      dateMap[d].push({
-        type: 'vaccine',
-        text: `${fCode} / ${mCode} ${countLabel}백신 ${v.n}차`
-      });
-    });
-
-    // 구충제 14일 사이클 (+30 ~ +43)
-    for (let i = 0; i < 14; i++) {
-      const d = dateToStr(addDaysDate(base, 30 + i));
-      if (!d) continue;
-      const isDewormer = i % 2 === 0;
-      if (!dateMap[d]) dateMap[d] = [];
-      dateMap[d].push({
-        type: isDewormer ? 'dewormer' : 'metro',
-        text: `${fCode} / ${mCode} ${countLabel}${isDewormer ? '구충' : '메트로'}`
-      });
-    }
-  }
-
-  // 3. 치료 및 투약 일정 (startDate ~ endDate)
-  const treatmentList = window._treatments || [];
-  treatmentList.forEach(t => {
-    if (!t || !t.startDate) return;
-    const s = t.startDate;
-    const e = t.endDate || t.startDate;
-    const label = `🩺 치료: ${t.targetName || '자견'} (${t.symptom || '투약'})`;
-    
-    let curr = new Date(s + 'T00:00:00');
-    const endD = new Date(e + 'T00:00:00');
-    while (curr <= endD) {
-      const dStr = dateToStr(curr);
-      if (dStr) {
-        if (!dateMap[dStr]) dateMap[dStr] = [];
-        dateMap[dStr].push({
-          type: 'treatment',
-          text: label
-        });
-      }
-      curr.setDate(curr.getDate() + 1);
-    }
-  });
-
-  // 묶인 일정을 기반으로 최종 구글 캘린더 이벤트 객체 리스트 생성
-  const events = [];
-  const sortedDates = Object.keys(dateMap).sort();
-
-  for (const d of sortedDates) {
-    const items = dateMap[d];
-    if (!items || !items.length) continue;
-
-    // 제목: 각 항목을 줄바꿈 없이 나열
-    const summary = items.map(item => item.text).join('  |  ');
-
-    // 본문: 제목 나열만
-    const description = items.map(item => item.text).join('\n');
-
-    // 날짜별 성격에 맞는 컬러 아이디 (치료 포함 시 주황색, 백신이 있으면 노란색, 구충제만 있으면 초록색)
-    let colorId = '2'; // 기본: 세이지 (초록)
-    if (items.some(item => item.type === 'treatment')) {
-      colorId = '6'; // 치료 포함 시: 탠저린 (주황색)
-    } else if (items.some(item => item.type === 'vaccine')) {
-      colorId = '5'; // 백신 포함 시: 바나나 (노란색)
-    }
-
-    events.push({
-      summary,
-      description,
-      start: { date: d, timeZone: 'Asia/Seoul' },
-      end:   { date: d, timeZone: 'Asia/Seoul' },
-      colorId,
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 540 } // 오전 9시 알림
-        ]
-      }
-    });
-  }
-
-  // 순차 생성 (API rate limit 대응)
-  let created = 0;
-  let failed  = 0;
-  const total = events.length;
-  let tokenExpired = false;
-
-  for (const ev of events) {
-    if (tokenExpired) break;
-    try {
-      await createGcalEvent(ev);
-      created++;
-    } catch(e) {
-      const msg = e.message || '';
-      if (msg.includes('401') || msg.toLowerCase().includes('invalid')) {
-        toast('⚠ 토큰 만료. 구글 재연결 후 다시 시도해주세요.');
-        gcalAccessToken = null;
-        updateGcalPanelUI();
-        tokenExpired = true;
-        break;
-      }
-      console.warn('Event failed:', ev.summary, e.message);
-      failed++;
-    }
-    const pct = Math.round((created + failed) / total * 100);
-    if (progressBar) progressBar.style.width = pct + '%';
-    if (progressTxt) progressTxt.textContent = `동기화 중... ${created + failed}/${total}일 (${pct}%)`;
-    await new Promise(r => setTimeout(r, 120)); // rate limit 방지
-  }
-
-  // 완료 처리
-  if (progressEl)  progressEl.style.display = 'none';
-  if (progressBar) progressBar.style.width = '0%';
-  if (syncBtn)     { syncBtn.disabled = false; syncBtn.textContent = '📅 전체 동기화'; }
-
-  if (!tokenExpired) {
-    const msg = failed === 0
-      ? `✅ ${created}일의 방역 일정을 구글 캘린더에 통합 등록 완료!`
-      : `✅ ${created}일 등록 완료 (실패 ${failed}일)`;
-    toast(msg);
-  }
-};
-
-// health 탭 진입 시 UI 초기화
-const _origRenderHealth = window.renderHealthTab;
-window.renderHealthTab = function() {
-  updateGcalPanelUI();
-  if (_origRenderHealth) _origRenderHealth();
-};
-
-// ═══════════════════════════════════════════════
-//  치료 관리 탭 기능
-// ═══════════════════════════════════════════════
-window._treatmentTargetType = 'puppy';
-window._treatmentsFilter = 'all';
-
-// 주사제 매핑 정보 및 주의 메시지
-const INJECTION_INFO = {
-  baytril: { name: '바이트릴', defaultChecked: false },
-  danpron: { name: '단프론', defaultChecked: false },
-  bromhexine: { name: '브롬신', defaultChecked: false },
-  kingbelin: { name: '킹벨린', defaultChecked: false },
-  carasil: { name: '카라실', defaultChecked: false },
-  jeslong: { name: '제스롱', defaultChecked: false },
-  dexasone: { name: '덱사손', defaultChecked: false }
-};
-
-// 증상별 추천 조합
-const SYMPTOM_COMBINATIONS = {
-  direct: [],
-  cold_wet: ['danpron', 'baytril'],
-  cold_dry: ['bromhexine', 'baytril'],
-  diarrhea_simple: ['kingbelin', 'baytril'],
-  diarrhea_anorexia: ['kingbelin', 'baytril', 'carasil'],
-  diarrhea_vomit: ['kingbelin', 'baytril', 'jeslong'],
-  diarrhea_fever: ['kingbelin', 'baytril', 'danpron'],
-  wound_inflammation: ['dexasone', 'baytril'],
-  anorexia_simple: ['carasil']
-};
-
-window.initTreatmentTab = function() {
-  // 오늘 날짜로 시작일 세팅
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const startDateInput = document.getElementById('treat-start-date');
-  if (startDateInput && !startDateInput.value) {
-    startDateInput.value = todayStr;
-  }
-  
-  // 데이터 불러온 정보가 있으면 바인딩
-  fillTreatmentSelects();
-  onTreatmentDateChanged();
-  renderTreatmentList();
-};
-
-// 대상 구분 변경 (새끼 / 성견)
-window.setTreatmentTargetType = function(type) {
-  window._treatmentTargetType = type;
-  
-  const puppyBtn = document.getElementById('btn-treat-type-puppy');
-  const adultBtn = document.getElementById('btn-treat-type-adult');
-  const puppyWrap = document.getElementById('treat-target-puppy-wrap');
-  const adultWrap = document.getElementById('treat-target-adult-wrap');
-  
-  if (type === 'puppy') {
-    puppyBtn.className = 'btn btn-gold btn-sm';
-    adultBtn.className = 'btn btn-gray btn-sm';
-    puppyWrap.style.display = 'block';
-    adultWrap.style.display = 'none';
-  } else {
-    puppyBtn.className = 'btn btn-gray btn-sm';
-    adultBtn.className = 'btn btn-gold btn-sm';
-    puppyWrap.style.display = 'none';
-    adultWrap.style.display = 'block';
-  }
-  
-  // 데이터 클리어 및 리셋
-  document.getElementById('treat-puppy-select').value = '';
-  document.getElementById('treat-adult-input').value = '';
-  document.getElementById('treat-pregnant-check').checked = false;
-  document.getElementById('treat-weight').value = '';
-  document.getElementById('treat-symptom-select').value = 'direct';
-  
-  // 모든 체크박스 해제 및 활성화
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk) chk.checked = false;
-    if (val) {
-      val.value = '';
-      val.disabled = true;
-    }
-  });
-  
-  checkBaytrilWarning();
-};
-
-function getLitterLabel(l) {
-  if (!l) return '';
-  
-  // 1. 모견 식별/이름 파싱 (예: 4262/다미)
-  let fCode = (l.femaleCode || '?').trim();
-  const rawFemales = typeof females !== 'undefined' ? females : (window._females || []);
-  const femaleObj = Array.isArray(rawFemales)
-    ? rawFemales.find(f => f && (String(f.code).trim() === fCode || String(f._key) === fCode))
-    : null;
-  if (femaleObj) {
-    const c = (femaleObj.code || '').trim();
-    const n = (femaleObj.name || '').trim();
-    if (c && n && c !== n && !fCode.includes('/')) fCode = `${c}/${n}`;
-    else if (n && !fCode.includes('/')) fCode = n;
-    else if (c && !fCode.includes('/')) fCode = c;
-  }
-
-  // 2. 부견 식별/이름 파싱 (예: 늑구)
-  let mCode = (l.maleCode || '?').trim();
-  const rawMales = typeof males !== 'undefined' ? males : (window._males || []);
-  const maleObj = Array.isArray(rawMales)
-    ? rawMales.find(m => m && (String(m.code).trim() === mCode || String(m._key) === mCode))
-    : null;
-  if (maleObj) {
-    const c = (maleObj.code || '').trim();
-    const n = (maleObj.name || '').trim();
-    if (c && n && c !== n && !mCode.includes('/')) mCode = `${c}/${n}`;
-    else if (n && !mCode.includes('/')) mCode = n;
-    else if (c && !mCode.includes('/')) mCode = c;
-  }
-
-  // 3. 자견 수
-  const puppies = l.puppies || {};
-  const puppyCount = l.count || Object.keys(puppies).length || 1;
-
-  // 4. 생후 일수
-  const ageInDays = l.birthA 
-    ? Math.round((new Date() - new Date(l.birthA + 'T00:00:00')) / 86400000) 
-    : (l.birthB ? Math.round((new Date() - new Date(l.birthB + 'T00:00:00')) / 86400000) : null);
-  
-  const ageStr = ageInDays !== null ? ` (생후 ${ageInDays}일)` : '';
-
-  return `${fCode} × ${mCode} ${puppyCount}마리${ageStr}`;
-}
-
-// 드롭다운 및 자동완성 목록 로드
-function fillTreatmentSelects() {
-  const litters = window._litters || {};
-  
-  // 1. 새끼 셀렉트 박스 채우기 (출산/형제 그룹 단위)
-  const puppySelect = document.getElementById('treat-puppy-select');
-  if (puppySelect) {
-    const currentVal = puppySelect.value;
-    let options = '<option value="">-- 새끼 (형제 그룹) 선택 --</option>';
-    
-    const litterList = Object.entries(litters || {}).map(([k, v]) => ({ _key: k, ...v }));
-    const sortedLitters = [...litterList].sort((a, b) => (b.birthA || '').localeCompare(a.birthA || ''));
-    
-    sortedLitters.forEach(l => {
-      const lid = l._key;
-      const label = getLitterLabel(l);
-      const puppies = l.puppies || {};
-      
-      let sampleWeight = '';
-      Object.values(puppies).forEach(p => { if (p.weight && !sampleWeight) sampleWeight = p.weight; });
-      const weightAttr = sampleWeight ? ` data-weight="${sampleWeight}"` : '';
-
-      options += `<option value="${lid}"${weightAttr}>${label}</option>`;
-    });
-    
-    puppySelect.innerHTML = options;
-    if (currentVal) puppySelect.value = currentVal;
-  }
-  
-  // 2. 성견 셀렉트 박스 & datalist 채우기
-  const adultSelect = document.getElementById('treat-adult-select');
-  const datalist = document.getElementById('treat-adult-suggestions');
-  
-  const adultSet = new Set();
-  Object.values(litters).forEach(l => {
-    if (l && l.femaleCode) adultSet.add(l.femaleCode.trim());
-    if (l && l.maleCode) adultSet.add(l.maleCode.trim());
-  });
-  
-  const sortedAdults = Array.from(adultSet).sort();
-  
-  if (adultSelect) {
-    const currentAdultVal = adultSelect.value;
-    let selectHtml = '<option value="">-- 성견 선택 --</option>';
-    sortedAdults.forEach(code => {
-      selectHtml += `<option value="${code}">🐕 ${code}</option>`;
-    });
-    adultSelect.innerHTML = selectHtml;
-    if (currentAdultVal) adultSelect.value = currentAdultVal;
-  }
-  
-  if (datalist) {
-    let datalistHtml = '';
-    sortedAdults.forEach(code => {
-      datalistHtml += `<option value="${code}">`;
-    });
-    datalist.innerHTML = datalistHtml;
-  }
-}
-
-window.onTreatmentAdultSelectChanged = function(val) {
-  const input = document.getElementById('treat-adult-input');
-  if (input) input.value = val;
-  checkBaytrilWarning();
-};
-
-// 새끼 선택 변경 시
-window.onTreatmentPuppyChanged = function() {
-  const sel = document.getElementById('treat-puppy-select');
-  const selectedOption = sel.options[sel.selectedIndex];
-  if (selectedOption) {
-    // 저장된 몸무게가 있으면 자동으로 채워줌
-    const savedWeight = selectedOption.getAttribute('data-weight');
-    if (savedWeight) {
-      document.getElementById('treat-weight').value = savedWeight;
-      onTreatmentWeightChanged();
-    }
-  }
-  checkBaytrilWarning();
-};
-
-// 성견 입력 변경 시
-window.onTreatmentAdultChanged = function() {
-  checkBaytrilWarning();
-};
-
-// 몸무게 변경 시 용량 자동 계산
-window.onTreatmentWeightChanged = function() {
-  const weightVal = parseFloat(document.getElementById('treat-weight').value);
-  
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    
-    if (chk && chk.checked && !isNaN(weightVal) && weightVal > 0) {
-      // 1kg당 0.1ml 계산 (소수점 둘째 자리까지 반올림)
-      const dose = Math.round(weightVal * 0.1 * 100) / 100;
-      if (val) val.value = dose;
-    } else if (val && (!chk || !chk.checked)) {
-      val.value = '';
-    }
-  });
-  
-  checkBaytrilWarning();
-};
-
-const RECOMMENDED_DURATIONS = {
-  direct: 3,
-  cold_wet: 5,           // 콧물 감기 (항생제 바이트릴 포함) -> 5일
-  cold_dry: 5,           // 마른 기침 (항생제 바이트릴 포함) -> 5일
-  diarrhea_simple: 5,    // 단순 설사 (항생제 바이트릴 포함) -> 5일
-  diarrhea_anorexia: 5,  // 설사+식욕부진 (항생제 바이트릴 포함) -> 5일
-  diarrhea_vomit: 5,     // 설사+구토 (항생제 바이트릴 포함) -> 5일
-  diarrhea_fever: 5,     // 설사+열/염증 (항생제 바이트릴 포함) -> 5일
-  wound_inflammation: 5, // 외부상처/염증 (소염제 덱사손 + 바이트릴) -> 5일
-  anorexia_simple: 2     // 단순 식욕부진 (카라실 영양) -> 2일
-};
-
-// 증상 템플릿 적용
-window.onTreatmentSymptomChanged = function(symptomKey) {
-  const activeKeys = SYMPTOM_COMBINATIONS[symptomKey] || [];
-  
-  Object.keys(INJECTION_INFO).forEach(key => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    
-    if (chk) {
-      const shouldCheck = activeKeys.includes(key);
-      chk.checked = shouldCheck;
-      if (val) {
-        val.disabled = !shouldCheck;
-      }
-    }
-  });
-  
-  const recDuration = RECOMMENDED_DURATIONS[symptomKey] || 3;
-  const durInput = document.getElementById('treat-duration');
-  if (durInput) durInput.value = recDuration;
-
-  // 용량 자동 업데이트 및 경고 체크
-  onTreatmentWeightChanged();
-};
-
-// 개별 약품 체크 해제/선택 시
-window.onInjCheckChanged = function(key) {
-  const chk = document.getElementById(`inj-check-${key}`);
-  const val = document.getElementById(`inj-val-${key}`);
-  
-  if (chk && val) {
-    val.disabled = !chk.checked;
-    if (!chk.checked) {
-      val.value = '';
-    } else {
-      // 체크하면 몸무게 기반 계산된 값 대입
-      const weightVal = parseFloat(document.getElementById('treat-weight').value);
-      if (!isNaN(weightVal) && weightVal > 0) {
-        val.value = Math.round(weightVal * 0.1 * 100) / 100;
-      }
-    }
-  }
-  
-  // 증상 선택 드롭다운은 '직접 입력'으로 변경
-  document.getElementById('treat-symptom-select').value = 'direct';
-
-  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
-  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
-  const durInput = document.getElementById('treat-duration');
-  if (durInput) durInput.value = (hasBaytril || hasDexasone) ? 5 : 3;
-
-  checkBaytrilWarning();
-  onTreatmentDateChanged();
-};
-
-// 바이트릴 경고 조건 실시간 체크
-window.checkBaytrilWarning = function() {
-  const baytrilChecked = document.getElementById('inj-check-baytril')?.checked;
-  const warnBox = document.getElementById('treat-warning-box');
-  if (!warnBox) return;
-  
-  if (!baytrilChecked) {
-    warnBox.style.display = 'none';
-    return false;
-  }
-  
-  let isPregnant = false;
-  let isVaccineDay = false;
-  
-  const startDate = document.getElementById('treat-start-date').value;
-  
-  // 1. 임신견 여부 체크
-  if (window._treatmentTargetType === 'adult') {
-    isPregnant = document.getElementById('treat-pregnant-check').checked;
-  }
-  
-  // 2. 백신 접종 당일 여부 체크
-  if (window._treatmentTargetType === 'puppy' && startDate) {
-    const litterId = document.getElementById('treat-puppy-select').value;
-    if (litterId) {
-      const litter = (window._litters || {})[litterId];
-      if (litter && litter.birthA) {
-        // 백신 예정일 계산 (+25, +35, +45일)
-        const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
-        const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
-        const vax3 = dateToStr(addDaysDate(litter.birthA, 45));
-        
-        if (startDate === vax1 || startDate === vax2 || startDate === vax3) {
-          isVaccineDay = true;
-        }
-      }
-    }
-  }
-  
-  if (isPregnant || isVaccineDay) {
-    let reason = '';
-    if (isPregnant && isVaccineDay) reason = ' (임신 모견 및 백신 접종 당일)';
-    else if (isPregnant) reason = ' (임신 모견)';
-    else if (isVaccineDay) reason = ' (백신 접종 당일)';
-    
-    warnBox.innerHTML = `⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다.${reason}<br>약품 조합을 변경해 주세요.`;
-    warnBox.style.display = 'block';
+  const filter = window._calFilter;
+  const filtered = rawList.filter(([, s]) => {
+    const type = s.type || 'rsv';
+    if (filter === 'sync') return type === 'rsv' || type === 'delivery';
+    if (filter === 'care') return type === 'disinfection';
     return true;
-  } else {
-    warnBox.style.display = 'none';
-    return false;
-  }
-};
-
-// 투약 기간 기반 완료일 계산
-window.onTreatmentDateChanged = function() {
-  const startDateVal = document.getElementById('treat-start-date').value;
-  const durationVal = parseInt(document.getElementById('treat-duration').value);
-  const display = document.getElementById('treat-end-date-display');
-  const hintEl = document.getElementById('treat-duration-hint');
-  
-  const hasBaytril = document.getElementById('inj-check-baytril')?.checked;
-  const hasDexasone = document.getElementById('inj-check-dexasone')?.checked;
-  const symptomKey = document.getElementById('treat-symptom-select')?.value;
-
-  if (hintEl) {
-    if (hasBaytril || hasDexasone || symptomKey === 'cold_wet' || symptomKey === 'cold_dry' || symptomKey === 'diarrhea_fever' || symptomKey === 'wound_inflammation') {
-      hintEl.textContent = '💡 추천: 5일 (항생제/소염제)';
-    } else if (symptomKey === 'anorexia_simple') {
-      hintEl.textContent = '💡 추천: 2일 (대사 촉진)';
-    } else {
-      hintEl.textContent = '💡 추천: 3일 (기본 치료)';
-    }
-  }
-
-  if (!display) return;
-  
-  if (startDateVal && !isNaN(durationVal) && durationVal > 0) {
-    // 시작일부터 N일 동안이므로 완료일은 시작일 + (N - 1)일
-    const end = addDaysDate(startDateVal, durationVal - 1);
-    display.textContent = fmtDate(end);
-  } else {
-    display.textContent = '-';
-  }
-  
-  checkBaytrilWarning();
-};
-
-// 필터링 적용
-window.filterTreatments = function(filter) {
-  window._treatmentsFilter = filter;
-  
-  const allBtn = document.getElementById('filter-treat-all');
-  const activeBtn = document.getElementById('filter-treat-active');
-  const doneBtn = document.getElementById('filter-treat-done');
-  
-  if (allBtn) allBtn.style.background = filter === 'all' ? '#fff' : 'transparent';
-  if (allBtn) allBtn.style.fontWeight = filter === 'all' ? '800' : '700';
-  if (activeBtn) activeBtn.style.background = filter === 'active' ? '#fff' : 'transparent';
-  if (activeBtn) activeBtn.style.fontWeight = filter === 'active' ? '800' : '700';
-  if (doneBtn) doneBtn.style.background = filter === 'done' ? '#fff' : 'transparent';
-  if (doneBtn) doneBtn.style.fontWeight = filter === 'done' ? '800' : '700';
-  
-  renderTreatmentList();
-};
-
-// 신규 치료 이력 Firebase 저장
-window.saveTreatment = async function() {
-  const type = window._treatmentTargetType;
-  let targetId = '';
-  let targetName = '';
-  
-  // 1. 강아지 대상 구분에 따른 데이터 가져오기
-  if (type === 'puppy') {
-    const sel = document.getElementById('treat-puppy-select').value;
-    if (!sel) { toast('새끼 (형제 그룹)을 선택해주세요.'); return; }
-    
-    targetId = sel;
-    const selectEl = document.getElementById('treat-puppy-select');
-    targetName = selectEl.options[selectEl.selectedIndex].text;
-  } else {
-    const adultSelVal = document.getElementById('treat-adult-select')?.value.trim() || '';
-    const adultInpVal = document.getElementById('treat-adult-input')?.value.trim() || '';
-    const adultVal = adultInpVal || adultSelVal;
-    if (!adultVal) { toast('성견 코드를 선택하거나 입력해주세요.'); return; }
-    targetId = adultVal;
-    targetName = `🐕 성견: ${adultVal}`;
-  }
-  
-  // 2. 몸무게 확인
-  const weightVal = parseFloat(document.getElementById('treat-weight').value);
-  if (isNaN(weightVal) || weightVal <= 0) {
-    toast('올바른 몸무게를 입력해주세요.');
-    return;
-  }
-  
-  // 3. 날짜 및 기간 확인
-  const startDate = document.getElementById('treat-start-date').value;
-  const durationDays = parseInt(document.getElementById('treat-duration').value);
-  if (!startDate || isNaN(durationDays) || durationDays <= 0) {
-    toast('올바른 시작일과 투약 기간을 입력해주세요.');
-    return;
-  }
-  
-  // 4. 바이트릴 경고 상태 확인
-  if (checkBaytrilWarning()) {
-    toast('⚠️ 바이트릴 투약 금지 경고를 확인하고 약품을 조정해주세요.');
-    return;
-  }
-  
-  // 5. 약품 조합 추출
-  const injections = {};
-  let selectedCount = 0;
-  Object.entries(INJECTION_INFO).forEach(([key, info]) => {
-    const chk = document.getElementById(`inj-check-${key}`);
-    const val = document.getElementById(`inj-val-${key}`);
-    if (chk && chk.checked) {
-      const dose = parseFloat(val?.value) || 0;
-      injections[info.name] = dose;
-      selectedCount++;
-    }
   });
-  
-  if (selectedCount === 0) {
-    toast('최소 하나 이상의 치료 주사제를 선택해주세요.');
-    return;
-  }
-  
-  // 아미톱 상시 필수 추가
-  injections['아미톱(영양제)'] = '끝까지 채움';
-  
-  const symptomSelect = document.getElementById('treat-symptom-select');
-  const symptomName = symptomSelect.options[symptomSelect.selectedIndex].text.split('(')[0].trim();
-  const endDate = dateToStr(addDaysDate(startDate, durationDays - 1));
-  
-  const memo = document.getElementById('treat-memo').value.trim();
-  
-  const isPregnant = type === 'adult' ? document.getElementById('treat-pregnant-check').checked : false;
-  
-  const payload = {
-    targetType: type,
-    targetId,
-    targetName,
-    weight: weightVal,
-    symptom: symptomName,
-    injections,
-    startDate,
-    durationDays,
-    endDate,
-    status: '진행중',
-    isPregnant,
-    memo,
-    createdAt: new Date().toISOString()
-  };
-  
-  try {
-    await push(ref(db, 'treatments'), payload);
-    toast('✅ 치료 기록이 등록되었습니다!');
-    
-    // 입력창 초기화
-    document.getElementById('treat-weight').value = '';
-    document.getElementById('treat-memo').value = '';
-    document.getElementById('treat-symptom-select').value = 'direct';
-    if (type === 'puppy') {
-      document.getElementById('treat-puppy-select').value = '';
-    } else {
-      document.getElementById('treat-adult-input').value = '';
-      document.getElementById('treat-pregnant-check').checked = false;
-    }
-    
-    // 약품 체크 초기화
-    Object.keys(INJECTION_INFO).forEach(key => {
-      const chk = document.getElementById(`inj-check-${key}`);
-      const val = document.getElementById(`inj-val-${key}`);
-      if (chk) chk.checked = false;
-      if (val) {
-        val.value = '';
-        val.disabled = true;
-      }
-    });
-    
-    onTreatmentDateChanged();
-  } catch(e) {
-    console.error('치료 기록 저장 실패:', e);
-    toast('⚠ 등록 실패: ' + e.message);
-  }
-};
 
-// 치료 이력 목록 렌더링
-window.renderTreatmentList = function() {
-  const container = document.getElementById('treatmentListContent');
-  if (!container) return;
-  
-  const list = window._treatments || [];
-  if (!list.length) {
-    container.innerHTML = '<div class="health-empty">등록된 치료 및 처방 내역이 없습니다.</div>';
+  if (!filtered.length) {
+    el.innerHTML = `<div class="loading">선택한 카테고리에 해당하는 일정이 없습니다.</div>`;
     return;
   }
-  
-  // 종료일 날짜순 정렬 (최신 등록 및 진행중이 위로 오도록)
-  const sorted = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  
-  const todayStr = new Date().toISOString().slice(0, 10);
-  let html = '';
-  
-  sorted.forEach(t => {
-    // 필터링 적용
-    if (window._treatmentsFilter === 'active' && t.status !== '진행중') return;
-    if (window._treatmentsFilter === 'done' && t.status !== '완료') return;
-    
-    const isDone = t.status === '완료';
-    const isOverdue = !isDone && t.endDate < todayStr;
-    const cardBorderColor = isDone ? 'var(--gray-l)' : isOverdue ? 'var(--red)' : 'var(--blue)';
-    
-    // 약품 표시 텍스트 만들기
-    const injTextList = [];
-    Object.entries(t.injections || {}).forEach(([name, val]) => {
-      if (typeof val === 'number') {
-        injTextList.push(`${name} ${val}ml`);
-      } else {
-        injTextList.push(`${name}(${val})`);
-      }
-    });
-    
-    // 남은 기간 계산
-    let dDayText = '';
-    if (!isDone) {
-      const diff = Math.round((new Date(t.endDate + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
-      if (diff < 0) {
-        dDayText = `<span style="color:var(--red); font-weight:800;">기간 경과 (완료 필요)</span>`;
-      } else if (diff === 0) {
-        dDayText = `<span style="color:var(--gold); font-weight:800;">오늘 완료!</span>`;
-      } else {
-        dDayText = `<span style="color:var(--blue); font-weight:800;">D-${diff}일 남음</span>`;
-      }
+
+  const sorted = filtered.sort(([, a], [, b]) => (b.date || '').localeCompare(a.date || ''));
+
+  el.innerHTML = sorted.map(([id, s]) => {
+    const type = s.type || 'rsv';
+    let catBadge = '';
+    let isGCalSyncable = true;
+
+    if (type === 'rsv') {
+      catBadge = '<span class="badge" style="background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7;">🟡 예약</span>';
+    } else if (type === 'delivery') {
+      catBadge = '<span class="badge" style="background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1;">🔵 배송</span>';
     } else {
-      dDayText = `<span style="color:var(--green); font-weight:800;">치료 완료</span>`;
+      catBadge = '<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 방역/치료 (독립)</span>';
+      isGCalSyncable = false;
     }
-    
-    const pregnantBadge = t.isPregnant ? '<span style="display:inline-block; font-size:10px; background:#FFEBE8; color:var(--red); padding:1px 6px; border-radius:10px; font-weight:800; margin-left:6px;">🤰 임신견</span>' : '';
-    
-    html += `
-      <div class="card" style="margin-bottom:0; border-left: 5px solid ${cardBorderColor}; padding:14px; position:relative; background:${isDone ? '#fbfbfb' : '#fff'};">
+
+    const titleText = isGCalSyncable ? `[골디쉼터 ${type === 'rsv' ? '예약' : '배송'}] ${s.title}` : `[골디쉼터 방역/치료] ${s.title}`;
+    const gcalUrl = window.buildGCalUrl(titleText, s.details || '', s.location || '', s.date);
+
+    let gcalBtn = '';
+    if (isGCalSyncable) {
+      gcalBtn = `<a href="${gcalUrl}" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none;">📅 Google 캘린더에 추가</a>`;
+    } else {
+      gcalBtn = `<span style="font-size:11px; color:var(--gray);">🔒 방역/치료 독립 카테고리</span>`;
+    }
+
+    return `
+      <div class="card" style="margin-bottom:12px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
           <div>
-            <div style="font-size:13px; font-weight:800; color:var(--br); display:flex; align-items:center;">
-              ${esc(t.targetName)}
-              ${pregnantBadge}
-            </div>
-            <div style="font-size:11px; color:var(--gray); margin-top:2px;">
-              ⚖️ 몸무게: <strong>${t.weight} kg</strong> &nbsp;|&nbsp; 📋 증상: <strong>${esc(t.symptom)}</strong>
-            </div>
+            ${catBadge}
+            <span style="font-weight:800; font-size:15px; margin-left:8px;">${s.title}</span>
           </div>
-          <div style="font-size:11.5px; text-align:right;">
-            ${dDayText}
-          </div>
+          <span style="font-size:12px; color:var(--gray); font-weight:600;">📅 ${fmt(s.date)}</span>
         </div>
-        
-        <div style="font-size:12px; font-weight:700; color:var(--br); background:var(--gray-ll); padding:8px 10px; border-radius:6px; margin-bottom:8px; line-height:1.4;">
-          💊 처방: ${esc(injTextList.join(' + '))}
-        </div>
-        
-        ${t.memo ? `<div style="font-size:11.5px; color:var(--gray); margin-bottom:8px; padding-left:4px; border-left:2px solid var(--gray-l);">📝 ${esc(t.memo)}</div>` : ''}
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--gray); margin-top:10px; border-top:1px dashed var(--gray-l); padding-top:8px;">
-          <div>📅 기간: ${fmtDate(t.startDate)} ~ ${fmtDate(t.endDate)} (${t.durationDays}일간)</div>
-          <div style="display:flex; gap:6px;">
-            <button class="vax-check-btn ${isDone ? 'checked' : ''}" onclick="toggleTreatmentStatus('${t._key}', '${t.status}')" style="margin:0; padding:2px 8px; font-size:10.5px;">
-              ${isDone ? '✅ 치료 완료' : '⬜ 미완료'}
-            </button>
-            <button class="btn btn-gray btn-sm" onclick="deleteTreatment('${t._key}')" style="margin:0; padding:2px 6px; background:#FFEBE8; color:var(--red); border:1px solid #FFC1C1;">
-              🗑️
-            </button>
-          </div>
+        ${s.location ? `<div style="font-size:12px; color:var(--br-l); margin-bottom:4px;">📍 <strong>장소/주소:</strong> ${s.location}</div>` : ''}
+        ${s.details ? `<div style="font-size:12px; color:var(--gray); margin-bottom:10px;">📝 <strong>상세내용:</strong> ${s.details}</div>` : ''}
+        <div class="btn-row" style="margin-top:10px; justify-content:space-between; align-items:center;">
+          ${gcalBtn}
+          <button class="btn btn-gray btn-sm" onclick="deleteCalendarEvent('${id}')" style="color:var(--red);">삭제</button>
         </div>
       </div>
     `;
-  });
-  
-  container.innerHTML = html || `<div class="health-empty">${window._treatmentsFilter === 'active' ? '진행 중인 치료 내역이 없습니다.' : '완료된 치료 내역이 없습니다.'}</div>`;
+  }).join('');
 };
 
-// 치료 상태 전환 (완료/진행중)
-window.toggleTreatmentStatus = async function(key, currentStatus) {
-  const newStatus = currentStatus === '진행중' ? '완료' : '진행중';
-  try {
-    await update(ref(db, `treatments/${key}`), { status: newStatus });
-    toast(newStatus === '완료' ? '✅ 치료를 완료 처리했습니다!' : '치료를 진행중으로 변경했습니다.');
-  } catch(e) {
-    toast('⚠ 상태 변경 실패: ' + e.message);
+window.openAddEventModal = function() {
+  const html = `
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>카테고리 구분 *</label>
+      <select id="cal_type" style="padding:10px; font-weight:700;">
+        <option value="rsv">🟡 예약 (방문/상담 - Google 캘린더 연동)</option>
+        <option value="delivery">🔵 배송 (분양 인도 - Google 캘린더 연동)</option>
+        <option value="disinfection">🟢 방역/치료 (소독/약품 - 독립 카테고리)</option>
+      </select>
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>일정 제목 *</label>
+      <input type="text" id="cal_title" placeholder="예: 홍길동 님 자견 인도 배송 / 견사 전체 소독">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>일시 *</label>
+      <input type="date" id="cal_date" value="${new Date().toISOString().slice(0,10)}">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>장소 / 배송지 주소 (선택)</label>
+      <input type="text" id="cal_location" placeholder="예: 서울시 강남구 테헤란로 123">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>상세 내용 / 메모 (선택)</label>
+      <textarea id="cal_details" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:10px; font-family:inherit; height:70px;" placeholder="연락처, 수령 강아지 이름, 전달사항 입력"></textarea>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-gray" onclick="closeModal()">취소</button>
+      <button class="btn btn-gold" onclick="saveAddEvent()">💾 일정 저장</button>
+    </div>
+  `;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('open');
+};
+
+window.saveAddEvent = async function() {
+  const type = document.getElementById('cal_type').value;
+  const title = document.getElementById('cal_title').value.trim();
+  const date = document.getElementById('cal_date').value;
+  const location = document.getElementById('cal_location').value.trim();
+  const details = document.getElementById('cal_details').value.trim();
+
+  if (!title || !date) {
+    toast('일정 제목과 일시를 입력해주세요.');
+    return;
   }
+
+  const newRef = fbPush(ref(db, 'schedules'));
+  await update(newRef, { type, title, date, location, details, createdAt: Date.now() });
+  closeModal();
+  toast('새 일정이 등록되었습니다!');
 };
 
-// 치료 내역 삭제
-window.deleteTreatment = async function(key) {
-  if (!confirm('정말로 이 치료 기록을 삭제하시겠습니까? 삭제 시 복구할 수 없습니다.')) return;
-  try {
-    await remove(ref(db, `treatments/${key}`));
-    toast('🗑️ 치료 기록이 삭제되었습니다.');
-  } catch(e) {
-    toast('⚠ 삭제 실패: ' + e.message);
+window.deleteCalendarEvent = async function(id) {
+  if (confirm('이 일정을 삭제하시겠습니까?')) {
+    await fbRemove(ref(db, `schedules/${id}`));
+    toast('일정이 삭제되었습니다.');
   }
 };
 </script>
-
-
 </body>
 </html>
