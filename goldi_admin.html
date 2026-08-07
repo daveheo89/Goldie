@@ -197,7 +197,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
-<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 자동 동기화 & 카테고리 분리) -->
+<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 전용: 🟡 예약 & 🔵 배송) -->
 <div class="tab-panel" id="tab-calendar">
   
   <!-- Navigation Header & Month Title -->
@@ -209,14 +209,13 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     </div>
     
     <div class="status-sel">
-      <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기</button>
-      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (Google 자동연동)</button>
-      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (내부 전용)</button>
+      <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기 (🟡예약 & 🔵배송)</button>
+      <button class="status-opt" id="cal-filter-rsv" onclick="filterCalCategory('rsv')">🟡 방문 예약</button>
+      <button class="status-opt" id="cal-filter-delivery" onclick="filterCalCategory('delivery')">🔵 자택 배송</button>
     </div>
 
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <button class="btn btn-green btn-sm" onclick="exportMonthGCalICS()" style="background:#4285F4; color:#fff;">📅 이번 달 [예약&배송] 구글 캘린더 일괄 자동 동기화</button>
-      <button class="btn btn-green btn-sm" onclick="openAddDisinfectionModal()" style="background:#10B981; color:#fff;">+ 🟢 내부 방역 일정 등록</button>
       <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
     </div>
   </div>
@@ -584,17 +583,15 @@ window.showDetail=id=>{
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
-// ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
+// ── TAB4: 일정 & Google 캘린더 연동 (🟡 예약 & 🔵 배송 전용)
 window._schedules = {};
 window._deliveries = {};
 window._reservations = {};
-window._treatments = {};
-window._litters = {};
 window._calFilter = 'all';
 
 import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Firebase Realtime DB Subscriptions for All Event Categories
+// Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
 onValue(ref(db, 'schedules'), snap => {
   window._schedules = snap.val() || {};
   renderCalendarEvents();
@@ -605,14 +602,6 @@ onValue(ref(db, 'deliveries'), snap => {
 });
 onValue(ref(db, 'reservations'), snap => {
   window._reservations = snap.val() || {};
-  renderCalendarEvents();
-});
-onValue(ref(db, 'treatments'), snap => {
-  window._treatments = snap.val() || {};
-  renderCalendarEvents();
-});
-onValue(ref(db, 'litters'), snap => {
-  window._litters = snap.val() || {};
   renderCalendarEvents();
 });
 
@@ -860,12 +849,12 @@ window.renderMonthlyGridCalendar = function() {
   const startDayOfWeek = firstDay.getDay();
   const totalDays = lastDay.getDate();
 
-  // Filter events by selected category
+  // Filter events by selected category (rsv or delivery)
   const filter = window._calFilter;
   const filteredEvents = (window._mergedEvents || []).filter(e => {
     const type = e.type || 'rsv';
-    if (filter === 'sync') return type === 'rsv' || type === 'delivery';
-    if (filter === 'care') return type === 'disinfection';
+    if (filter === 'rsv') return type === 'rsv';
+    if (filter === 'delivery') return type === 'delivery';
     return true;
   });
 
@@ -893,11 +882,9 @@ window.renderMonthlyGridCalendar = function() {
       chipsHtml = '<div class="cal-chips">';
       const rsvCount = dayEvents.filter(e => e.type === 'rsv').length;
       const delCount = dayEvents.filter(e => e.type === 'delivery').length;
-      const careCount = dayEvents.filter(e => e.type === 'disinfection').length;
 
       if (rsvCount > 0) chipsHtml += `<div class="cal-chip rsv">🟡 예약 ${rsvCount}</div>`;
       if (delCount > 0) chipsHtml += `<div class="cal-chip delivery">🔵 배송 ${delCount}</div>`;
-      if (careCount > 0) chipsHtml += `<div class="cal-chip care">🟢 방역 ${careCount}</div>`;
       chipsHtml += '</div>';
     }
 
@@ -1001,39 +988,6 @@ window.renderSelectedDayEvents = function(dateStr) {
   }).join('');
 };
 
-window.openAddDisinfectionModal = function() {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const html = `
-    <div class="ffield" style="margin-bottom:12px;">
-      <label>내부 방역 프리셋 선택 *</label>
-      <select id="dis_preset" onchange="applyDisPreset(this.value)" style="margin-bottom:6px; font-weight:700;">
-        <option value="">-- 자주 쓰는 내부 시설 방역 선택 --</option>
-        <option value="🧹 [주간 정기 방역] 쉼터 견사 & 야외 운동장 분무 소독">🧹 [주간 정기 방역] 쉼터 견사 & 야외 운동장 분무 소독</option>
-        <option value="🧪 [약품 구충 소독] 실내 분양장 & 격리실 종합 약제 방역">🧪 [약품 구충 소독] 실내 분양장 & 격리실 종합 약제 방역</option>
-        <option value="🛡️ [월간 전체 방역] 쉼터 전구역 시설 방역 및 소독 관리">🛡️ [월간 전체 방역] 쉼터 전구역 시설 방역 및 소독 관리</option>
-      </select>
-      <input type="text" id="dis_title" placeholder="방역 일정 제목 입력" value="🧹 [내부 시설 방역] 쉼터 견사 정기 소독">
-    </div>
-    <div class="ffield" style="margin-bottom:12px;">
-      <label>방역 실시 예정일 *</label>
-      <input type="date" id="dis_date" value="${todayStr}">
-    </div>
-    <div class="ffield" style="margin-bottom:12px;">
-      <label>장소/구역</label>
-      <input type="text" id="dis_loc" placeholder="예: 골디쉼터 본원 견사 및 대형견 운동장" value="골디쉼터 본원 견사 및 운동장">
-    </div>
-    <div class="ffield" style="margin-bottom:16px;">
-      <label>상세 소독 메모</label>
-      <input type="text" id="dis_details" placeholder="예: 소독 약품 100배 희석 분무 및 식기 고온 소독 완료" value="시설 분무 소독 및 견사 일체 방역 완료">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-green" onclick="saveAddDisinfection()">🟢 내부 방역 일정 저장</button>
-      <button class="btn btn-gray" onclick="closeModal()">취소</button>
-    </div>
-  `;
-  document.getElementById('modalTitle').textContent = '🟢 내부 시설 방역 및 소독 일정 등록';
-  document.getElementById('modalBody').innerHTML = html;
-  document.getElementById('detailModal').classList.add('open');
 };
 
 window.applyDisPreset = function(val) {
