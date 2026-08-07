@@ -101,7 +101,32 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .edit-puppy .fgrid{align-items:end}
 .ep-label{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px}
 .litter-label .btn{margin-left:auto;flex-shrink:0}
-@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}}
+
+/* Monthly Calendar Grid View Styles */
+.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:10px; flex-wrap:wrap; background:#fff; padding:14px 18px; border-radius:var(--r); border:1px solid var(--gray-l); box-shadow:var(--sh); }
+.cal-nav-center { display:flex; align-items:center; gap:12px; }
+.cal-nav-center h2 { font-size:18px; font-weight:800; color:var(--br); white-space:nowrap; }
+.cal-arrow { width:34px; height:34px; border-radius:50%; border:1.5px solid var(--gray-l); background:#fff; cursor:pointer; font-size:16px; display:inline-flex; align-items:center; justify-content:center; transition:.15s; font-weight:700; color:var(--br); }
+.cal-arrow:hover { border-color:var(--gold); background:var(--gold-p); color:var(--gold); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:18px; background:var(--white); padding:16px; border-radius:var(--r); border:1px solid var(--gray-l); box-shadow:var(--sh); }
+.cal-head { text-align:center; font-size:12px; font-weight:800; padding:8px 0; color:var(--gray); background:var(--gray-ll); border-radius:6px; margin-bottom:4px; }
+.cal-head.sun { color:var(--red); }
+.cal-head.sat { color:var(--blue); }
+.cal-cell { min-height:72px; padding:6px; border-radius:8px; cursor:pointer; text-align:center; transition:.15s; border:1.5px solid var(--gray-l); position:relative; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+.cal-cell:hover { background:var(--gold-p); border-color:var(--gold-l); transform:translateY(-1px); }
+.cal-cell.today { border-color:var(--gold); box-shadow:0 0 0 2px var(--gold-l); background:#FFFDF7; }
+.cal-cell.selected { background:var(--gold-p); border-color:var(--gold); font-weight:700; }
+.cal-cell.other { opacity:.35; cursor:default; background:var(--gray-ll); border-color:transparent; }
+.cal-cell.other:hover { background:var(--gray-ll); border-color:transparent; transform:none; }
+.cal-day { font-size:13px; font-weight:800; line-height:1; margin-bottom:4px; }
+.cal-cell.sun .cal-day { color:var(--red); }
+.cal-cell.sat .cal-day { color:var(--blue); }
+.cal-chips { display:flex; flex-direction:column; gap:3px; width:100%; margin-top:2px; }
+.cal-chip { font-size:10px; font-weight:800; padding:2px 4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; text-align:center; }
+.cal-chip.rsv { background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7; }
+.cal-chip.delivery { background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1; }
+.cal-chip.care { background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; }
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}.cal-cell{min-height:50px;padding:3px}.cal-day{font-size:11px}.cal-chip{font-size:8px;padding:1px 2px}}
 </style>
 </head>
 <body>
@@ -169,27 +194,33 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
-<!-- TAB4: 일정 & Google 캘린더 -->
+<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 연동 & 카테고리 분리) -->
 <div class="tab-panel" id="tab-calendar">
-  <div class="card" style="background:var(--gold-p); border-color:var(--gold-l); margin-bottom:16px;">
-    <div style="font-weight:700; font-size:14px; color:var(--br); margin-bottom:6px;">📅 구글 캘린더 연동 및 카테고리 분리 안내</div>
-    <div style="font-size:12px; color:var(--gray); line-height:1.5;">
-      • <span class="badge" style="background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7;">🟡 예약</span> 및 <span class="badge" style="background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1;">🔵 배송</span> 항목은 <strong>`📅 Google 캘린더에 추가`</strong> 버튼으로 1초만에 구글 캘린더 앱에 바로 등록됩니다.<br>
-      • <span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 방역 & 💊 치료</span> 일정은 내부 전용 독립 카테고리로 별도 분리 관리됩니다.
+  
+  <!-- Navigation Header & Month Title -->
+  <div class="cal-nav">
+    <div class="cal-nav-center">
+      <button class="cal-arrow" onclick="changeCalMonth(-1)">◀</button>
+      <h2 id="calTitle">YYYY년 MM월</h2>
+      <button class="cal-arrow" onclick="changeCalMonth(1)">▶</button>
     </div>
-  </div>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+    
     <div class="status-sel">
       <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기</button>
-      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (구글 캘린더 연동)</button>
-      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (독립 카테고리)</button>
+      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (Google 연동)</button>
+      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (내부 독립)</button>
     </div>
+
     <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
   </div>
 
-  <div class="stitle">일정 목록</div>
-  <div id="calendarList" class="loading"><div class="spinner"></div>일정 로딩 중...</div>
+  <!-- Monthly 7-Column Grid -->
+  <div class="cal-grid" id="calGrid"></div>
+
+  <!-- Selected Day Event Details Panel -->
+  <div class="stitle" id="selectedDayTitle">📅 선택된 날짜의 일정</div>
+  <div id="dayDetailsContainer"></div>
+
 </div>
 
 <div class="modal-bg" id="detailModal">
@@ -600,10 +631,25 @@ window.filterCalCategory = function(cat) {
   renderCalendarEvents();
 };
 
-window.renderCalendarEvents = function() {
-  const el = document.getElementById('calendarList');
-  if (!el) return;
+// Monthly Calendar State
+window._currentCalDate = new Date();
+window._selectedCalDateStr = new Date().toISOString().slice(0, 10);
+window._mergedEvents = [];
 
+window.changeCalMonth = function(offset) {
+  window._currentCalDate.setMonth(window._currentCalDate.getMonth() + offset);
+  renderMonthlyGridCalendar();
+};
+
+window.filterCalCategory = function(cat) {
+  window._calFilter = cat;
+  document.querySelectorAll('.status-opt[id^="cal-filter-"]').forEach(btn => btn.classList.remove('active'));
+  const targetBtn = document.getElementById(`cal-filter-${cat}`);
+  if (targetBtn) targetBtn.classList.add('active');
+  renderMonthlyGridCalendar();
+};
+
+window.renderCalendarEvents = function() {
   // Aggregate All Realtime DB Data Sources
   const mergedEvents = [];
 
@@ -692,31 +738,119 @@ window.renderCalendarEvents = function() {
     });
   });
 
-  if (!mergedEvents.length) {
-    el.innerHTML = `
-      <div class="card" style="text-align:center; padding:30px; color:var(--gray);">
-        📅 등록된 일정이 없습니다. 오른쪽 상단 '+ 일정 등록' 버튼으로 구글 캘린더 연동 일정을 추가해보세요!
-      </div>
-    `;
-    return;
-  }
+  window._mergedEvents = mergedEvents;
+  renderMonthlyGridCalendar();
+};
 
+window.renderMonthlyGridCalendar = function() {
+  const year = window._currentCalDate.getFullYear();
+  const month = window._currentCalDate.getMonth();
+  
+  const titleEl = document.getElementById('calTitle');
+  if (titleEl) titleEl.textContent = `${year}년 ${month + 1}월`;
+
+  const gridEl = document.getElementById('calGrid');
+  if (!gridEl) return;
+
+  const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
+  let html = daysKo.map((d, i) => `<div class="cal-head${i === 0 ? ' sun' : ''}${i === 6 ? ' sat' : ''}">${d}</div>`).join('');
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  // Filter events by selected category
   const filter = window._calFilter;
-  const filtered = mergedEvents.filter(s => {
-    const type = s.type || 'rsv';
+  const filteredEvents = (window._mergedEvents || []).filter(e => {
+    const type = e.type || 'rsv';
     if (filter === 'sync') return type === 'rsv' || type === 'delivery';
     if (filter === 'care') return type === 'disinfection';
     return true;
   });
 
-  if (!filtered.length) {
-    el.innerHTML = `<div class="loading">선택한 카테고리에 해당하는 일정이 없습니다.</div>`;
+  // Previous month trailing days
+  const prevLastDay = new Date(year, month, 0).getDate();
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    html += `<div class="cal-cell other"><div class="cal-day">${prevLastDay - i}</div></div>`;
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dateObj = new Date(year, month, d);
+    const dayOfWeek = dateObj.getDay();
+
+    const isToday = dateStr === todayStr;
+    const isSel = dateStr === window._selectedCalDateStr;
+
+    // Events on this date
+    const dayEvents = filteredEvents.filter(e => e.date === dateStr);
+
+    let chipsHtml = '';
+    if (dayEvents.length > 0) {
+      chipsHtml = '<div class="cal-chips">';
+      const rsvCount = dayEvents.filter(e => e.type === 'rsv').length;
+      const delCount = dayEvents.filter(e => e.type === 'delivery').length;
+      const careCount = dayEvents.filter(e => e.type === 'disinfection').length;
+
+      if (rsvCount > 0) chipsHtml += `<div class="cal-chip rsv">🟡 예약 ${rsvCount}</div>`;
+      if (delCount > 0) chipsHtml += `<div class="cal-chip delivery">🔵 배송 ${delCount}</div>`;
+      if (careCount > 0) chipsHtml += `<div class="cal-chip care">🟢 방역 ${careCount}</div>`;
+      chipsHtml += '</div>';
+    }
+
+    html += `
+      <div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''}${dayOfWeek === 0 ? ' sun' : ''}${dayOfWeek === 6 ? ' sat' : ''}" onclick="selectCalDate('${dateStr}')">
+        <div class="cal-day">${d}</div>
+        ${chipsHtml}
+      </div>
+    `;
+  }
+
+  // Next month leading days
+  const totalCells = startDayOfWeek + totalDays;
+  const remainingCells = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remainingCells; i++) {
+    html += `<div class="cal-cell other"><div class="cal-day">${i}</div></div>`;
+  }
+
+  gridEl.innerHTML = html;
+  renderSelectedDayEvents(window._selectedCalDateStr);
+};
+
+window.selectCalDate = function(dateStr) {
+  window._selectedCalDateStr = dateStr;
+  renderMonthlyGridCalendar();
+};
+
+window.renderSelectedDayEvents = function(dateStr) {
+  const container = document.getElementById('dayDetailsContainer');
+  const titleEl = document.getElementById('selectedDayTitle');
+  if (!container || !titleEl) return;
+
+  titleEl.textContent = `📅 선택된 날짜: ${fmt(dateStr)} 일정 목록`;
+
+  const filter = window._calFilter;
+  const dayEvents = (window._mergedEvents || []).filter(e => {
+    if (e.date !== dateStr) return false;
+    const type = e.type || 'rsv';
+    if (filter === 'sync') return type === 'rsv' || type === 'delivery';
+    if (filter === 'care') return type === 'disinfection';
+    return true;
+  });
+
+  if (!dayEvents.length) {
+    container.innerHTML = `
+      <div class="card" style="text-align:center; padding:20px; color:var(--gray); font-size:13px;">
+        ${fmt(dateStr)} 날짜에 등록된 일정이 없습니다. 달력에서 다른 날짜를 선택하거나 오른쪽 상단 '+ 일정 등록'을 누르세요.
+      </div>
+    `;
     return;
   }
 
-  const sorted = filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
-  el.innerHTML = sorted.map(s => {
+  container.innerHTML = dayEvents.map(s => {
     const type = s.type || 'rsv';
     let catBadge = '';
     let isGCalSyncable = true;
@@ -740,7 +874,7 @@ window.renderCalendarEvents = function() {
     }
 
     return `
-      <div class="card" style="margin-bottom:12px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
+      <div class="card" style="margin-bottom:10px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
           <div>
             ${catBadge}
