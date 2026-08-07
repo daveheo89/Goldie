@@ -247,7 +247,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update, push as fbPush, remove as fbRemove, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const FB = {
   apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -260,7 +260,7 @@ const FB = {
 };
 const app = initializeApp(FB);
 const db  = getDatabase(app);
-window.db = db; window.ref = ref; window.onValue = onValue; window.update = update; window.push = fbPush; window.remove = fbRemove;
+
 
 window._litters={};
 window._contracts={};
@@ -288,11 +288,12 @@ function statusBadge(st){
   return                         '<span class="badge badge-sold">분양 완료</span>';
 }
 function toast(msg){
-window.showToast = toast;
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
+const showToast = toast;
+window.showToast = toast;
 
 // ── 탭
 window.switchTab=(btn,name)=>{
@@ -605,7 +606,7 @@ window._deliveries = {};
 window._reservations = {};
 window._calFilter = 'all';
 
-import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+// (fbPush, fbRemove already imported at top of module)
 
 // Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
 onValue(ref(db, 'schedules'), snap => {
