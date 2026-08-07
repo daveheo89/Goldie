@@ -1028,23 +1028,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  <header style="position:relative; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+  <header>
 
-    <div>
+    <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
 
-      <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
-
-      <p>골든리트리버 번식·견사 통합 관리</p>
-
-    </div>
-
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-
-      <a href="goldi_memorial.html" style="text-decoration:none; background:#7B1FA2; color:#fff; padding:8px 14px; border-radius:8px; font-weight:800; font-size:12px; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">🌈 무지개다리 기록</a>
-
-      <a href="goldi_admin.html" style="text-decoration:none; background:#C8931A; color:#fff; padding:8px 14px; border-radius:8px; font-weight:800; font-size:12px; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">🔑 어드민 관리 페이지 이동</a>
-
-    </div>
+    <p>골든리트리버 번식·견사 통합 관리</p>
 
   </header>
 
@@ -1832,10 +1820,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
           <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
 
         </div>
-        <div style="display:flex;gap:8px;">
-          <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요." style="flex:1">
-          <button type="button" class="btn-outline btn-sm" onclick="openTMapSearch((document.getElementById('dev-addr').value + ' ' + document.getElementById('dev-addr-detail').value).trim())" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;background:#1E6FBB;color:#fff;border:none;border-radius:6px;font-weight:700;">🚙 티맵 검색</button>
-        </div>
+
+        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
+
       </div>
 
       <div class="form-group">
@@ -1859,8 +1846,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </select>
 
       </div>
-      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn" id="dev-kakao-btn" onclick="sendDeliveryKakao()" style="flex:1;background:#27AE60;color:#fff;border:none;white-space:nowrap;font-weight:800;padding:10px;">💬 카톡 일정 전송</button>
+
+      <div class="modal-actions">
+
         <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
 
         <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
@@ -4633,114 +4621,6 @@ window.deleteDelivery = async function() {
 };
 
 
-async function safeCopy(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (e) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;left:-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      return true;
-    } catch (e2) {}
-    document.body.removeChild(ta);
-    prompt('아래 텍스트를 길게 눌러 복사해주세요:', text);
-    return false;
-  }
-}
-
-window.openTMapSearch = function(address) {
-  if (!address || !address.trim()) {
-    showToast('주소를 먼저 입력해주세요.');
-    return;
-  }
-  const encoded = encodeURIComponent(address.trim());
-  window.location.href = `tmap://search?name=${encoded}`;
-};
-
-window.sendDeliveryKakao = async function(dKey) {
-  let dev = null;
-  const currentKey = dKey || deliveryEditKey;
-  if (currentKey) {
-    dev = (deliveries || []).find(d => d._key === currentKey);
-  }
-  
-  let contractId = document.getElementById('dev-contract')?.value;
-  if (!contractId && dev) contractId = dev.contractId;
-  
-  let contract = null;
-  if (contractId && Array.isArray(contracts)) {
-    contract = contracts.find(c => c._key === contractId);
-  } else if (contractId && typeof contracts === 'object') {
-    contract = contracts[contractId];
-  }
-
-  let buyerName = (dev && dev.buyer_name) || (contract && contract.buyer_name) || '';
-  let buyerPhone = (dev && dev.buyer_phone) || (contract && contract.buyer_phone) || '';
-  let dogName = (dev && dev.dogname) || (contract && contract.dogname) || '';
-
-  let date = document.getElementById('dev-date')?.value || (dev && dev.date) || '';
-  let time = document.getElementById('dev-time')?.value || (dev && dev.time) || '';
-  
-  let addrMain = document.getElementById('dev-addr')?.value || '';
-  let addrDetail = document.getElementById('dev-addr-detail')?.value || '';
-  let address = (addrMain + (addrDetail ? ' ' + addrDetail : '')).trim();
-  if (!address && dev) address = dev.address || '';
-
-  let memo = document.getElementById('dev-memo')?.value;
-  if (memo === undefined || memo === '') {
-    if (dev && dev.memo) memo = dev.memo;
-  }
-
-  if (!date) {
-    showToast('배송 날짜를 입력해주세요.');
-    return;
-  }
-  if (!address) {
-    showToast('배송 주소를 입력해주세요.');
-    return;
-  }
-
-  const encodedAddr = encodeURIComponent(address);
-  const tmapBridgeUrl = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodedAddr}`;
-
-  let msg = `[골디쉼터] 🚗 배송 일정 안내\n\n`;
-  if (dogName) msg += `🐾 강아지: ${dogName}\n`;
-  msg += `📅 배송 일시: ${date}${time ? ' ' + time : ''}\n`;
-  if (buyerName || buyerPhone) {
-    msg += `👤 수령인: ${buyerName || '입양인'}${buyerPhone ? ' (' + buyerPhone + ')' : ''}\n`;
-  }
-  msg += `📍 배송 주소: ${address}\n\n`;
-  msg += `🚙 티맵 길안내 (클릭 시 티맵 앱 실행):\n${tmapBridgeUrl}`;
-  if (memo && memo.trim()) {
-    msg += `\n\n📝 메모: ${memo.trim()}`;
-  }
-
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: '골디쉼터 배송 일정',
-        text: msg
-      });
-      showToast('💬 카카오톡 공유 창이 열렸습니다.');
-      return;
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.log('Web Share failed, copying text:', err);
-      } else {
-        return;
-      }
-    }
-  }
-
-  const ok = await safeCopy(msg);
-  showToast(ok ? '💬 카톡 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송해주세요.' : '메시지 복사에 실패했습니다.');
-};
 
 // ── 치료 관리 기능 ──
 
