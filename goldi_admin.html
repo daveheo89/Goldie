@@ -586,6 +586,7 @@ window._schedules = {};
 window._deliveries = {};
 window._reservations = {};
 window._treatments = {};
+window._litters = {};
 window._calFilter = 'all';
 
 import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -605,6 +606,10 @@ onValue(ref(db, 'reservations'), snap => {
 });
 onValue(ref(db, 'treatments'), snap => {
   window._treatments = snap.val() || {};
+  renderCalendarEvents();
+});
+onValue(ref(db, 'litters'), snap => {
+  window._litters = snap.val() || {};
   renderCalendarEvents();
 });
 
@@ -811,6 +816,79 @@ window.renderCalendarEvents = function() {
       details: `내용: ${tr.memo || tr.details || ''}`,
       raw: tr
     });
+  });
+
+  // 5. Vaccination & Deworming Dates from Litters (/litters)
+  const cleanDogName = (code) => {
+    if (!code) return '';
+    const parts = code.split(/[\/\-_]/);
+    const last = parts[parts.length - 1].trim();
+    return last.replace(/^[0-9\s]+/, '').trim() || code;
+  };
+
+  Object.entries(window._litters).forEach(([lid, l]) => {
+    if (!l) return;
+    const motherName = cleanDogName(l.femaleCode || '모견');
+    const fatherName = cleanDogName(l.maleCode || '부견');
+    const labelPrefix = motherName ? `${motherName} 리터` : '자견';
+
+    // Vaccinations (1, 2, 3차 백신)
+    ['vax1', 'vax2', 'vax3'].forEach((vk, idx) => {
+      if (l[vk]) {
+        mergedEvents.push({
+          id: `litter-${lid}-${vk}`,
+          dbKey: lid,
+          dbPath: `litters/${lid}/${vk}`,
+          type: 'disinfection',
+          title: `💉 [종합백신] ${labelPrefix} 자견 ${idx + 1}차 접종일`,
+          date: l[vk],
+          location: '골디쉼터 자견 견사',
+          details: `모견: ${motherName} | 부견: ${fatherName} | 자견 총 ${l.count || 0}마리 대상 ${idx + 1}차 종합백신 접종일`,
+          raw: l
+        });
+      }
+    });
+
+    // Dewormings (1, 2, 3차 구충제)
+    ['deworm1', 'deworm2', 'deworm3'].forEach((dk, idx) => {
+      if (l[dk]) {
+        mergedEvents.push({
+          id: `litter-${lid}-${dk}`,
+          dbKey: lid,
+          dbPath: `litters/${lid}/${dk}`,
+          type: 'disinfection',
+          title: `💊 [구충제] ${labelPrefix} 자견 ${idx + 1}차 구충 투여일`,
+          date: l[dk],
+          location: '골디쉼터 자견 견사',
+          details: `모견: ${motherName} | 부견: ${fatherName} | 자견 총 ${l.count || 0}마리 대상 ${idx + 1}차 구충제 투여일`,
+          raw: l
+        });
+      }
+    });
+
+    // Individual Puppy Vaccinations/Deworming
+    if (l.puppies && typeof l.puppies === 'object') {
+      Object.entries(l.puppies).forEach(([pid, p]) => {
+        if (!p) return;
+        ['vax1', 'vax2', 'vax3', 'deworm1', 'deworm2', 'deworm3'].forEach(pk => {
+          if (p[pk]) {
+            const isVax = pk.startsWith('vax');
+            const num = pk.slice(-1);
+            mergedEvents.push({
+              id: `puppy-${lid}-${pid}-${pk}`,
+              dbKey: pid,
+              dbPath: `litters/${lid}/puppies/${pid}/${pk}`,
+              type: 'disinfection',
+              title: `${isVax ? '💉 [개별 백신]' : '💊 [개별 구충]'} ${p.name || '자견'} (${motherName} 자견) ${num}차 ${isVax ? '백신' : '구충'}`,
+              date: p[pk],
+              location: '골디쉼터 자견 견사',
+              details: `강아지: ${p.name || pid} | 모견: ${motherName}`,
+              raw: p
+            });
+          }
+        });
+      });
+    }
   });
 
   // 5. Custom Schedules (/schedules)
