@@ -195,7 +195,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
-<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 연동 & 카테고리 분리) -->
+<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 자동 동기화 & 카테고리 분리) -->
 <div class="tab-panel" id="tab-calendar">
   
   <!-- Navigation Header & Month Title -->
@@ -208,11 +208,14 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     
     <div class="status-sel">
       <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기</button>
-      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (Google 연동)</button>
-      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (내부 독립)</button>
+      <button class="status-opt" id="cal-filter-sync" onclick="filterCalCategory('sync')">🟡 예약 & 🔵 배송 (Google 자동연동)</button>
+      <button class="status-opt" id="cal-filter-care" onclick="filterCalCategory('care')">🟢 방역 & 💊 치료 (내부 전용)</button>
     </div>
 
-    <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="btn btn-green btn-sm" onclick="exportMonthGCalICS()" style="background:#4285F4; color:#fff;">📅 이번 달 [예약&배송] 구글 캘린더 일괄 자동 동기화</button>
+      <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
+    </div>
   </div>
 
   <!-- Monthly 7-Column Grid -->
@@ -650,14 +653,94 @@ window.filterCalCategory = function(cat) {
   renderMonthlyGridCalendar();
 };
 
+// Batch Export / Auto-Sync Active Month's [Reservation & Delivery] Events to Google Calendar
+window.exportMonthGCalICS = function() {
+  const year = window._currentCalDate.getFullYear();
+  const month = window._currentCalDate.getMonth();
+
+  // Filter ONLY 'rsv' and 'delivery' events for active month (strictly exclude disinfection/care)
+  const syncEvents = (window._mergedEvents || []).filter(e => {
+    if (!e.date) return false;
+    const type = e.type || 'rsv';
+    if (type !== 'rsv' && type !== 'delivery') return false; // Exclude care/disinfection
+    const parts = e.date.split('-');
+    if (parts.length < 2) return false;
+    const ey = parseInt(parts[0], 10);
+    const em = parseInt(parts[1], 10) - 1;
+    return ey === year && em === month;
+  });
+
+  if (!syncEvents.length) {
+    alert(`${year}년 ${month + 1}월에 등록된 [예약 & 배송] 일정이 없습니다.`);
+    return;
+  }
+
+  let icsLines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Goldie Shelter//Calendar Sync Engine//KO',
+    'X-WR-CALNAME:골디쉼터 예약 및 배송 일정',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+
+  syncEvents.forEach(e => {
+    const cleanDate = e.date.replace(/[^0-9]/g, '');
+    const summary = (e.title || '골디쉼터 일정').replace(/\n/g, ' ');
+    let desc = (e.details || '').replace(/\n/g, ' ');
+    if (e.tmapUrl) desc += ` | Tmap: ${e.tmapUrl}`;
+    const loc = (e.location || '골디쉼터').replace(/\n/g, ' ');
+
+    icsLines.push(
+      'BEGIN:VEVENT',
+      `UID:${e.id}@goldie.com`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+      `DTSTART;VALUE=DATE:${cleanDate}`,
+      `DTEND;VALUE=DATE:${cleanDate}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${desc}`,
+      `LOCATION:${loc}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT'
+    );
+  });
+
+  icsLines.push('END:VCALENDAR');
+
+  const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Goldie_Reservations_Deliveries_${year}_${month + 1}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  showToast(`📅 ${year}년 ${month + 1}월 예약&배송 ${syncEvents.length}건 캘린더(.ics) 일괄 동기화 완료!`);
+
+  // Prompt Google Calendar import settings page
+  setTimeout(() => {
+    if (confirm(`📅 ${syncEvents.length}건의 [예약 & 배송] 일정이 담긴 구글 캘린더 동기화 파일이 생성되었습니다!\n\n구글 캘린더 웹사이트 가져오기(Import) 화면으로 바로 이동하시겠습니까?`)) {
+      window.open('https://calendar.google.com/calendar/u/0/r/settings/export', '_blank');
+    }
+  }, 300);
+};
+
 window.renderCalendarEvents = function() {
   // Aggregate All Realtime DB Data Sources
   const mergedEvents = [];
+  const deliveryContractsSet = new Set();
+  const deliveryCustomerDateSet = new Set();
 
-  // 1. Existing Deliveries (/deliveries)
+  // 1. Existing Deliveries (/deliveries) - Priority 1
   Object.entries(window._deliveries).forEach(([id, d]) => {
     if (!d || !d.date) return;
     const tmapUrl = d.address ? `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(d.address)}` : '';
+    
+    if (d.contractId) deliveryContractsSet.add(d.contractId);
+    if (d.buyer_name) deliveryCustomerDateSet.add(`${d.date}_${d.buyer_name}`);
+    if (d.buyer_phone) deliveryCustomerDateSet.add(`${d.date}_${d.buyer_phone}`);
+
     mergedEvents.push({
       id: `delivery-${id}`,
       dbKey: id,
@@ -672,17 +755,22 @@ window.renderCalendarEvents = function() {
     });
   });
 
-  // 2. Existing Reservations (/reservations)
+  // 2. Existing Reservations (/reservations) - Skip if overlap with Delivery
   Object.entries(window._reservations).forEach(([id, r]) => {
     if (!r || !r.date) return;
-    const name = r.buyer_name || r.name || '방문 고객';
-    const phone = r.phone || r.buyer_phone || '';
+    const name = r.buyer_name || r.name || r.visitorName || '';
+    const phone = r.phone || r.buyer_phone || r.visitorPhone || '';
+
+    // Check deduplication
+    if (name && deliveryCustomerDateSet.has(`${r.date}_${name}`)) return;
+    if (phone && deliveryCustomerDateSet.has(`${r.date}_${phone}`)) return;
+
     mergedEvents.push({
       id: `rsv-${id}`,
       dbKey: id,
       dbPath: `reservations/${id}`,
       type: 'rsv',
-      title: `🤝 [방문 예약] ${name} 님 ${phone ? `(${phone})` : ''}`,
+      title: `🤝 [방문 예약] ${name || '방문 고객'} ${phone ? `(${phone})` : ''}`,
       date: r.date,
       location: r.location || '골디쉼터 본원',
       details: `메모: ${r.memo || '없음'} | Status: ${r.status || '신청'}`,
@@ -690,22 +778,23 @@ window.renderCalendarEvents = function() {
     });
   });
 
-  // 3. Existing Contracts Balance Dates (/contracts)
+  // 3. Existing Contracts Balance Dates (/contracts) - Skip if overlap with Delivery
   Object.entries(window._contracts).forEach(([id, c]) => {
-    if (!c) return;
-    if (c.balance_date) {
-      mergedEvents.push({
-        id: `contract-bal-${id}`,
-        dbKey: id,
-        dbPath: `contracts/${id}`,
-        type: 'rsv',
-        title: `💰 [잔금 납부일] ${c.buyer_name || ''} 님 (${c.dogname || ''})`,
-        date: c.balance_date,
-        location: c.buyer_addr || '',
-        details: `분양가: ${c.price ? numFmt(c.price) : ''} | 연락처: ${c.buyer_phone || ''}`,
-        raw: c
-      });
-    }
+    if (!c || !c.balance_date) return;
+    if (deliveryContractsSet.has(id)) return; // Skip if delivery exists for contractId
+    if (c.buyer_name && deliveryCustomerDateSet.has(`${c.balance_date}_${c.buyer_name}`)) return;
+
+    mergedEvents.push({
+      id: `contract-bal-${id}`,
+      dbKey: id,
+      dbPath: `contracts/${id}`,
+      type: 'rsv',
+      title: `💰 [잔금 납부일] ${c.buyer_name || ''} 님 (${c.dogname || ''})`,
+      date: c.balance_date,
+      location: c.buyer_addr || '',
+      details: `분양가: ${c.price ? numFmt(c.price) : ''} | 연락처: ${c.buyer_phone || ''}`,
+      raw: c
+    });
   });
 
   // 4. Disinfection & Treatments (/treatments)
