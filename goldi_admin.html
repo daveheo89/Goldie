@@ -337,18 +337,48 @@ window.switchTab=(btn,name)=>{
   btn.classList.add('active');
 };
 
-// ── Firebase 구독
+// ── 🚀 0.1초 초고속 로컬 메모리(localStorage) 캐싱 엔진
+try {
+  const cLitters = localStorage.getItem('goldi_cache_litters');
+  const cContracts = localStorage.getItem('goldi_cache_contracts');
+  const cSchedules = localStorage.getItem('goldi_cache_schedules');
+  const cDeliveries = localStorage.getItem('goldi_cache_deliveries');
+  const cReservations = localStorage.getItem('goldi_cache_reservations');
+
+  if (cLitters) window._litters = JSON.parse(cLitters);
+  if (cContracts) window._contracts = JSON.parse(cContracts);
+  if (cSchedules) window._schedules = JSON.parse(cSchedules);
+  if (cDeliveries) window._deliveries = JSON.parse(cDeliveries);
+  if (cReservations) window._reservations = JSON.parse(cReservations);
+
+  if (cLitters || cContracts || cSchedules || cDeliveries || cReservations) {
+    if (cLitters) {
+      renderPuppyGroups();
+      renderManageList();
+      updateStats();
+    }
+    if (cContracts) renderDB();
+    renderCalendarEvents();
+  }
+} catch (e) {
+  console.warn("LocalStorage cache read warning:", e);
+}
+
+// ── Firebase 구독 (백그라운드 최신 데이터 즉시 갱신 & 캐시 저장)
 onValue(ref(db,'litters'),snap=>{
-  window._litters=snap.val()||{};
+  const val = snap.val() || {};
+  window._litters = val;
+  try { localStorage.setItem('goldi_cache_litters', JSON.stringify(val)); } catch(e){}
   renderPuppyGroups();
   renderManageList();
   updateStats();
 });
 onValue(ref(db,'contracts'),snap=>{
-  const fb=snap.val()||{};
-  let ls={};
-  try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
-  window._contracts={...ls,...fb};
+  const fb = snap.val() || {};
+  let ls = {};
+  try { ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}'); } catch(e){}
+  window._contracts = { ...ls, ...fb };
+  try { localStorage.setItem('goldi_cache_contracts', JSON.stringify(window._contracts)); } catch(e){}
   renderDB();
 });
 
@@ -630,17 +660,23 @@ window._calFilter = 'all';
 
 import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Firebase Realtime DB Subscriptions for All Event Categories
+// Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
 onValue(ref(db, 'schedules'), snap => {
-  window._schedules = snap.val() || {};
+  const val = snap.val() || {};
+  window._schedules = val;
+  try { localStorage.setItem('goldi_cache_schedules', JSON.stringify(val)); } catch(e){}
   renderCalendarEvents();
 });
 onValue(ref(db, 'deliveries'), snap => {
-  window._deliveries = snap.val() || {};
+  const val = snap.val() || {};
+  window._deliveries = val;
+  try { localStorage.setItem('goldi_cache_deliveries', JSON.stringify(val)); } catch(e){}
   renderCalendarEvents();
 });
 onValue(ref(db, 'reservations'), snap => {
-  window._reservations = snap.val() || {};
+  const val = snap.val() || {};
+  window._reservations = val;
+  try { localStorage.setItem('goldi_cache_reservations', JSON.stringify(val)); } catch(e){}
   renderCalendarEvents();
 });
 
