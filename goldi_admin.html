@@ -197,7 +197,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
   <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
-<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 전용: 🟡 예약 & 🔵 배송) -->
+<!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 전용: 예약 & 배송) -->
 <div class="tab-panel" id="tab-calendar">
   
   <!-- Navigation Header & Month Title -->
@@ -247,7 +247,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update, push as fbPush, remove as fbRemove, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const FB = {
   apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -260,7 +260,6 @@ const FB = {
 };
 const app = initializeApp(FB);
 const db  = getDatabase(app);
-
 
 window._litters={};
 window._contracts={};
@@ -292,8 +291,6 @@ function toast(msg){
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
-const showToast = toast;
-window.showToast = toast;
 
 // ── 탭
 window.switchTab=(btn,name)=>{
@@ -306,31 +303,17 @@ window.switchTab=(btn,name)=>{
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
-  document.getElementById('puppyLoading').style.display='none';
   renderPuppyGroups();
   renderManageList();
   updateStats();
-}, err => {
-  console.error("Litters read error:", err);
-  document.getElementById('puppyLoading').style.display='none';
 });
-
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};
   let ls={};
   try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
   window._contracts={...ls,...fb};
   renderDB();
-}, err => {
-  console.error("Contracts read error:", err);
-  document.getElementById('dbList').innerHTML = '<div class="loading">계약 DB를 불러올 수 없습니다.</div>';
 });
-
-// Loading fallback timeout (3초 경과 시 스피너 자동 제거)
-setTimeout(() => {
-  const pl = document.getElementById('puppyLoading');
-  if (pl && pl.style.display !== 'none') pl.style.display = 'none';
-}, 3000);
 
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
@@ -600,15 +583,17 @@ window.showDetail=id=>{
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
-// ── TAB4: 일정 & Google 캘린더 연동 (🟡 예약 & 🔵 배송 전용)
+// ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
 window._schedules = {};
 window._deliveries = {};
 window._reservations = {};
+
+window._litters = {};
 window._calFilter = 'all';
 
-// (fbPush, fbRemove already imported at top of module)
+import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
+// Firebase Realtime DB Subscriptions for All Event Categories
 onValue(ref(db, 'schedules'), snap => {
   window._schedules = snap.val() || {};
   renderCalendarEvents();
@@ -621,6 +606,7 @@ onValue(ref(db, 'reservations'), snap => {
   window._reservations = snap.val() || {};
   renderCalendarEvents();
 });
+
 
 // Google Calendar 1-Click URL Generator
 window.buildGCalUrl = function(title, details, location, startDateStr) {
@@ -811,34 +797,18 @@ window.renderCalendarEvents = function() {
     });
   });
 
-  // 4. Internal Shelter Facility Disinfection & Treatments (/treatments)
-  Object.entries(window._treatments).forEach(([id, tr]) => {
-    if (!tr || !tr.date) return;
-    mergedEvents.push({
-      id: `treatment-${id}`,
-      dbKey: id,
-      dbPath: `treatments/${id}`,
-      type: 'disinfection',
-      title: `🟢 [내부 시설 방역] ${tr.title || tr.medicine || '견사 전체 소독 및 약제 방역'}`,
-      date: tr.date,
-      location: tr.location || '골디쉼터 본원 견사 및 운동장',
-      details: `소독 구분: ${tr.medicine || '내부 방역'} | 메모: ${tr.memo || tr.details || '정기 소독 완료'}`,
-      raw: tr
-    });
-  });
 
-  // 5. Custom Internal Schedules (/schedules)
+  // 5. Custom Schedules (/schedules)
   Object.entries(window._schedules).forEach(([id, s]) => {
     if (!s || !s.date) return;
-    const isCare = s.type === 'disinfection';
     mergedEvents.push({
       id: `schedule-${id}`,
       dbKey: id,
       dbPath: `schedules/${id}`,
       type: s.type || 'rsv',
-      title: isCare ? `🟢 [내부 시설 방역] ${s.title}` : s.title,
+      title: s.title,
       date: s.date,
-      location: s.location || (isCare ? '골디쉼터 본원 전구역' : '골디쉼터'),
+      location: s.location || '골디쉼터',
       details: s.details || '',
       raw: s
     });
@@ -866,7 +836,7 @@ window.renderMonthlyGridCalendar = function() {
   const startDayOfWeek = firstDay.getDay();
   const totalDays = lastDay.getDate();
 
-  // Filter events by selected category (rsv or delivery)
+  // Filter events by selected category
   const filter = window._calFilter;
   const filteredEvents = (window._mergedEvents || []).filter(e => {
     const type = e.type || 'rsv';
@@ -940,8 +910,8 @@ window.renderSelectedDayEvents = function(dateStr) {
   const dayEvents = (window._mergedEvents || []).filter(e => {
     if (e.date !== dateStr) return false;
     const type = e.type || 'rsv';
-    if (filter === 'sync') return type === 'rsv' || type === 'delivery';
-    if (filter === 'care') return type === 'disinfection';
+    if (filter === 'rsv') return type === 'rsv';
+    if (filter === 'delivery') return type === 'delivery';
     return true;
   });
 
@@ -1005,40 +975,9 @@ window.renderSelectedDayEvents = function(dateStr) {
   }).join('');
 };
 
-};
 
-window.applyDisPreset = function(val) {
-  if (val) {
-    document.getElementById('dis_title').value = val;
-  }
-};
 
-window.saveAddDisinfection = function() {
-  const title = (document.getElementById('dis_title')?.value || '').trim();
-  const date = document.getElementById('dis_date')?.value;
-  const location = (document.getElementById('dis_loc')?.value || '').trim();
-  const details = (document.getElementById('dis_details')?.value || '').trim();
 
-  if (!title || !date) {
-    alert('방역 제목과 날짜를 입력해주세요.');
-    return;
-  }
-
-  const newRef = fbPush(ref(db, 'treatments'));
-  set(newRef, {
-    title: title,
-    date: date,
-    location: location || '골디쉼터 본원 전구역',
-    medicine: '내부 시설 방역',
-    details: details,
-    createdAt: new Date().toISOString()
-  }).then(() => {
-    closeModal();
-    showToast('🟢 내부 시설 방역 일정이 성공적으로 등록되었습니다.');
-  }).catch(err => {
-    alert('저장 실패: ' + err.message);
-  });
-};
 
 window.openAddEventModal = function() {
   const html = `
@@ -1047,7 +986,6 @@ window.openAddEventModal = function() {
       <select id="cal_type" style="padding:10px; font-weight:700;">
         <option value="rsv">🟡 예약 (방문/상담 - Google 캘린더 연동)</option>
         <option value="delivery">🔵 배송 (분양 인도 - Google 캘린더 연동)</option>
-        <option value="disinfection">🟢 방역/치료 (소독/약품 - 독립 카테고리)</option>
       </select>
     </div>
     <div class="ffield" style="margin-bottom:12px;">
@@ -1093,15 +1031,10 @@ window.saveAddEvent = async function() {
   toast('새 일정이 등록되었습니다!');
 };
 
-window.deleteCalendarEvent = async function(dbPath) {
+window.deleteCalendarEvent = async function(id) {
   if (confirm('이 일정을 삭제하시겠습니까?')) {
-    try {
-      const targetPath = dbPath.includes('/') ? dbPath : `schedules/${dbPath}`;
-      await fbRemove(ref(db, targetPath));
-      toast('일정이 삭제되었습니다.');
-    } catch (e) {
-      alert('삭제 실패: ' + e.message);
-    }
+    await fbRemove(ref(db, `schedules/${id}`));
+    toast('일정이 삭제되었습니다.');
   }
 };
 </script>
