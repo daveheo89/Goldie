@@ -132,6 +132,43 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 </head>
 <body>
 
+<!-- 🔒 로그인 게이트 -->
+<div id="authGate" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#5C3D1E 0%,#3a250f 100%);display:flex;justify-content:center;align-items:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:40px 32px;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.35);text-align:center;">
+    <div style="font-size:40px;margin-bottom:12px;">🐾</div>
+    <h2 style="color:#5C3D1E;font-size:20px;margin-bottom:6px;">골디쉼터 관리자</h2>
+    <p style="color:#8B6240;font-size:13px;margin-bottom:24px;">관리자 비밀번호를 입력해주세요</p>
+    <input type="password" id="authPw" placeholder="비밀번호 입력" inputmode="numeric" maxlength="10"
+      style="width:100%;padding:14px 16px;border:2px solid #E8E6E0;border-radius:10px;font-size:18px;text-align:center;letter-spacing:8px;font-weight:700;outline:none;transition:border-color .2s;box-sizing:border-box;"
+      onfocus="this.style.borderColor='#C8931A'" onblur="this.style.borderColor='#E8E6E0'"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="authErr" style="color:#C0392B;font-size:12px;margin-top:8px;min-height:18px;font-weight:700;"></div>
+    <button onclick="doLogin()" style="width:100%;padding:14px;background:#C8931A;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:12px;transition:background .15s;"
+      onmouseover="this.style.background='#5C3D1E'" onmouseout="this.style.background='#C8931A'">로그인</button>
+  </div>
+</div>
+<script>
+function doLogin(){
+  var pw=document.getElementById('authPw').value;
+  if(pw==='5900'){
+    sessionStorage.setItem('goldi_admin_auth','ok');
+    document.getElementById('authGate').style.display='none';
+    document.getElementById('adminWrap').style.display='block';
+  } else {
+    document.getElementById('authErr').textContent='비밀번호가 틀렸습니다.';
+    document.getElementById('authPw').value='';
+    document.getElementById('authPw').focus();
+  }
+}
+if(sessionStorage.getItem('goldi_admin_auth')==='ok'){
+  document.getElementById('authGate').style.display='none';
+} else {
+  window.addEventListener('DOMContentLoaded',function(){document.getElementById('authPw').focus();});
+}
+</script>
+
+<div id="adminWrap" style="display:none;">
+<script>if(sessionStorage.getItem('goldi_admin_auth')==='ok'){document.getElementById('adminWrap').style.display='block';}</script>
 <header style="display:flex; justify-content:space-between; align-items:center; width:100%;">
   <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
   <a href="https://daveheo89.github.io/Goldie/goldie_farm.html" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none; white-space:nowrap; font-weight:700;">🏡 농장 관리 웹앱 바로가기 ↗</a>
@@ -1038,5 +1075,6 @@ window.deleteCalendarEvent = async function(id) {
   }
 };
 </script>
+</div><!-- /adminWrap -->
 </body>
 </html>
