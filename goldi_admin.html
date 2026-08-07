@@ -260,6 +260,7 @@ const FB = {
 };
 const app = initializeApp(FB);
 const db  = getDatabase(app);
+window.db = db; window.ref = ref; window.onValue = onValue; window.update = update; window.push = fbPush; window.remove = fbRemove;
 
 window._litters={};
 window._contracts={};
@@ -287,6 +288,7 @@ function statusBadge(st){
   return                         '<span class="badge badge-sold">분양 완료</span>';
 }
 function toast(msg){
+window.showToast = toast;
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
@@ -303,17 +305,31 @@ window.switchTab=(btn,name)=>{
 // ── Firebase 구독
 onValue(ref(db,'litters'),snap=>{
   window._litters=snap.val()||{};
+  document.getElementById('puppyLoading').style.display='none';
   renderPuppyGroups();
   renderManageList();
   updateStats();
+}, err => {
+  console.error("Litters read error:", err);
+  document.getElementById('puppyLoading').style.display='none';
 });
+
 onValue(ref(db,'contracts'),snap=>{
   const fb=snap.val()||{};
   let ls={};
   try{ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}')}catch(e){}
   window._contracts={...ls,...fb};
   renderDB();
+}, err => {
+  console.error("Contracts read error:", err);
+  document.getElementById('dbList').innerHTML = '<div class="loading">계약 DB를 불러올 수 없습니다.</div>';
 });
+
+// Loading fallback timeout (3초 경과 시 스피너 자동 제거)
+setTimeout(() => {
+  const pl = document.getElementById('puppyLoading');
+  if (pl && pl.style.display !== 'none') pl.style.display = 'none';
+}, 3000);
 
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
@@ -1076,10 +1092,15 @@ window.saveAddEvent = async function() {
   toast('새 일정이 등록되었습니다!');
 };
 
-window.deleteCalendarEvent = async function(id) {
+window.deleteCalendarEvent = async function(dbPath) {
   if (confirm('이 일정을 삭제하시겠습니까?')) {
-    await fbRemove(ref(db, `schedules/${id}`));
-    toast('일정이 삭제되었습니다.');
+    try {
+      const targetPath = dbPath.includes('/') ? dbPath : `schedules/${dbPath}`;
+      await fbRemove(ref(db, targetPath));
+      toast('일정이 삭제되었습니다.');
+    } catch (e) {
+      alert('삭제 실패: ' + e.message);
+    }
   }
 };
 </script>
