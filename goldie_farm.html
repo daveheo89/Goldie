@@ -5843,7 +5843,7 @@ function renderPuppyDetailContent(){
       }
 
       return `
-      <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px;">
+      <div class="pd-media-cell" draggable="true" ondragstart="handleMediaDragStart(event, '${m._key}')" ondragover="handleMediaDragOver(event)" ondragend="handleMediaDragEnd(event)" ondrop="handleMediaDrop(event, '${pdLitterKey}', '${pdPuppyId}', '${m._key}')" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:grab;">
         ${movePrevBtn}
         ${moveNextBtn}
         ${videoTagHtml}
@@ -5853,7 +5853,7 @@ function renderPuppyDetailContent(){
       </div>`;
     } else {
       return `
-      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')">
+      <div class="pd-media-cell" draggable="true" ondragstart="handleMediaDragStart(event, '${m._key}')" ondragover="handleMediaDragOver(event)" ondragend="handleMediaDragEnd(event)" ondrop="handleMediaDrop(event, '${pdLitterKey}', '${pdPuppyId}', '${m._key}')" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')" style="cursor:grab;">
         ${movePrevBtn}
         ${moveNextBtn}
         <img src="${m.src}">
@@ -6023,6 +6023,102 @@ window.movePuppyMedia = async function(litterKey, puppyId, mediaKey, direction) 
     renderPuppies();
   } catch (err) {
     showToast('⚠ 순서 변경 실패: ' + err.message);
+  }
+};
+
+// 🖐️ 사진 / 동영상 드래그 앤 드롭 (Drag & Drop) 순서 변경
+let draggedMediaKey = null;
+
+window.handleMediaDragStart = function(e, key) {
+  draggedMediaKey = key;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+  }
+  if (e.currentTarget) e.currentTarget.style.opacity = '0.4';
+};
+
+window.handleMediaDragOver = function(e) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleMediaDragEnd = function(e) {
+  if (e.currentTarget) e.currentTarget.style.opacity = '1';
+};
+
+window.handleMediaDrop = async function(e, litterKey, puppyId, targetKey) {
+  e.preventDefault();
+  if (!draggedMediaKey || draggedMediaKey === targetKey) return;
+
+  const lt = litters.find(l => l._key === litterKey);
+  if (!lt) return;
+  const p = (lt.puppies || {})[puppyId];
+  if (!p || !p.media) return;
+
+  const entries = Object.entries(p.media);
+  const srcIdx = entries.findIndex(([k]) => k === draggedMediaKey);
+  const dstIdx = entries.findIndex(([k]) => k === targetKey);
+  if (srcIdx < 0 || dstIdx < 0) return;
+
+  const [removed] = entries.splice(srcIdx, 1);
+  entries.splice(dstIdx, 0, removed);
+
+  const newMedia = {};
+  entries.forEach(([k, val]) => {
+    newMedia[k] = val;
+  });
+
+  try {
+    await fbSet(`litters/${litterKey}/puppies/${puppyId}/media`, newMedia);
+    const firstImg = entries.find(([, m]) => m.type === 'image' || (m.src && !m.src.includes('.mp4') && m.type !== 'video'));
+    if (firstImg && firstImg[1] && firstImg[1].src) {
+      await fbSet(`litters/${litterKey}/puppies/${puppyId}/photo`, firstImg[1].src);
+    }
+    showToast('✨ 사진/영상 순서가 드래그 앤 드롭으로 변경되었습니다!');
+    renderPuppyDetailContent();
+    renderPuppies();
+  } catch (err) {
+    showToast('⚠ 순서 변경 실패: ' + err.message);
+  }
+};
+
+// 🐕‍🦺 성견(부견/모견) 사진/영상 다중 업로드 기능
+window.addAdultDogMedia = async function(e, dogKey, type) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  for (const file of files) {
+    if (type === 'video') {
+      showToast('⏳ 성견 동영상을 등록 중입니다...');
+      const r = new FileReader();
+      r.onload = async ev => {
+        const mediaObj = { type: 'video', src: ev.target.result, createdAt: today() };
+        await fbPush(`dogs/${dogKey}/media`, mediaObj);
+        showToast('✅ 성견 동영상이 추가되었습니다!');
+        selectDog(dogKey);
+      };
+      r.readAsDataURL(file);
+    } else {
+      showToast('⏳ 사진을 압축하고 있습니다...');
+      const compressed = await compressImageFile(file, 1200, 0.82);
+      const mediaObj = { type: 'image', src: compressed, createdAt: today() };
+      await fbPush(`dogs/${dogKey}/media`, mediaObj);
+      await fbSet(`dogs/${dogKey}/photo`, compressed);
+      showToast('✅ 성견 사진이 추가되었습니다!');
+      selectDog(dogKey);
+    }
+  }
+};
+
+window.deleteDogMedia = async function(dogKey, mediaKey) {
+  if (!confirm('해당 성견 미디어를 삭제하시겠습니까?')) return;
+  try {
+    await fbRemove(`dogs/${dogKey}/media/${mediaKey}`);
+    showToast('🗑️ 미디어가 삭제되었습니다.');
+    selectDog(dogKey);
+  } catch(e){
+    showToast('⚠ 삭제 실패: ' + e.message);
   }
 };
 
