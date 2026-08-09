@@ -7489,55 +7489,7 @@ window.savePuppy = async function() {
 
 
 
-    await fbUpdate(`litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}`, updates);
-
-
-
-    showToast('✅ 새끼 정보가 수정되었습니다!');
-
-
-
-    closePuppyModal();
-
-
-
-    renderPuppies();
-
-
-
-  } catch(e) {
-
-
-
-    console.error('새끼 정보 수정 실패:', e);
-
-
-
-    showToast('⚠ 정보 저장에 실패했습니다: ' + e.message);
-
-
-
-  } finally {
-
-
-
-    saveBtn.textContent = '✅ 저장'; saveBtn.disabled = false;
-
-
-
-  }
-
-
-
-};
-
-
-
-
-
-
-
-// ═══════════════════════════════════════
+    // ═══════════════════════════════════════
 
 
 
