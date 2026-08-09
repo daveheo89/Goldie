@@ -1866,19 +1866,19 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   <!-- 백신 알림 팝업 -->
 
   <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
-
     <div class="vax-popup">
-
       <h2>💉 오늘의 백신 알림</h2>
-
       <p class="vp-sub">오늘 또는 놓친 일정이 있어요!</p>
-
       <div id="vax-popup-list"></div>
 
-      <button class="btn" style="margin-top:8px;" onclick="closeVaxPopup()">확인했어요 ✓</button>
-
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:10px; border-top:1px solid #eee; font-size:0.8rem; color:var(--text-muted);">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+          <input type="checkbox" id="hideVaxTodayChk" style="width:16px; height:16px; cursor:pointer; accent-color:var(--gold);">
+          <span style="font-weight:700;">오늘 하루 안 보기</span>
+        </label>
+        <button class="btn btn-gold btn-sm" onclick="closeVaxPopup()" style="padding:6px 16px; font-weight:700;">닫기 ✓</button>
+      </div>
     </div>
-
   </div>
 
 
@@ -3824,6 +3824,9 @@ window.savePuppy = async function() {
 // ═══════════════════════════════════════
 
 function checkVaxAlerts(){
+  const todayStr = today();
+  const hideUntil = localStorage.getItem('goldie_hide_vax_popup_date');
+  if (hideUntil === todayStr) return; // 오늘 하루 안 보기 체크 시 팝업 방지
 
   const alerts=[];
 
@@ -3875,7 +3878,13 @@ function checkVaxAlerts(){
 
 }
 
-window.closeVaxPopup=function(){document.getElementById('vax-popup-overlay').classList.add('hidden');};
+window.closeVaxPopup=function(){
+  const chk = document.getElementById('hideVaxTodayChk');
+  if (chk && chk.checked) {
+    localStorage.setItem('goldie_hide_vax_popup_date', today());
+  }
+  document.getElementById('vax-popup-overlay').classList.add('hidden');
+};
 
 
 
