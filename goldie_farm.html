@@ -1006,6 +1006,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   </div>
 
 </div>
+
 <script>
   function attemptLogin() {
     var pwInput = document.getElementById('login-password');
@@ -1044,6 +1045,31 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     }
   }
 
+  window.showTab = function(tab) {
+    var tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
+    tabIds.forEach(function(t) {
+      var el = document.getElementById('tab-' + t);
+      if (el) el.classList.toggle('hidden', t !== tab);
+    });
+
+    var tabButtons = document.querySelectorAll('.tabs .tab');
+    tabButtons.forEach(function(btn, i) {
+      if (btn) btn.classList.toggle('active', tabIds[i] === tab);
+    });
+
+    try {
+      if (tab === 'dogs' && typeof renderDogs === 'function') renderDogs();
+      if (tab === 'kennels' && typeof renderKennels === 'function') renderKennels();
+      if (tab === 'breeding' && typeof renderBreeding === 'function') renderBreeding();
+      if (tab === 'puppies' && typeof renderPuppies === 'function') renderPuppies();
+      if (tab === 'move' && typeof renderMove === 'function') renderMove();
+      if (tab === 'delivery' && typeof renderDeliveryCalendar === 'function') renderDeliveryCalendar();
+      if (tab === 'treatment' && typeof initTreatmentTab === 'function') initTreatmentTab();
+    } catch(e) {
+      console.error('[Tab Switch Error]:', e);
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', function() {
     var pwInput = document.getElementById('login-password');
     if (pwInput) {
@@ -1058,6 +1084,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     }
   });
 </script>
+
 
 
 
