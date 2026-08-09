@@ -292,7 +292,7 @@ function renderProfile(lt, p, sireData, damData) {
   }
 
   let sireHtml = '';
-  if (lt.maleCode || sireData || sireMedia.length > 0) {
+  if (p.showSireInProfile !== false && (lt.maleCode || sireData || sireMedia.length > 0)) {
     let sireSliderContent = '';
     if (sireMedia.length > 0) {
       const sireSlides = sireMedia.map((m, i) => `
@@ -322,9 +322,9 @@ function renderProfile(lt, p, sireData, damData) {
     `;
   }
 
-  // 모견 미디어 갤러리 슬라이더 구축 (자료가 있는 경우에만)
+  // 모견 미디어 갤러리 슬라이더 구축 (체크박스 노출 승인 및 자료가 있는 경우에만)
   let damMedia = [];
-  if (damData) {
+  if (p.showDamInProfile !== false && damData) {
     if (damData.photo) damMedia.push({ type: 'image', src: damData.photo });
     if (damData.media) {
       Object.values(damData.media).forEach(m => {
