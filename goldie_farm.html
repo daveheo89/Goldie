@@ -5810,7 +5810,10 @@ function renderPuppyDetailContent(){
   const mediaList = p.media ? Object.entries(p.media).map(([mk, val]) => ({_key: mk, ...val})) : [];
   
   // 사진/영상 갤러리 셀 HTML
-  const mediaCells = mediaList.map(m => {
+  const mediaCells = mediaList.map((m, idx) => {
+    const movePrevBtn = idx > 0 ? `<button title="앞으로 이동" style="position:absolute; top:4px; left:4px; z-index:10; background:rgba(0,0,0,0.65); color:#fff; border:none; border-radius:4px; width:22px; height:22px; font-size:10px; cursor:pointer;" onclick="event.stopPropagation(); movePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}', -1)">◀</button>` : '';
+    const moveNextBtn = idx < mediaList.length - 1 ? `<button title="뒤로 이동" style="position:absolute; top:4px; left:${idx > 0 ? '30px' : '4px'}; z-index:10; background:rgba(0,0,0,0.65); color:#fff; border:none; border-radius:4px; width:22px; height:22px; font-size:10px; cursor:pointer;" onclick="event.stopPropagation(); movePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}', 1)">▶</button>` : '';
+
     if(m.type === 'video') {
       const vidSrc = m.src;
       const isPlayableFile = vidSrc && (vidSrc.startsWith('data:video') || vidSrc.startsWith('blob:') || vidSrc.endsWith('.mp4') || vidSrc.endsWith('.mov') || vidSrc.startsWith('idb:'));
@@ -5841,6 +5844,8 @@ function renderPuppyDetailContent(){
 
       return `
       <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px;">
+        ${movePrevBtn}
+        ${moveNextBtn}
         ${videoTagHtml}
         <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.65); color:#fff; z-index:2; font-size:10px;">🎥 동영상 미리보기</span>
         <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 영상 전송</button>
@@ -5849,6 +5854,8 @@ function renderPuppyDetailContent(){
     } else {
       return `
       <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')">
+        ${movePrevBtn}
+        ${moveNextBtn}
         <img src="${m.src}">
         <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
@@ -5974,6 +5981,48 @@ window.openPublicPuppyProfileWeb = async function(litterKey, puppyId) {
     showToast('📋 프로필 웹페이지 주소가 복사되었습니다! 카톡 대화방에 붙여넣어 전송하세요.');
   } catch(e){
     prompt('아래 프로필 웹페이지 주소를 복사하세요:', profileUrl);
+  }
+};
+
+// ── ↔️ 사진 / 동영상 순서 변경 기능 ──
+window.movePuppyMedia = async function(litterKey, puppyId, mediaKey, direction) {
+  const lt = litters.find(l => l._key === litterKey);
+  if (!lt) return;
+  const p = (lt.puppies || {})[puppyId];
+  if (!p || !p.media) return;
+
+  const entries = Object.entries(p.media);
+  const idx = entries.findIndex(([k]) => k === mediaKey);
+  if (idx < 0) return;
+
+  const targetIdx = idx + direction;
+  if (targetIdx < 0 || targetIdx >= entries.length) return;
+
+  // 순서 바꿈 (Swap)
+  const temp = entries[idx];
+  entries[idx] = entries[targetIdx];
+  entries[targetIdx] = temp;
+
+  // 미디어 객체 재구성
+  const newMedia = {};
+  entries.forEach(([k, val]) => {
+    newMedia[k] = val;
+  });
+
+  try {
+    await fbSet(`litters/${litterKey}/puppies/${puppyId}/media`, newMedia);
+
+    // 맨 첫 번째 사진이 이미지인 경우 대표 썸네일(photo) 자동 동기화
+    const firstImg = entries.find(([, m]) => m.type === 'image' || (m.src && !m.src.includes('.mp4') && m.type !== 'video'));
+    if (firstImg && firstImg[1] && firstImg[1].src) {
+      await fbSet(`litters/${litterKey}/puppies/${puppyId}/photo`, firstImg[1].src);
+    }
+
+    showToast('↔️ 미디어 순서가 변경되었습니다!');
+    renderPuppyDetailContent();
+    renderPuppies();
+  } catch (err) {
+    showToast('⚠ 순서 변경 실패: ' + err.message);
   }
 };
 
