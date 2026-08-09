@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐾 골디쉼터 프리미엄 자견 프로필</title>
+<meta name="description" content="골디쉼터 순종 골든리트리버/라브라도리트리버 자견 프로필">
+<style>
+:root {
+  --gold:#C8931A; --gold-l:#F0BE5A; --gold-p:#FDF5E0; --gold-bg:#FFFDF9;
+  --br:#5C3D1E; --br-l:#8B6240; --cream:#FAFAF7; --white:#ffffff;
+  --gray:#6B6B6B; --gray-l:#E8E6E0; --gray-ll:#F4F3EF;
+  --green:#27AE60; --red:#C0392B; --blue:#1E6FBB;
+  --sh:0 4px 20px rgba(92,61,30,0.08); --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;word-break:break-word;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--cream);color:var(--br);min-height:100vh;padding-bottom:100px;}
+
+header{background:linear-gradient(135deg,var(--br) 0%,#3a250f 100%);color:#fff;padding:18px 20px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+header h1{font-size:18px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5px;display:flex;align-items:center;justify-content:center;gap:6px;}
+header p{font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;}
+
+.container{max-width:480px;margin:0 auto;padding:16px 14px;}
+
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:18px;margin-bottom:16px;overflow:hidden;}
+
+/* 📸 히어로 사진 카루셀/슬라이더 */
+.hero-slider{position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#000;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.slide-track{display:flex;width:100%;height:100%;transition:transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);}
+.slide-item{flex:none;width:100%;height:100%;position:relative;background:#000;display:flex;align-items:center;justify-content:center;}
+.slide-item img,.slide-item video{width:100%;height:100%;object-fit:cover;}
+.slide-nav{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:10;background:rgba(0,0,0,0.4);padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px);}
+.slide-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.5);transition:0.2s;}
+.slide-dot.active{background:var(--gold-l);width:18px;border-radius:10px;}
+
+.zoom-hint{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:4px 8px;border-radius:12px;z-index:5;pointer-events:none;}
+
+/* 강아지 헤더 */
+.puppy-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.puppy-title{font-size:22px;font-weight:900;color:var(--br);line-height:1.2;}
+.puppy-sex{font-size:14px;font-weight:700;margin-top:2px;}
+.sex-f{color:#BB1E6F;} .sex-m{color:var(--blue);}
+
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;}
+.badge-avail{background:#E8F8EF;color:var(--green);border:1px solid #A8DDB9;}
+.badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;}
+.badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC;}
+
+/* 상세 정보 목록 */
+.info-table{width:100%;border-collapse:collapse;margin-top:6px;}
+.info-table tr{border-bottom:1px solid var(--gray-ll);}
+.info-table tr:last-child{border-bottom:none;}
+.info-table td{padding:10px 4px;font-size:13.5px;}
+.td-key{color:var(--gray);font-weight:700;width:30%;}
+.td-val{color:var(--br);font-weight:800;text-align:right;}
+
+/* 부모견 프로필 카드 (자료 있을 때만 노출) */
+.parent-card{background:var(--gold-bg);border:1.5px solid var(--gold-l);border-radius:14px;padding:14px;margin-bottom:16px;}
+.parent-title{font-size:14px;font-weight:800;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.parent-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
+.parent-media-cell{aspect-ratio:1;border-radius:10px;overflow:hidden;background:#000;cursor:pointer;position:relative;}
+.parent-media-cell img,.parent-media-cell video{width:100%;height:100%;object-fit:cover;}
+
+/* 라이트박스 */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.lightbox.open{display:flex;}
+.lightbox img,.lightbox video{max-width:100%;max-height:85vh;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}
+.lightbox-close{position:absolute;top:20px;right:20px;color:#fff;font-size:28px;background:none;border:none;cursor:pointer;}
+
+/* 하단 고정 하단바 */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:12px 16px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);display:flex;gap:10px;z-index:300;max-width:480px;margin:0 auto;}
+.btn-inquire{flex:2;background:linear-gradient(135deg,#FEE500 0%,#FADA00 100%);color:#191919;font-weight:800;font-size:15px;border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 4px 12px rgba(250,218,0,0.4);}
+.btn-share{flex:1;background:var(--br);color:#fff;font-weight:700;font-size:13px;border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;}
+
+.loading{text-align:center;padding:60px 20px;color:var(--gray);font-size:15px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐾 골디쉼터 <span>분양 프로필</span></h1>
+  <p>사랑과 정성으로 키운 순종 골든/라브라도 리트리버</p>
+</header>
+
+<div class="container" id="app">
+  <div class="loading">🐾 강아지 프로필 정보를 불러오는 중...</div>
+</div>
+
+<div class="bottom-bar" id="bottomBar" style="display:none;">
+  <button class="btn-share" onclick="shareProfileToKakao()">📲 카톡 공유</button>
+  <button class="btn-inquire" onclick="inquireKakao()">💬 카카오톡 분양 문의하기</button>
+</div>
+
+<!-- 라이트박스 뷰어 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close">✕</button>
+  <div id="lightboxTarget"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const FB = {
+  apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain:"goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL:"https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId:"goldie-shelter-d6c81",
+  storageBucket:"goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId:"305277425020",
+  appId:"1:305277425020:web:1f841f61d733c3a3aec0f9"
+};
+const app = initializeApp(FB);
+const db  = getDatabase(app);
+
+// URL 파라미터 추출
+const params = new URLSearchParams(location.search);
+const litterKey = params.get('litter');
+const puppyId   = params.get('puppy');
+
+window._currentPuppyData = null;
+
+async function loadProfile() {
+  const container = document.getElementById('app');
+  if (!litterKey || !puppyId) {
+    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 올바른 강아지 프로필 링크가 아닙니다.</div>';
+    return;
+  }
+
+  try {
+    const snap = await get(ref(db, `litters/${litterKey}`));
+    if (!snap.exists()) {
+      container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 등록된 분양 정보를 찾을 수 없습니다.</div>';
+      return;
+    }
+
+    const lt = snap.val();
+    const p = (lt.puppies || {})[puppyId];
+    if (!p) {
+      container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 강아지 개체 정보를 찾을 수 없습니다.</div>';
+      return;
+    }
+
+    window._currentPuppyData = { lt, p, litterKey, puppyId };
+
+    // 부모견 정보 가져오기
+    let sireData = null;
+    let damData = null;
+
+    if (lt.maleCode) {
+      const sSnap = await get(ref(db, `dogs/${lt.maleCode}`));
+      if (sSnap.exists()) sireData = sSnap.val();
+    }
+    if (lt.femaleCode) {
+      const dSnap = await get(ref(db, `dogs/${lt.femaleCode}`));
+      if (dSnap.exists()) damData = dSnap.val();
+    }
+
+    renderProfile(lt, p, sireData, damData);
+    document.getElementById('bottomBar').style.display = 'flex';
+  } catch (e) {
+    container.innerHTML = `<div class="card" style="text-align:center;padding:40px;">⚠️ 프로필 불러오기 실패: ${e.message}</div>`;
+  }
+}
+
+function renderProfile(lt, p, sireData, damData) {
+  const container = document.getElementById('app');
+
+  // 미디어 목록 추출
+  const mediaList = p.media ? Object.values(p.media) : [];
+  let photos = [];
+  let videos = [];
+
+  if (p.photo) photos.push({ type: 'image', src: p.photo });
+  mediaList.forEach(m => {
+    if (m.type === 'video' || (m.src && m.src.includes('.mp4'))) {
+      videos.push(m);
+    } else if (m.src) {
+      if (!photos.some(ph => ph.src === m.src)) photos.push(m);
+    }
+  });
+
+  const allSlideMedia = [...photos, ...videos];
+
+  // 1. 슬라이더 HTML
+  let sliderHtml = '';
+  if (allSlideMedia.length > 0) {
+    const slides = allSlideMedia.map((m, i) => `
+      <div class="slide-item" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
+        ${m.type==='video' ? `<video src="${m.src}" controls preload="metadata" playsinline></video>` : `<img src="${m.src}">`}
+      </div>
+    `).join('');
+
+    const dots = allSlideMedia.map((_, i) => `<div class="slide-dot ${i===0?'active':''}" id="dot-${i}"></div>`).join('');
+
+    sliderHtml = `
+      <div class="hero-slider">
+        <span class="zoom-hint">🔍 클릭하여 크게 보기</span>
+        <div class="slide-track" id="slideTrack">
+          ${slides}
+        </div>
+        ${allSlideMedia.length > 1 ? `<div class="slide-nav">${dots}</div>` : ''}
+      </div>
+    `;
+  } else {
+    sliderHtml = `<div class="hero-slider" style="background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:40px;">🐶</div>`;
+  }
+
+  // 2. 부견 세션 (자료가 있는 경우에만 표시)
+  let sireHtml = '';
+  const sirePhoto = sireData ? sireData.photo : null;
+  if (sirePhoto) {
+    sireHtml = `
+      <div class="parent-card">
+        <div class="parent-title">🐕 부견 프로필 (${lt.maleCode || '부견'})</div>
+        <div class="parent-gallery">
+          <div class="parent-media-cell" onclick="openLightbox('${sirePhoto}', 'image')">
+            <img src="${sirePhoto}">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 3. 모견 세션 (자료가 있는 경우에만 표시)
+  let damHtml = '';
+  const damPhoto = damData ? damData.photo : null;
+  if (damPhoto) {
+    damHtml = `
+      <div class="parent-card">
+        <div class="parent-title">🐕‍🦺 모견 프로필 (${lt.femaleCode || '모견'})</div>
+        <div class="parent-gallery">
+          <div class="parent-media-cell" onclick="openLightbox('${damPhoto}', 'image')">
+            <img src="${damPhoto}">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 분양 상태 태그
+  const status = p.status || '분양 가능';
+  let badgeClass = 'badge-avail';
+  if (status === '예약' || status === '사전 예약 중') badgeClass = 'badge-rsv';
+  if (status === '분양 완료') badgeClass = 'badge-sold';
+
+  // 60일 분양 시작일
+  const birthDateStr = lt.birthB || lt.birthA || '';
+  let birthFmt = birthDateStr ? birthDateStr.replace(/-/g, '.') : '정보 없음';
+
+  container.innerHTML = `
+    <div class="card">
+      ${sliderHtml}
+      <div class="puppy-header">
+        <div>
+          <div class="puppy-title">${p.name || '골디 강아지'}</div>
+          <div class="puppy-sex ${p.sex==='female'?'sex-f':'sex-m'}">
+            ${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}
+          </div>
+        </div>
+        <span class="badge ${badgeClass}">${status}</span>
+      </div>
+
+      <table class="info-table">
+        <tr>
+          <td class="td-key">🎂 출생일</td>
+          <td class="td-val">${birthFmt}</td>
+        </tr>
+        <tr>
+          <td class="td-key">🏡 출생지</td>
+          <td class="td-val">골디쉼터 본원</td>
+        </tr>
+        <tr>
+          <td class="td-key">🐾 견종</td>
+          <td class="td-val">순종 골든/라브라도 리트리버</td>
+        </tr>
+      </table>
+    </div>
+
+    ${sireHtml}
+    ${damHtml}
+
+    <div class="card" style="background:var(--gold-bg);border-color:var(--gold-l);">
+      <div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:6px;">🏡 골디쉼터 프리미엄 케어</div>
+      <p style="font-size:12px;color:var(--br-l);line-height:1.5;">
+        골디쉼터는 넓은 야외 운동장과 깨끗한 견사 환경에서 아이들을 사랑으로 직접 케어합니다.<br>
+        정식 분양 계약서 작성 및 입양 후 전문 케어 상담을 지속적으로 지원합니다.
+      </p>
+    </div>
+  `;
+
+  // 슬라이더 터치 이벤트 바인딩
+  initSlider(allSlideMedia.length);
+}
+
+// 터치 슬라이더 제어
+let currentSlide = 0;
+function initSlider(total) {
+  if (total <= 1) return;
+  const track = document.getElementById('slideTrack');
+  if (!track) return;
+
+  let startX = 0;
+  let isDragging = false;
+
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  });
+
+  track.addEventListener('touchend', e => {
+    if (!isDragging) return;
+    const endX = e.changedTouches[0].clientX;
+    const diff = startX - endX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0 && currentSlide < total - 1) currentSlide++;
+      else if (diff < 0 && currentSlide > 0) currentSlide--;
+      updateSlide(total);
+    }
+    isDragging = false;
+  });
+}
+
+function updateSlide(total) {
+  const track = document.getElementById('slideTrack');
+  if (track) track.style.transform = `translateX(-${currentSlide * 100}%)`;
+  for (let i = 0; i < total; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    if (dot) dot.className = `slide-dot ${i === currentSlide ? 'active' : ''}`;
+  }
+}
+
+// 라이트박스 확대 뷰어
+window.openLightbox = function(src, type) {
+  const target = document.getElementById('lightboxTarget');
+  if (type === 'video') {
+    target.innerHTML = `<video src="${src}" controls autoplay style="max-width:100%;max-height:85vh;"></video>`;
+  } else {
+    target.innerHTML = `<img src="${src}">`;
+  }
+  document.getElementById('lightbox').classList.add('open');
+};
+
+window.closeLightbox = function() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxTarget').innerHTML = '';
+};
+
+// 공유 & 분양 문의 기능
+window.shareProfileToKakao = async function() {
+  const url = location.href;
+  const data = window._currentPuppyData;
+  const name = data && data.p ? data.p.name : '골디 강아지';
+  const shareText = `[골디쉼터] 🐾 ${name} 분양 프로필 안내\n\n아래 링크에서 고화질 사진과 동영상을 확인해 보세요!\n${url}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: `[골디쉼터] 🐾 ${name} 프로필`, text: shareText });
+      return;
+    } catch(e){}
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('📋 카톡 공유용 프로필 주소가 복사되었습니다! 대화방에 붙여넣어 전송하세요.');
+  } catch(e){
+    prompt('아래 프로필 주소를 복사하세요:', url);
+  }
+};
+
+window.inquireKakao = function() {
+  const data = window._currentPuppyData;
+  const name = data && data.p ? data.p.name : '강아지';
+  const url = location.href;
+  const msg = encodeURIComponent(`안녕하세요! 골디쉼터 분양 웹페이지를 보고 문의드립니다.\n\n🐾 강아지: ${name}\n🔗 프로필 주소: ${url}`);
+  
+  // 오픈채팅 또는 전화 연결
+  window.open(`https://open.kakao.com/me/goldieshelter?text=${msg}`, '_blank');
+};
+
+window.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+</body>
+</html>
