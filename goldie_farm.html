@@ -23,6 +23,7 @@
 
 
 
+
 <script>
   if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
     document.documentElement.classList.add('authenticated');
@@ -47,9 +48,22 @@
       }
       if (loader) loader.style.display = 'none';
 
-      if (typeof window.restoreLocalCache === 'function') window.restoreLocalCache();
-      if (typeof window.renderDogs === 'function') window.renderDogs();
-      if (typeof window.startListeners === 'function') window.startListeners();
+      var attempts = 0;
+      function tryRenderOnLogin() {
+        attempts++;
+        if (typeof window.renderDogs === 'function') {
+          try { window.renderDogs(); } catch(e){}
+          try {
+            var pupTab = document.getElementById('tab-puppies');
+            if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
+              window.renderPuppies();
+            }
+          } catch(e){}
+        } else if (attempts < 30) {
+          setTimeout(tryRenderOnLogin, 100);
+        }
+      }
+      tryRenderOnLogin();
     } else {
       if (err) err.style.display = 'block';
       if (pwInput) {
@@ -83,7 +97,6 @@
       if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
       if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
       if (tab === 'move' && typeof window.renderMove === 'function') window.renderMove();
-      
       if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
     } catch(e) {
       console.error('[Tab Switch Error]:', e);
@@ -91,6 +104,7 @@
   }
   window.showTab = showTab;
 </script>
+
 
 
 
