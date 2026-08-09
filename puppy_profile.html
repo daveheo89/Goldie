@@ -45,8 +45,8 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 
 /* 강아지 헤더 */
 .puppy-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
-.puppy-title{font-size:22px;font-weight:900;color:var(--br);line-height:1.2;}
-.puppy-sex{font-size:14px;font-weight:700;margin-top:2px;}
+.puppy-title{font-size:20px;font-weight:900;color:var(--br);line-height:1.2;}
+.puppy-sex{font-size:13.5px;font-weight:700;margin-top:2px;}
 .sex-f{color:#BB1E6F;} .sex-m{color:var(--blue);}
 
 .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;}
@@ -60,12 +60,9 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 .td-key{color:var(--gray);font-weight:700;width:30%;}
 .td-val{color:var(--br);font-weight:800;text-align:right;}
 
-/* 부모견 프로필 (사진/영상 자료가 있는 경우에만 표시) */
+/* 부모견 프로필 카드 */
 .parent-card{background:var(--gold-bg);border:1.5px solid var(--gold-l);border-radius:14px;padding:14px;margin-bottom:14px;}
 .parent-title{font-size:14px;font-weight:800;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-.parent-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
-.parent-media-cell{aspect-ratio:1;border-radius:10px;overflow:hidden;background:#000;cursor:pointer;position:relative;}
-.parent-media-cell img,.parent-media-cell video{width:100%;height:100%;object-fit:cover;}
 
 /* 라이트박스 뷰어 */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
@@ -126,6 +123,15 @@ window._currentPuppyData = null;
 window._totalSlides = 0;
 window._currentSlide = 0;
 
+function cleanDogName(raw, fallback = '') {
+  if (!raw) return fallback;
+  const s = String(raw).trim();
+  const parts = s.split('/');
+  let name = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+  name = name.replace(/^[0-9]+\s*/, '').trim();
+  return name || fallback;
+}
+
 async function loadProfile() {
   const container = document.getElementById('app');
   if (!litterKey || !puppyId) {
@@ -149,17 +155,27 @@ async function loadProfile() {
 
     window._currentPuppyData = { lt, p, litterKey, puppyId };
 
+    // 부모견 정보 검색
     let sireData = null;
     let damData = null;
 
-    if (lt.maleCode) {
-      const sSnap = await get(ref(db, `dogs/${lt.maleCode}`));
-      if (sSnap.exists()) sireData = sSnap.val();
-    }
-    if (lt.femaleCode) {
-      const dSnap = await get(ref(db, `dogs/${lt.femaleCode}`));
-      if (dSnap.exists()) damData = dSnap.val();
-    }
+    // 모든 개체(dogs) 불러와서 코드나 이름 일치 검색
+    try {
+      const dogsSnap = await get(ref(db, 'dogs'));
+      if (dogsSnap.exists()) {
+        const dogsObj = dogsSnap.val();
+        Object.entries(dogsObj).forEach(([dk, dval]) => {
+          if (!dval) return;
+          const codeMatch = dval.code || dk;
+          if (lt.maleCode && (codeMatch.includes(lt.maleCode) || lt.maleCode.includes(codeMatch))) {
+            sireData = dval;
+          }
+          if (lt.femaleCode && (codeMatch.includes(lt.femaleCode) || lt.femaleCode.includes(codeMatch))) {
+            damData = dval;
+          }
+        });
+      }
+    } catch(e){}
 
     renderProfile(lt, p, sireData, damData);
     document.getElementById('bottomBar').style.display = 'flex';
@@ -170,6 +186,13 @@ async function loadProfile() {
 
 function renderProfile(lt, p, sireData, damData) {
   const container = document.getElementById('app');
+
+  const motherName = cleanDogName(lt.femaleCode || (damData && damData.name));
+  const sireName   = cleanDogName(lt.maleCode   || (sireData && sireData.name), '부견');
+
+  // 강아지 제목: 모견이름네 - 강아지이름 (예: 포순이네 - 까망이)
+  const puppyName = p.name || '강아지';
+  const fullTitle = motherName ? `${motherName}네 — ${puppyName}` : puppyName;
 
   const mediaList = p.media ? Object.values(p.media) : [];
   let photos = [];
@@ -191,7 +214,7 @@ function renderProfile(lt, p, sireData, damData) {
   if (allSlideMedia.length > 0) {
     const slides = allSlideMedia.map((m, i) => `
       <div class="slide-item" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
-        ${m.type==='video' ? `<video src="${m.src}" controls preload="metadata" playsinline></video>` : `<img src="${m.src}">`}
+        ${m.type==='video' ? `<video src="${m.src}" controls playsinline webkit-playsinline preload="auto"></video>` : `<img src="${m.src}">`}
       </div>
     `).join('');
 
@@ -218,32 +241,38 @@ function renderProfile(lt, p, sireData, damData) {
     sliderHtml = `<div class="hero-slider" style="background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:40px;">🐶</div>`;
   }
 
-  // 부견 프로필 (사진/영상 자료가 있는 경우에만 표시)
+  // 부견 프로필 카드 (부견 코드나 데이터가 존재하는 경우 항상 하단 표출)
   let sireHtml = '';
-  const sirePhoto = sireData ? sireData.photo : null;
-  if (sirePhoto) {
+  if (lt.maleCode || sireData) {
+    const sirePhoto = sireData ? sireData.photo : null;
     sireHtml = `
       <div class="parent-card">
-        <div class="parent-title">🐕 부견 프로필 (${lt.maleCode || '부견'})</div>
-        <div class="parent-gallery">
-          <div class="parent-media-cell" onclick="openLightbox('${sirePhoto}', 'image')">
-            <img src="${sirePhoto}">
+        <div class="parent-title">🐕 부견 정보 (${sireName})</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${sirePhoto ? 
+            `<img src="${sirePhoto}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;cursor:pointer;" onclick="openLightbox('${sirePhoto}', 'image')">` :
+            `<div style="width:72px;height:72px;border-radius:10px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:26px;">🐕</div>`
+          }
+          <div>
+            <div style="font-size:15px;font-weight:900;color:var(--br);">${sireName}</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px;">골디쉼터 우수 부견</div>
           </div>
         </div>
       </div>
     `;
   }
 
-  // 모견 프로필 (사진/영상 자료가 있는 경우에만 표시)
+  // 모견 프로필 카드 (모견 사진/자료가 있는 경우에만 표출)
   let damHtml = '';
-  const damPhoto = damData ? damData.photo : null;
-  if (damPhoto) {
+  if (damData && damData.photo) {
     damHtml = `
       <div class="parent-card">
-        <div class="parent-title">🐕‍🦺 모견 프로필 (${lt.femaleCode || '모견'})</div>
-        <div class="parent-gallery">
-          <div class="parent-media-cell" onclick="openLightbox('${damPhoto}', 'image')">
-            <img src="${damPhoto}">
+        <div class="parent-title">🐕‍🦺 모견 정보 (${motherName})</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="${damData.photo}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;cursor:pointer;" onclick="openLightbox('${damData.photo}', 'image')">
+          <div>
+            <div style="font-size:15px;font-weight:900;color:var(--br);">${motherName}</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px;">골디쉼터 우수 모견</div>
           </div>
         </div>
       </div>
@@ -263,7 +292,7 @@ function renderProfile(lt, p, sireData, damData) {
       ${sliderHtml}
       <div class="puppy-header">
         <div>
-          <div class="puppy-title">${p.name || '골디 강아지'}</div>
+          <div class="puppy-title">${fullTitle}</div>
           <div class="puppy-sex ${p.sex==='female'?'sex-f':'sex-m'}">
             ${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}
           </div>
@@ -339,7 +368,7 @@ function initSwipeEvents() {
 window.openLightbox = function(src, type) {
   const target = document.getElementById('lightboxTarget');
   if (type === 'video') {
-    target.innerHTML = `<video src="${src}" controls autoplay style="max-width:100%;max-height:85vh;"></video>`;
+    target.innerHTML = `<video src="${src}" controls autoplay playsinline style="max-width:100%;max-height:85vh;"></video>`;
   } else {
     target.innerHTML = `<img src="${src}">`;
   }
