@@ -1025,6 +1025,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         main.style.opacity = '1';
       }
       if (loader) loader.style.display = 'none';
+
+      // 🚀 로그인 즉시 개체 탭 렌더링 및 캐시 복원 강제 실행
+      if (typeof restoreLocalCache === 'function') restoreLocalCache();
+      if (typeof renderDogs === 'function') renderDogs();
+      if (typeof startListeners === 'function') startListeners();
     } else {
       if (err) err.style.display = 'block';
       if (pwInput) {
