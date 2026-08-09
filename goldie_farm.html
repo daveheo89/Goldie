@@ -220,14 +220,20 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(-
 
 
 /* loading */
-
-
-
-#loading-screen{position:fixed;inset:0;display:none;}
-    #loading-screen.active{display:flex!important;}background:linear-gradient(135deg,var(--brown),var(--gold));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
-
-
-
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  display: none !important;
+  background: linear-gradient(135deg, var(--brown), var(--gold));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  gap: 16px;
+}
+#loading-screen.active {
+  display: flex !important;
+}
 #loading-screen .ls-icon{font-size:4rem;animation:bounce .8s infinite alternate;}
 
 
