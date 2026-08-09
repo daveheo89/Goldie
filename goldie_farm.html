@@ -7414,70 +7414,49 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-
-
-
-import { getDatabase, ref, set, get, push, remove, onValue, update }
-
-
-
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-
-
-
-
-
-
-// ── Firebase 설정 ──
-
-
+import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getStorage, ref as storageRef, uploadString, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
-
-
-
   apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
-
-
-
   authDomain: "goldie-shelter-d6c81.firebaseapp.com",
-
-
-
   databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
-
-
-
   projectId: "goldie-shelter-d6c81",
-
-
-
   storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
-
-
-
-  messagingSenderId: "305277425020",
-
-
-
-  appId: "1:305277425020:web:1f841f61d733c3a3aec0f9"
-
-
-
+  messagingSenderId: "1071275996614",
+  appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
 };
 
-
-
-
-
-
-
 const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
 
+// ☁️ Firebase Storage 업로드 헬퍼
+async function uploadImageAndGetUrl(dataUrl, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadString(r, dataUrl, 'data_url');
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Image Upload Error]:', err);
+    throw err;
+  }
+}
 
+async function uploadVideoFileAndGetUrl(file, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadBytes(r, file);
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Video Upload Error]:', err);
+    throw err;
+  }
+}
 
-const db  = getDatabase(app);
+window.uploadImageAndGetUrl = uploadImageAndGetUrl;
+window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
+
 
 
 
