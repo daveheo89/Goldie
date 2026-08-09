@@ -22,80 +22,76 @@
 
 
 
+
 <script>
-
-
-
   if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
-
-
-
     document.documentElement.classList.add('authenticated');
-
-
-
   }
 
+  function attemptLogin() {
+    var pwInput = document.getElementById('login-password');
+    var pw = pwInput ? pwInput.value.trim() : '';
+    var err = document.getElementById('login-error');
+    var overlay = document.getElementById('login-overlay');
+    var main = document.getElementById('main-content');
+    var loader = document.getElementById('loading-screen');
 
+    if (pw === '5900') {
+      sessionStorage.setItem('goldi_auth', 'authenticated');
+      document.documentElement.classList.add('authenticated');
+      if (err) err.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      if (main) {
+        main.style.display = 'block';
+        main.style.opacity = '1';
+      }
+      if (loader) loader.style.display = 'none';
 
-
-window.movePuppyMedia = function(litterKey, puppyId, mediaKey, direction) {
-  const lt = litters.find(l => l._key === litterKey);
-  if (!lt) return;
-  const p = (lt.puppies || {})[puppyId];
-  if (!p || !p.media) return;
-
-  const entries = Object.entries(p.media);
-  const idx = entries.findIndex(([k]) => k === mediaKey);
-  if (idx < 0) return;
-
-  const targetIdx = idx + direction;
-  if (targetIdx < 0 || targetIdx >= entries.length) return;
-
-  const temp = entries[idx];
-  entries[idx] = entries[targetIdx];
-  entries[targetIdx] = temp;
-
-  const newMedia = {};
-  entries.forEach(([k, val]) => {
-    newMedia[k] = val;
-  });
-
-  p.media = newMedia;
-  renderPuppyDetailContent();
-  showToast('↔️ 순서가 이동되었습니다. (💾 미디어 순서 저장 버튼을 누르면 최종 저장됩니다)');
-};
-
-window.savePuppyMediaOrder = async function(litterKey, puppyId) {
-  const lt = litters.find(l => l._key === litterKey);
-  if (!lt) return;
-  const p = (lt.puppies || {})[puppyId];
-  if (!p || !p.media) return;
-
-  try {
-    await fbSet(`litters/${litterKey}/puppies/${puppyId}/media`, p.media);
-    const entries = Object.entries(p.media);
-    const firstImg = entries.find(([, m]) => m.type === 'image' || (m.src && !m.src.includes('.mp4') && m.type !== 'video'));
-    if (firstImg && firstImg[1] && firstImg[1].src) {
-      await fbSet(`litters/${litterKey}/puppies/${puppyId}/photo`, firstImg[1].src);
+      if (typeof window.restoreLocalCache === 'function') window.restoreLocalCache();
+      if (typeof window.renderDogs === 'function') window.renderDogs();
+      if (typeof window.startListeners === 'function') window.startListeners();
+    } else {
+      if (err) err.style.display = 'block';
+      if (pwInput) {
+        pwInput.value = '';
+        pwInput.focus();
+      }
+      var card = overlay ? overlay.querySelector('.card') : null;
+      if (card) {
+        card.style.animation = 'none';
+        setTimeout(function() { card.style.animation = 'shake 0.4s ease'; }, 10);
+      }
     }
-    showToast('💾 미디어 순서가 최종 저장되었습니다!');
-    renderPuppies();
-  } catch (err) {
-    showToast('⚠ 순서 저장 실패: ' + err.message);
   }
-};
+  window.attemptLogin = attemptLogin;
 
-window.toggleParentVisibility = async function(litterKey, puppyId, field, isChecked) {
-  try {
-    await fbSet(`litters/${litterKey}/puppies/${puppyId}/${field}`, isChecked);
-    showToast(isChecked ? '☑️ 프로필 웹페이지에 노출 설정되었습니다.' : '🚫 프로필 웹페이지에서 숨김 설정되었습니다.');
-  } catch(e) {
-    showToast('⚠ 설정 실패: ' + e.message);
+  function showTab(tab) {
+    var tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
+    tabIds.forEach(function(t) {
+      var el = document.getElementById('tab-' + t);
+      if (el) el.classList.toggle('hidden', t !== tab);
+    });
+
+    var tabButtons = document.querySelectorAll('.tabs .tab');
+    tabButtons.forEach(function(btn, i) {
+      if (btn) btn.classList.toggle('active', tabIds[i] === tab);
+    });
+
+    try {
+      if (tab === 'dogs' && typeof window.renderDogs === 'function') window.renderDogs();
+      if (tab === 'kennels' && typeof window.renderKennels === 'function') window.renderKennels();
+      if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
+      if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
+      if (tab === 'move' && typeof window.renderMove === 'function') window.renderMove();
+      if (tab === 'delivery' && typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+      if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+    } catch(e) {
+      console.error('[Tab Switch Error]:', e);
+    }
   }
-};
-
+  window.showTab = showTab;
 </script>
+
 
 
 
