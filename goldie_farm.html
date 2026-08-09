@@ -5660,199 +5660,79 @@ window.renderTreatmentList = function() {
 
         ${t.memo ? `<div style="font-size:.78rem; color:var(--text-muted); margin-bottom:8px; padding-left:4px; border-left:2px solid var(--border);">📝 ${esc(t.memo)}</div>` : ''}
 
-        <div style=  container.innerHTML = `
-    <!-- 미디어 갤러리 섹션 -->
-    <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <div class="pd-section-title" style="margin-bottom:0;">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
-        ${mediaList.length > 1 ? `<button onclick="savePuppyMediaOrder('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,var(--brown) 0%,#3a250f 100%); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">💾 미디어 순서 저장</button>` : ''}
-      </div>
-      <div class="pd-gallery">
-        ${mediaCells}
-        <div class="pd-media-add" title="기기 사진 업로드">
-          <div class="ai">📷</div><div class="at">사진 업로드</div>
-          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
-        </div>
-        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
-          <div class="ai">🎥</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
-          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
-        </div>
-        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
-          <div class="ai" style="font-size:1.4rem;">📸</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:.72rem; color:var(--text-muted); margin-top:10px; border-top:1px dashed var(--border); padding-top:8px;">
+          <div>📅 기간: ${fmtDate(t.startDate)} ~ ${fmtDate(t.endDate)} (${t.durationDays}일간)</div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-outline btn-sm" onclick="toggleTreatmentStatus('${t._key}', '${t.status}')" style="margin:0; padding:2px 8px; font-size:10px; height:auto; background:${isDone ? '#EEF7E0':'#fff'}; color:${isDone ? '#5A9E1A':'var(--text-muted)'}; border-color:${isDone ? '#8BC34A':'var(--border)'}">
+              ${isDone ? '✅ 치료 완료' : '⬜ 미완료'}
+            </button>
+            <button class="btn-outline btn-sm" onclick="deleteTreatment('${t._key}')" style="margin:0; padding:2px 6px; background:#FFEDE5; color:#FF6B35; border-color:#FFBCA0; height:auto;">
+              🗑️
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    `;
+  });
 
-    <!-- 부모견 프로필 웹페이지 노출 설정 섹션 -->
-    <div class="pd-section" style="background:#FFFDF5; border:1.5px solid #FCD34D; border-radius:12px; padding:12px; margin:12px 0;">
-      <div class="pd-section-title" style="color:#B45309; margin-bottom:8px;">🌐 분양 프로필 웹페이지 부모견 노출 설정</div>
-      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; font-weight:700; color:var(--brown);">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" style="width:18px; height:18px; accent-color:#C8931A;" ${p.showSireInProfile !== false ? 'c  container.innerHTML = `
-    <!-- 미디어 갤러리 섹션 -->
-    <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <div class="pd-section-title" style="margin-bottom:0;">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
-        ${mediaList.length > 1 ? `<button onclick="savePuppyMediaOrder('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,var(--brown) 0%,#3a250f 100%); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">💾 미디어 순서 저장</button>` : ''}
-      </div>
-      <div class="pd-gallery">
-        ${mediaCells}
-        <div class="pd-media-add" title="기기 사진 업로드">
-          <div class="ai">📷</div><div class="at">사진 업로드</div>
-          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
-        </div>
-        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
-          <div class="ai">🎥</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
-          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
-        </div>
-        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
-          <div class="ai" style="font-size:1.4rem;">📸</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
-        </div>
-      </div>
-    </div>
+  container.innerHTML = html || `<div class="kennel-empty" style="text-align:center;padding:40px;">${window._treatmentsFilter === 'active' ? '진행 중인 치료 내역이 없습니다.' : '완료된 치료 내역이 없습니다.'}</div>`;
+};
 
-    <!-- 부모견 프로필 웹페이지 노출 설정 섹션 -->
-    <div class="pd-section" style="background:#FFFDF5; border:1.5px solid #FCD34D; border-radius:12px; padding:12px; margin:12px 0;">
-      <div class="pd-section-title" style="color:#B45309; margin-bottom:8px;">🌐 분양 프로필 웹페이지 부모견 노출 설정</div>
-      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; font-weight:700; color:var(--brown);"  container.innerHTML = `
-    <!-- 미디어 갤러리 섹션 -->
-    <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <div class="pd-section-title" style="margin-bottom:0;">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
-        ${mediaList.length > 1 ? `<button onclick="savePuppyMediaOrder('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,var(--brown) 0%,#3a250f 100%); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">💾 미디어 순서 저장</button>` : ''}
-      </div>
-      <div class="pd-gallery">
-        ${mediaCells}
-        <div class="pd-media-add" title="기기 사진 업로드">
-          <div class="ai">📷</div><div class="at">사진 업로드</div>
-          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
-        </div>
-        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
-          <div class="ai">🎥</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
-          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
-        </div>
-        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
-          <div class="ai" style="font-size:1.4rem;">📸</div>
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
-        </div>
-      </div>
-    </div>
+window.toggleTreatmentStatus = async function(key, currentStatus) {
+  const newStatus = currentStatus === '진행중' ? '완료' : '진행중';
+  try {
+    await fbUpdate(`treatments/${key}`, { status: newStatus });
+    showToast(newStatus === '완료' ? '✅ 치료를 완료 처리했습니다!' : '치료를 진행중으로 변경했습니다.');
+  } catch(e) {
+    showToast('⚠ 상태 변경 실패: ' + e.message);
+  }
+};
 
-    <!-- 부모견 프로필 웹페이지 노출 설정 섹션 -->
-    <div class="pd-section" style="background:#FFFDF5; border:1.5px solid #FCD34D; border-radius:12px; padding:12px; margin:12px 0;">
-      <div class="pd-section-title" style="color:#B45309; margin-bottom:8px;">🌐 분양 프로필 웹페이지 부모견 노출 설정</div>
-      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; font-weight:700; color:var(--brown);">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" style="width:18px; height:18px; accent-color:#C8931A;" ${p.showSireInProfile !== false ? 'checked' : ''} onchange="toggleParentVisibility('${pdLitterKey}', '${pdPuppyId}', 'showSireInProfile', this.checked)">
-          🐕 부견 정보 (${esc(sireInfo.name)}) 프로필 웹페이지에 노출
-        </label>
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" style="width:18px; height:18px; accent-color:#C8931A;" ${p.showDamInProfile !== false ? 'checked' : ''} onchange="toggleParentVisibility('${pdLitterKey}', '${pdPuppyId}', 'showDamInProfile', this.checked)">
-          🐕‍🦺 모견 정보 (${esc(motherInfo.name)}) 프로필 웹페이지에 노출
-        </label>
-      </div>
-    </div>
+window.deleteTreatment = async function(key) {
+  if (!confirm('정말로 이 치료 기록을 삭제하시겠습니까?')) return;
+  try {
+    await fbRemove(`treatments/${key}`);
+    showToast('🗑️ 치료 기록이 삭제되었습니다.');
+  } catch(e) {
+    showToast('⚠ 삭제 실패: ' + e.message);
+  }
+};
 
-    <!-- 기본 정보 섹션 -->
-    <div class="pd-section">
-      <div class="pd-section-title">📋 강아지 정보</div>
-      <table class="pd-info-table">
-        <tr>
-          <td class="td-label">🐾 이름</td>
-          <td class="td-value">${esc(p.name||pdPuppyId)}</td>
-        </tr>
-        <tr>
-          <td class="td-label">성별</td>
-          <td class="td-value">${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}</td>
-        </tr>
-        <tr>
-          <td class="td-label">📅 출산일(B)</td>
-          <td class="td-value">${fmtDate(lt.birthB || lt.birthA)}</td>
-        </tr>
-        <tr>
-          <td class="td-label">🐕‍🦺 모견</td>
-          <td class="td-value">${esc(motherInfo.name)}</td>
-        </tr>
-        <tr>
-          <td class="td-label">🐕 부견</td>
-          <td class="td-value">${esc(sireInfo.name)}</td>
-        </tr>
-        ${adoptionRowHtml}
-      </table>
-    </div>
+// ═══════════════════════════════════════
+//  새끼 상세 모달 & 프로필 카드 생성 로직
+// ═══════════════════════════════════════
+let pdLitterKey = null;
+let pdPuppyId = null;
 
-    <!-- 모견 프로필 사진 섹션 -->
-    <div class="pd-section" style="border-top:1px solid var(--border);">
-      <div class="pd-section-title">🐕‍🦺 모견 (${esc(motherInfo.name)}) 프로필 사진</div>
-      ${motherInfo.photo ? 
-        `<img class="pd-sire-photo" src="${motherInfo.photo}" onclick="openLightbox('${motherInfo.photo}', '모견: ${esc(motherInfo.name)}')">` :
-        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 모견 사진을 등록하면 자동 표시됩니다</small></div>`
-      }
-    </div>
-
-    <!-- 부견 프로필 사진 섹션 -->
-    <div class="pd-section" style="border-top:1px solid var(--border);">
-      <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필 사진</div>
-      ${sireInfo.photo ? 
-        `<img class="pd-sire-photo" src="${sireInfo.photo}" onclick="openLightbox('${sireInfo.photo}', '부견: ${esc(sireInfo.name)}')">` :
-        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 부견 사진을 등록하면 자동 표시됩니다</small></div>`
-      }
-    </div>`;c(sireInfo.name)}')">` :
-        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 부견 사진을 등록하면 자동 표시됩니다</small></div>`
-      }
-    </div>`;l></div>`
-      }
-    </div>`;cludes('/')) {
+function cleanDogName(rawName, fallbackCode) {
+  if (!rawName) return fallbackCode || '';
+  let name = String(rawName).trim();
+  if (name.includes('/')) {
     const parts = name.split('/');
     const secondPart = parts[1].trim();
     if (secondPart) name = secondPart;
-    else name = parts[0].trim();
   }
-
-  // "F01 - 순심" 또는 "4210 해리" 또는 "0210 순심" 등 앞쪽 숫자/영어 코드 제거
-  name = name.replace(/^[A-Za-z0-9_-]+\s*[\/\-]?\s*/, '').trim() || name;
-  return name;
+  return name.replace(/^[0-9]+\s*/, '').trim() || fallbackCode || '';
 }
 
-function getSireInfo(maleCode){
-  const dog = males.find(m => m.code === maleCode);
-  const rawName = (dog && dog.name) ? dog.name : maleCode;
+function getMotherInfo(femaleCode) {
+  const f = females.find(d => d.code === femaleCode || d._key === femaleCode);
+  const cleanName = cleanDogName(femaleCode, '모견');
   return {
-    code: maleCode,
-    name: cleanDogName(rawName, maleCode),
-    photo: (dog && dog.photo) ? dog.photo : null
+    name: cleanName,
+    photo: f ? f.photo : null
   };
 }
 
-function getMotherInfo(femaleCode){
-  const dog = females.find(f => f.code === femaleCode);
-  const rawName = (dog && dog.name) ? dog.name : femaleCode;
+function getSireInfo(maleCode) {
+  const m = males.find(d => d.code === maleCode || d._key === maleCode);
+  const cleanName = cleanDogName(maleCode, '부견');
   return {
-    code: femaleCode,
-    name: cleanDogName(rawName, femaleCode),
-    photo: (dog && dog.photo) ? dog.photo : null
+    name: cleanName,
+    photo: m ? m.photo : null
   };
 }
 
-window.openPuppyDetail = function(litterKey, puppyId){
-  pdLitterKey = litterKey;
-  pdPuppyId = puppyId;
-  renderPuppyDetailContent();
-  document.getElementById('puppy-detail-overlay').classList.add('open');
-};
-
-window.closePuppyDetail = function(){
-  document.getElementById('puppy-detail-overlay').classList.remove('open');
-};
-
-window.handlePuppyDetailOverlay = function(e){
-  if (e.target === document.getElementById('puppy-detail-overlay')) closePuppyDetail();
-};
 
 function renderPuppyDetailContent(){
   const container = document.getElementById('pd-content');
