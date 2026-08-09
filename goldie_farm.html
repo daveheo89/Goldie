@@ -285,7 +285,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.tabs{display:flex;background:var(--cream);border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tabs{display:flex;position:sticky;top:0;z-index:900;background:var(--card-bg,#fff);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--border);background:var(--cream);border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
 
 
@@ -11728,308 +11728,261 @@ window.handlePuppyDetailOverlay = function(e){
 
 
 
+
+// ── 🔄 자견 미디어 순서 변경 및 드래그 앤 드롭 ──
+window.draggedPuppyMediaIdx = null;
+
+window.handlePuppyMediaDragStart = function(e, idx) {
+  window.draggedPuppyMediaIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+};
+
+window.handlePuppyMediaDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+};
+
+window.handlePuppyMediaDrop = function(e, targetIdx, litterKey, puppyId) {
+  e.preventDefault();
+  const srcIdx = window.draggedPuppyMediaIdx;
+  if (srcIdx === null || srcIdx === targetIdx) return;
+
+  const lt = (litters || []).find(l => l._key === litterKey);
+  if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
+  const p = lt.puppies[puppyId];
+  if (!p.media) return;
+
+  const mediaArray = Object.entries(p.media).map(([k, v]) => ({ _key: k, ...v }));
+  const draggedItem = mediaArray.splice(srcIdx, 1)[0];
+  mediaArray.splice(targetIdx, 0, draggedItem);
+
+  // 로컬 객체 재구성
+  const newMediaMap = {};
+  mediaArray.forEach((item, i) => {
+    const key = item._key;
+    delete item._key;
+    newMediaMap[key] = item;
+  });
+
+  p.media = newMediaMap;
+  window.renderPuppyDetailContent();
+  window.toast && window.toast('순서가 변경되었습니다. [미디어 순서 저장] 버튼을 누르세요!');
+};
+
+window.savePuppyMediaOrder = async function(litterKey, puppyId) {
+  const lt = (litters || []).find(l => l._key === litterKey);
+  if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
+  const p = lt.puppies[puppyId];
+
+  try {
+    setSyncing(true);
+    await fbSet(`litters/${litterKey}/puppies/${puppyId}/media`, p.media || {});
+    window.toast && window.toast('💾 미디어 순서가 파이어베이스에 저장되었습니다!');
+  } catch(e) {
+    alert('저장 실패: ' + e.message);
+  } finally {
+    setSyncing(false);
+  }
+};
+
+window.toggleParentVisibility = async function(litterKey, puppyId, parentType, isChecked) {
+  const field = parentType === 'sire' ? 'showSireInProfile' : 'showDamInProfile';
+  try {
+    setSyncing(true);
+    await fbSet(`litters/${litterKey}/puppies/${puppyId}/${field}`, isChecked);
+    window.toast && window.toast(`${parentType === 'sire' ? '부견' : '모견'} 정보 프로필 노출 설정이 변경되었습니다!`);
+  } catch(e) {
+    alert('설정 변경 실패: ' + e.message);
+  } finally {
+    setSyncing(false);
+  }
+};
+
+
 function renderPuppyDetailContent(){
-
   const container = document.getElementById('pd-content');
-
   if(!container) return;
 
-
-
-  const lt = litters.find(l => l._key === pdLitterKey);
-
+  const lt = (litters || []).find(l => l._key === pdLitterKey);
   if(!lt) { container.innerHTML = '<div style="padding:20px;">정보를 찾을 수 없습니다.</div>'; return; }
 
   const p = (lt.puppies || {})[pdPuppyId];
-
   if(!p) { container.innerHTML = '<div style="padding:20px;">강아지 정보를 찾을 수 없습니다.</div>'; return; }
 
-
-
   const motherInfo = getMotherInfo(lt.femaleCode);
-
   const sireInfo = getSireInfo(lt.maleCode);
-
   const mediaList = p.media ? Object.entries(p.media).map(([mk, val]) => ({_key: mk, ...val})) : [];
 
-  
+  const showSire = p.showSireInProfile !== false;
+  const showDam = p.showDamInProfile !== false;
 
-  // 사진/영상 갤러리 셀 HTML
-
-  const mediaCells = mediaList.map(m => {
-
+  // 미디어 셀 HTML (드래그 앤 드롭 지원)
+  const mediaCells = mediaList.map((m, idx) => {
+    let videoTagHtml = '';
     if(m.type === 'video') {
-
       const vidSrc = m.src;
-
       const isPlayableFile = vidSrc && (vidSrc.startsWith('data:video') || vidSrc.startsWith('blob:') || vidSrc.endsWith('.mp4') || vidSrc.endsWith('.mov') || vidSrc.startsWith('idb:'));
 
-
-
-      let videoTagHtml = '';
-
       if (vidSrc.startsWith('idb:')) {
-
         const idbKey = vidSrc.replace('idb:', '');
-
         const elemId = `idb-vid-${m._key}`;
-
         setTimeout(async () => {
-
           const idbData = await getVideoFromIndexedDB(idbKey);
-
           const el = document.getElementById(elemId);
-
           if (el && idbData && idbData.dataUrl) {
-
             el.src = idbData.dataUrl;
-
           }
-
         }, 80);
-
         videoTagHtml = `<video id="${elemId}" controls preload="metadata" playsinline style="width:100%; height:100%; object-fit:cover; display:block; background:#000;"></video>`;
-
       } else if (isPlayableFile) {
-
         videoTagHtml = `<video src="${vidSrc}" controls preload="metadata" playsinline style="width:100%; height:100%; object-fit:cover; display:block; background:#000;"></video>`;
-
       } else {
-
-        // External link (e.g. Google Photos)
-
         videoTagHtml = `
-
         <div onclick="window.open('${vidSrc}', '_blank')" style="width:100%; height:100%; background:linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px; text-align:center; cursor:pointer;">
-
           <div style="font-size:1.6rem; margin-bottom:2px;">🎥</div>
-
           <div style="font-size:10px; color:#fff; font-weight:800;">구글 포토 영상 링크</div>
-
           <div style="font-size:9px; color:#93C5FD; margin-top:2px;">▶️ 열기 및 재생</div>
-
         </div>`;
-
       }
 
-
-
       return `
-
-      <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px;">
-
+      <div class="pd-media-cell" draggable="true" ondragstart="handlePuppyMediaDragStart(event, ${idx})" ondragover="handlePuppyMediaDragOver(event)" ondrop="handlePuppyMediaDrop(event, ${idx}, '${pdLitterKey}', '${pdPuppyId}')" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:grab;">
         ${videoTagHtml}
-
-        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.65); color:#fff; z-index:2; font-size:10px;">🎥 동영상 미리보기</span>
-
-        <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 영상 전송</button>
-
+        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.65); color:#fff; z-index:2; font-size:10px;">🎥 동영상 (${idx+1})</span>
+        <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
         <button class="pd-media-del" title="삭제" style="z-index:4;" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
-
       </div>`;
-
     } else {
-
       return `
-
-      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')">
-
+      <div class="pd-media-cell" draggable="true" ondragstart="handlePuppyMediaDragStart(event, ${idx})" ondragover="handlePuppyMediaDragOver(event)" ondrop="handlePuppyMediaDrop(event, ${idx}, '${pdLitterKey}', '${pdPuppyId}')" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')" style="cursor:grab;">
         <img src="${m.src}">
-
+        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.6); color:#fff; z-index:2; font-size:10px;">📷 이미지 (${idx+1})</span>
         <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
-
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
-
       </div>`;
-
     }
-
   }).join('');
 
-
-
   // 60일 분양 시작일 로직
-
   const birthBDateStr = lt.birthB || lt.birthA;
-
   let adoptionRowHtml = '';
-
   if (birthBDateStr) {
-
     const bDate = new Date(birthBDateStr);
-
     const startAdoptionDate = new Date(bDate);
-
     startAdoptionDate.setDate(startAdoptionDate.getDate() + 60);
 
-
-
     if (daysFrom(birthBDateStr) > -60) {
-
-      // 60일 미만
-
       const formattedStartDate = startAdoptionDate.toISOString().slice(0,10).replace(/-/g, '.');
-
       adoptionRowHtml = `
-
       <tr>
-
         <td class="td-label">🗓 분양 시작일</td>
-
         <td class="td-value">${formattedStartDate} <span class="pd-reserve-badge">사전 예약 중</span></td>
-
       </tr>`;
-
     }
-
   }
 
-
-
   container.innerHTML = `
-
     <!-- 미디어 갤러리 섹션 -->
-
     <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
-
-      <div class="pd-section-title">📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</div>
-
-      <div class="pd-gallery">
-
-        ${mediaCells}
-
-        <div class="pd-media-add" title="기기 사진 업로드">
-
-          <div class="ai">📷</div><div class="at">사진 업로드</div>
-
-          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
-
-        </div>
-
-        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
-
-          <div class="ai">🎥</div>
-
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
-
-          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
-
-        </div>
-
-        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
-
-          <div class="ai" style="font-size:1.4rem;">📸</div>
-
-          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
-
-        </div>
-
+      <div class="pd-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</span>
+        <button class="btn" style="font-size:11px; padding:4px 10px; background:var(--gold); color:#fff;" onclick="savePuppyMediaOrder('${pdLitterKey}', '${pdPuppyId}')">💾 순서 저장</button>
       </div>
-
+      <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">💡 미디어를 드래그하여 순서를 바꾼 후 [💾 순서 저장] 버튼을 누르세요.</p>
+      <div class="pd-gallery">
+        ${mediaCells}
+        <div class="pd-media-add" title="기기 사진 업로드">
+          <div class="ai">📷</div><div class="at">사진 업로드</div>
+          <input type="file" accept="image/*,image/heic,image/heif" multiple onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'image')">
+        </div>
+        <div class="pd-media-add" title="폰 동영상 파일 업로드 (카톡 전송용)" style="background:#FFFBEB; border-color:#FCD34D;">
+          <div class="ai">🎥</div>
+          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#B45309;">영상 파일 업로드<br><small style="font-size:9px;">(카톡 파일 전송용)</small></div>
+          <input type="file" accept="video/*" onchange="addPuppyMedia(event, '${pdLitterKey}', '${pdPuppyId}', 'video')">
+        </div>
+        <div class="pd-media-add" title="구글 포토 / 영상 링크 등록" onclick="addGooglePhotosVideo('${pdLitterKey}','${pdPuppyId}')" style="cursor:pointer; background:#EFF6FF; border-color:#93C5FD;">
+          <div class="ai" style="font-size:1.4rem;">📸</div>
+          <div class="at" style="text-align:center;line-height:1.3;font-weight:800;color:#1D4ED8;">구글포토 링크</div>
+        </div>
+      </div>
     </div>
-
-
 
     <!-- 기본 정보 섹션 -->
-
     <div class="pd-section">
-
       <div class="pd-section-title">📋 강아지 정보</div>
-
       <table class="pd-info-table">
-
         <tr>
-
           <td class="td-label">🐾 이름</td>
-
           <td class="td-value">${esc(p.name||pdPuppyId)}</td>
-
         </tr>
-
         <tr>
-
           <td class="td-label">성별</td>
-
           <td class="td-value">${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}</td>
-
         </tr>
-
         <tr>
-
           <td class="td-label">📅 출산일(B)</td>
-
           <td class="td-value">${fmtDate(lt.birthB || lt.birthA)}</td>
-
         </tr>
-
         <tr>
-
           <td class="td-label">🐕‍🦺 모견</td>
-
           <td class="td-value">${esc(motherInfo.name)}</td>
-
         </tr>
-
         <tr>
-
           <td class="td-label">🐕 부견</td>
-
           <td class="td-value">${esc(sireInfo.name)}</td>
-
         </tr>
-
         ${adoptionRowHtml}
-
       </table>
-
     </div>
 
+    <!-- ⚙️ 공개 프로필 노출 설정 (부견/모견) -->
+    <div class="pd-section" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; margin:12px 0; padding:12px;">
+      <div class="pd-section-title" style="font-size:12px; color:#334155; margin-bottom:8px;">⚙️ 공개 분양 프로필(웹) 부/모견 노출 설정</div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" ${showSire ? 'checked' : ''} onchange="toggleParentVisibility('${pdLitterKey}','${pdPuppyId}','sire', this.checked)">
+          🐕 부견 (${esc(sireInfo.name)}) 노출
+        </label>
+        <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" ${showDam ? 'checked' : ''} onchange="toggleParentVisibility('${pdLitterKey}','${pdPuppyId}','dam', this.checked)">
+          🐕‍🦺 모견 (${esc(motherInfo.name)}) 노출
+        </label>
+      </div>
+    </div>
 
-
-    <!-- 부견 프로필 사진 섹션 -->
-
+    <!-- 🐕 부견 프로필 사진 섹션 -->
     <div class="pd-section" style="border-top:1px solid var(--border);">
-
-      <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필 사진</div>
-
+      <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필</div>
       ${sireInfo.photo ? 
-
         `<img class="pd-sire-photo" src="${sireInfo.photo}" onclick="openLightbox('${sireInfo.photo}', '부견: ${esc(sireInfo.name)}')">` :
-
-        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 부견 사진을 등록하면 자동 표시됩니다</small></div>`
-
+        `<div class="pd-sire-placeholder">🐕<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 부견 사진을 등록하면 자동 표시됩니다</small></div>`
       }
-
     </div>
 
-
+    <!-- 🐕‍🦺 모견 프로필 사진 섹션 -->
+    <div class="pd-section" style="border-top:1px solid var(--border);">
+      <div class="pd-section-title">🐕‍🦺 모견 (${esc(motherInfo.name)}) 프로필</div>
+      ${motherInfo.photo ? 
+        `<img class="pd-sire-photo" src="${motherInfo.photo}" onclick="openLightbox('${motherInfo.photo}', '모견: ${esc(motherInfo.name)}')">` :
+        `<div class="pd-sire-placeholder">🐕‍🦺<br><small style="font-size:11px;color:#aaa;margin-top:4px;">개체탭에 모견 사진을 등록하면 자동 표시됩니다</small></div>`
+      }
+    </div>
 
     <!-- 액션 버튼 섹션 -->
-
     <div class="pd-section" style="padding-top:0;">
-
       <button class="pd-profile-btn" onclick="openPublicPuppyProfileWeb('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,#C8931A 0%,#5C3D1E 100%); color:#fff; font-weight:800;">
-
         🌐 고화질 웹 프로필 링크 생성 & 카톡 전송
-
       </button>
-
       <button class="pd-edit-btn" onclick="closePuppyDetail(); openEditPuppyModal('${pdLitterKey}','${pdPuppyId}');">
-
         ✏️ 강아지 정보 수정 (대표 사진 / 이름)
-
       </button>
-
       <button class="pd-contract-btn" onclick="goToAdminContract('${pdLitterKey}','${pdPuppyId}','${p.status||'분양 전'}')">
-
         📄 분양 계약 작성 이동
-
       </button>
-
     </div>
-
   `;
 }
+
 
 // ── 🌐 고화질 분양 웹 프로필 열기 & 링크 공유 ──
 
