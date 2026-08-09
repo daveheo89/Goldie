@@ -1006,6 +1006,54 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
   </div>
 
 </div>
+<script>
+  function attemptLogin() {
+    var pwInput = document.getElementById('login-password');
+    var pw = pwInput ? pwInput.value.trim() : '';
+    var err = document.getElementById('login-error');
+    var overlay = document.getElementById('login-overlay');
+    var main = document.getElementById('main-content');
+    var loader = document.getElementById('loading-screen');
+
+    if (pw === '5900') {
+      sessionStorage.setItem('goldi_auth', 'authenticated');
+      document.documentElement.classList.add('authenticated');
+      if (err) err.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      if (main) {
+        main.style.display = 'block';
+        main.style.opacity = '1';
+      }
+      if (loader) loader.style.display = 'none';
+    } else {
+      if (err) err.style.display = 'block';
+      if (pwInput) {
+        pwInput.value = '';
+        pwInput.focus();
+      }
+      var card = overlay ? overlay.querySelector('.card') : null;
+      if (card) {
+        card.style.animation = 'none';
+        setTimeout(function() { card.style.animation = 'shake 0.4s ease'; }, 10);
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var pwInput = document.getElementById('login-password');
+    if (pwInput) {
+      pwInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          attemptLogin();
+        }
+      });
+      if (sessionStorage.getItem('goldi_auth') !== 'authenticated') {
+        setTimeout(function() { pwInput.focus(); }, 100);
+      }
+    }
+  });
+</script>
+
 
 
 
