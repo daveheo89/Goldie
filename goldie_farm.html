@@ -4907,6 +4907,61 @@ function showFirebaseError(error) {
 
 
 
+
+window.checkVaxAlerts = function() {
+  try {
+    if (localStorage.getItem('goldie_hide_vax_popup_date') === today()) return;
+    const alerts = [];
+    (litters || []).forEach(lt => {
+      if (!lt) return;
+      const femaleName = lt.femaleCode || '?';
+      const maleName = lt.maleCode || '?';
+      [
+        { date: lt.vax1, label: `${femaleName}×${maleName} 💉 1차 백신` },
+        { date: lt.vax2, label: `${femaleName}×${maleName} 💉 2차 백신` },
+        { date: lt.vax3, label: `${femaleName}×${maleName} 💉 3차 백신` },
+        { date: lt.deworm1, label: `${femaleName}×${maleName} 🪱 1차 구충` },
+        { date: lt.deworm2, label: `${femaleName}×${maleName} 🪱 2차 구충` },
+        { date: lt.deworm3, label: `${femaleName}×${maleName} 🪱 3차 구충` },
+      ].forEach(c => {
+        if (!c.date) return;
+        const d = daysFrom(c.date);
+        if (d === 0) alerts.push({ ...c, type: 'today', msg: '오늘입니다!' });
+        else if (d === -1) alerts.push({ ...c, type: 'overdue', msg: '어제였습니다!' });
+        else if (d < 0 && d >= -3) alerts.push({ ...c, type: 'overdue', msg: `${Math.abs(d)}일 지났습니다` });
+      });
+    });
+
+    const plist = document.getElementById('vax-popup-list');
+    const popupOverlay = document.getElementById('vax-popup-overlay');
+
+    if (!alerts.length || !plist || !popupOverlay) return;
+
+    plist.innerHTML = alerts.map(a => `
+      <div class="vax-item ${a.type}">
+        <div class="vi-icon">${a.label.includes('백신') ? '💉' : '🪱'}</div>
+        <div class="vi-info">
+          <div class="vi-title">${esc(a.label)}</div>
+          <div class="vi-date">${fmtDate(a.date)} · ${a.msg}</div>
+        </div>
+      </div>`).join('');
+
+    popupOverlay.classList.remove('hidden');
+  } catch(e) {
+    console.warn('[VaxAlerts Warn]:', e);
+  }
+};
+
+window.closeVaxPopup = function() {
+  const chk = document.getElementById('hideVaxTodayChk');
+  if (chk && chk.checked) {
+    localStorage.setItem('goldie_hide_vax_popup_date', today());
+  }
+  const popupOverlay = document.getElementById('vax-popup-overlay');
+  if (popupOverlay) popupOverlay.classList.add('hidden');
+};
+
+
 function startListeners(){
 
 
@@ -5261,6 +5316,18 @@ function startListeners(){
 
 // ═══════════════════════════════════════
 
+
+
+
+// 🚀 Module functions window exposure for global callers
+window.renderDogs = renderDogs;
+window.renderKennels = renderKennels;
+window.renderBreeding = renderBreeding;
+window.renderPuppies = renderPuppies;
+window.renderMove = renderMove;
+window.renderDeliveryCalendar = renderDeliveryCalendar;
+window.restoreLocalCache = restoreLocalCache;
+window.startListeners = startListeners;
 
 
 async function init(){
