@@ -7443,7 +7443,7 @@ const db = getDatabase(app);
 const storage = getStorage(app);
 
 // ☁️ Firebase Storage 업로드 헬퍼
-async function window.uploadImageAndGetUrl(dataUrl, path) {
+async function uploadImageAndGetUrl(dataUrl, path) {
   try {
     const r = storageRef(storage, path);
     await uploadString(r, dataUrl, 'data_url');
@@ -7454,7 +7454,7 @@ async function window.uploadImageAndGetUrl(dataUrl, path) {
   }
 }
 
-async function window.uploadVideoFileAndGetUrl(file, path) {
+async function uploadVideoFileAndGetUrl(file, path) {
   try {
     const r = storageRef(storage, path);
     await uploadBytes(r, file);
