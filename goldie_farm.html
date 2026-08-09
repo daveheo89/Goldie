@@ -1,8 +1,6 @@
 <!DOCTYPE html>
-
-
-
 <html lang="ko">
+
 
 
 
@@ -3769,6 +3767,34 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
+
+// ☁️ Firebase Storage 업로드 헬퍼
+async function uploadImageAndGetUrl(dataUrl, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadString(r, dataUrl, 'data_url');
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Image Upload Error]:', err);
+    throw err;
+  }
+}
+
+async function uploadVideoFileAndGetUrl(file, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadBytes(r, file);
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Video Upload Error]:', err);
+    throw err;
+  }
+}
+
+window.uploadImageAndGetUrl = uploadImageAndGetUrl;
+window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
+
 const storage = getStorage(app);
 
 // ☁️ Firebase Storage 업로드 헬퍼
