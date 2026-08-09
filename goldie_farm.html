@@ -5936,8 +5936,8 @@ function renderPuppyDetailContent(){
 
     <!-- 액션 버튼 섹션 -->
     <div class="pd-section" style="padding-top:0;">
-      <button class="pd-profile-btn" onclick="generateProfileCard('${pdLitterKey}','${pdPuppyId}')">
-        🎴 카톡 전송용 프로필 카드 이미지 저장
+      <button class="pd-profile-btn" onclick="openPublicPuppyProfileWeb('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,#C8931A 0%,#5C3D1E 100%); color:#fff; font-weight:800;">
+        🌐 고화질 웹 프로필 링크 생성 & 카톡 전송
       </button>
       <button class="pd-edit-btn" onclick="closePuppyDetail(); openEditPuppyModal('${pdLitterKey}','${pdPuppyId}');">
         ✏️ 강아지 정보 수정 (대표 사진 / 이름)
@@ -5947,7 +5947,33 @@ function renderPuppyDetailContent(){
       </button>
     </div>
   `;
-}
+// ── 🌐 고화질 분양 웹 프로필 열기 & 링크 공유 ──
+window.openPublicPuppyProfileWeb = async function(litterKey, puppyId) {
+  const profileUrl = `https://daveheo89.github.io/Goldie/puppy_profile.html?litter=${litterKey}&puppy=${puppyId}`;
+  
+  // 새 탭에서 웹 프로필 미리보기 열기
+  window.open(profileUrl, '_blank');
+
+  const shareText = `[골디쉼터] 🐾 분양 강아지 웹 프로필 안내\n\n아래 링크에서 고화질 사진과 동영상을 감상해 보세요!\n${profileUrl}`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: '[골디쉼터] 🐾 분양 강아지 웹 프로필',
+        text: shareText
+      });
+      showToast('🌐 프로필 웹 링크 카톡 전송창이 열렸습니다!');
+      return;
+    } catch(e){}
+  }
+
+  try {
+    await navigator.clipboard.writeText(profileUrl);
+    showToast('📋 프로필 웹페이지 주소가 복사되었습니다! 카톡 대화방에 붙여넣어 전송하세요.');
+  } catch(e){
+    prompt('아래 프로필 웹페이지 주소를 복사하세요:', profileUrl);
+  }
+};
 
 // ── 구글 포토 / 영상 공유 링크 등록 ──
 window.addGooglePhotosVideo = async function(litterKey, puppyId){
