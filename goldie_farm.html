@@ -83,7 +83,7 @@
       if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
       if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
       if (tab === 'move' && typeof window.renderMove === 'function') window.renderMove();
-      if (tab === 'delivery' && typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+      
       if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
     } catch(e) {
       console.error('[Tab Switch Error]:', e);
@@ -5321,7 +5321,7 @@ window.renderKennels = renderKennels;
 window.renderBreeding = renderBreeding;
 window.renderPuppies = renderPuppies;
 window.renderMove = renderMove;
-if (typeof renderDeliveryCalendar === 'function') window.renderDeliveryCalendar = renderDeliveryCalendar;
+if (typeof renderDeliveryCalendar === 'function') 
 window.restoreLocalCache = restoreLocalCache;
 window.startListeners = startListeners;
 
