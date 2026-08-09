@@ -11898,7 +11898,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
       if (mediaType === 'image') {
         const compressed = await compressImageFile(f);
         const path = `litters/${litterKey}/puppies/${puppyId}/${mediaKey}.jpg`;
-        const storageUrl = await uploadImageAndGetUrl(compressed, path);
+        const storageUrl = await window.uploadImageAndGetUrl(compressed, path);
         await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, {
           type: 'image',
           src: storageUrl,
@@ -11906,7 +11906,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
         });
       } else if (mediaType === 'video') {
         const path = `litters/${litterKey}/puppies/${puppyId}/${mediaKey}.mp4`;
-        const storageUrl = await uploadVideoFileAndGetUrl(f, path);
+        const storageUrl = await window.uploadVideoFileAndGetUrl(f, path);
         await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, {
           type: 'video',
           src: storageUrl,
