@@ -54,7 +54,7 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 .badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;}
 .badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC;}
 
-/* 정보 테이블 (출생일만 표시) */
+/* 정보 테이블 */
 .info-table{width:100%;border-collapse:collapse;margin-top:4px;}
 .info-table td{padding:10px 4px;font-size:14px;}
 .td-key{color:var(--gray);font-weight:700;width:30%;}
@@ -63,9 +63,12 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 /* 부모견 프로필 카드 */
 .parent-card{background:var(--gold-bg);border:1.5px solid var(--gold-l);border-radius:14px;padding:14px;margin-bottom:14px;}
 .parent-title{font-size:14px;font-weight:800;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.parent-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px;}
+.parent-media-cell{aspect-ratio:1;border-radius:10px;overflow:hidden;background:#000;cursor:pointer;position:relative;}
+.parent-media-cell img,.parent-media-cell video{width:100%;height:100%;object-fit:cover;}
 
 /* 라이트박스 뷰어 */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
 .lightbox.open{display:flex;}
 .lightbox img,.lightbox video{max-width:100%;max-height:85vh;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}
 .lightbox-close{position:absolute;top:20px;right:20px;color:#fff;font-size:28px;background:none;border:none;cursor:pointer;}
@@ -132,6 +135,22 @@ function cleanDogName(raw, fallback = '') {
   return name || fallback;
 }
 
+function findDogByCodeOrName(searchCode, dogsObj) {
+  if (!searchCode || !dogsObj) return null;
+  const cleanSearch = cleanDogName(searchCode).toLowerCase();
+
+  let found = null;
+  Object.entries(dogsObj).forEach(([dk, dval]) => {
+    if (!dval) return;
+    const code = String(dval.code || dk).toLowerCase();
+    const name = cleanDogName(dval.name || dval.code || dk).toLowerCase();
+    if (code.includes(cleanSearch) || cleanSearch.includes(code) || name.includes(cleanSearch) || cleanSearch.includes(name)) {
+      found = dval;
+    }
+  });
+  return found;
+}
+
 async function loadProfile() {
   const container = document.getElementById('app');
   if (!litterKey || !puppyId) {
@@ -155,25 +174,15 @@ async function loadProfile() {
 
     window._currentPuppyData = { lt, p, litterKey, puppyId };
 
-    // 부모견 정보 검색
     let sireData = null;
     let damData = null;
 
-    // 모든 개체(dogs) 불러와서 코드나 이름 일치 검색
     try {
       const dogsSnap = await get(ref(db, 'dogs'));
       if (dogsSnap.exists()) {
         const dogsObj = dogsSnap.val();
-        Object.entries(dogsObj).forEach(([dk, dval]) => {
-          if (!dval) return;
-          const codeMatch = dval.code || dk;
-          if (lt.maleCode && (codeMatch.includes(lt.maleCode) || lt.maleCode.includes(codeMatch))) {
-            sireData = dval;
-          }
-          if (lt.femaleCode && (codeMatch.includes(lt.femaleCode) || lt.femaleCode.includes(codeMatch))) {
-            damData = dval;
-          }
-        });
+        sireData = findDogByCodeOrName(lt.maleCode, dogsObj);
+        damData  = findDogByCodeOrName(lt.femaleCode, dogsObj);
       }
     } catch(e){}
 
@@ -190,7 +199,6 @@ function renderProfile(lt, p, sireData, damData) {
   const motherName = cleanDogName(lt.femaleCode || (damData && damData.name));
   const sireName   = cleanDogName(lt.maleCode   || (sireData && sireData.name), '부견');
 
-  // 강아지 제목: 모견이름네 - 강아지이름 (예: 포순이네 - 까망이)
   const puppyName = p.name || '강아지';
   const fullTitle = motherName ? `${motherName}네 — ${puppyName}` : puppyName;
 
@@ -241,39 +249,63 @@ function renderProfile(lt, p, sireData, damData) {
     sliderHtml = `<div class="hero-slider" style="background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:40px;">🐶</div>`;
   }
 
-  // 부견 프로필 카드 (부견 코드나 데이터가 존재하는 경우 항상 하단 표출)
+  // 부견 미디어 갤러리 (사진/영상 다중 수집)
+  let sireMedia = [];
+  if (sireData) {
+    if (sireData.photo) sireMedia.push({ type: 'image', src: sireData.photo });
+    if (sireData.media) {
+      Object.values(sireData.media).forEach(m => {
+        if (m.src && !sireMedia.some(item => item.src === m.src)) sireMedia.push(m);
+      });
+    }
+  }
+
   let sireHtml = '';
-  if (lt.maleCode || sireData) {
-    const sirePhoto = sireData ? sireData.photo : null;
+  if (lt.maleCode || sireData || sireMedia.length > 0) {
+    const galleryHtml = sireMedia.map(m => `
+      <div class="parent-media-cell" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
+        ${m.type==='video' ? `<video src="${m.src}" muted></video>` : `<img src="${m.src}">`}
+      </div>
+    `).join('');
+
     sireHtml = `
       <div class="parent-card">
         <div class="parent-title">🐕 부견 정보 (${sireName})</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          ${sirePhoto ? 
-            `<img src="${sirePhoto}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;cursor:pointer;" onclick="openLightbox('${sirePhoto}', 'image')">` :
-            `<div style="width:72px;height:72px;border-radius:10px;background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:26px;">🐕</div>`
-          }
-          <div>
-            <div style="font-size:15px;font-weight:900;color:var(--br);">${sireName}</div>
-            <div style="font-size:12px;color:var(--gray);margin-top:2px;">골디쉼터 우수 부견</div>
+        ${sireMedia.length > 0 ? `
+          <div class="parent-gallery">
+            ${galleryHtml}
           </div>
-        </div>
+        ` : `
+          <div style="font-size:13px;color:var(--gray);padding:8px 0;">부견: ${sireName}</div>
+        `}
       </div>
     `;
   }
 
-  // 모견 프로필 카드 (모견 사진/자료가 있는 경우에만 표출)
+  // 모견 미디어 갤러리 (자료가 있는 경우에만 표출)
+  let damMedia = [];
+  if (damData) {
+    if (damData.photo) damMedia.push({ type: 'image', src: damData.photo });
+    if (damData.media) {
+      Object.values(damData.media).forEach(m => {
+        if (m.src && !damMedia.some(item => item.src === m.src)) damMedia.push(m);
+      });
+    }
+  }
+
   let damHtml = '';
-  if (damData && damData.photo) {
+  if (damMedia.length > 0) {
+    const galleryHtml = damMedia.map(m => `
+      <div class="parent-media-cell" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
+        ${m.type==='video' ? `<video src="${m.src}" muted></video>` : `<img src="${m.src}">`}
+      </div>
+    `).join('');
+
     damHtml = `
       <div class="parent-card">
         <div class="parent-title">🐕‍🦺 모견 정보 (${motherName})</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <img src="${damData.photo}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;cursor:pointer;" onclick="openLightbox('${damData.photo}', 'image')">
-          <div>
-            <div style="font-size:15px;font-weight:900;color:var(--br);">${motherName}</div>
-            <div style="font-size:12px;color:var(--gray);margin-top:2px;">골디쉼터 우수 모견</div>
-          </div>
+        <div class="parent-gallery">
+          ${galleryHtml}
         </div>
       </div>
     `;
@@ -367,8 +399,16 @@ function initSwipeEvents() {
 
 window.openLightbox = function(src, type) {
   const target = document.getElementById('lightboxTarget');
+
+  const isExternalLink = src && (src.includes('photos.app.goo.gl') || src.includes('photos.google.com') || src.includes('youtube') || src.includes('drive.google.com'));
+
+  if (isExternalLink) {
+    window.open(src, '_blank');
+    return;
+  }
+
   if (type === 'video') {
-    target.innerHTML = `<video src="${src}" controls autoplay playsinline style="max-width:100%;max-height:85vh;"></video>`;
+    target.innerHTML = `<video src="${src}" controls autoplay playsinline webkit-playsinline style="max-width:100%;max-height:85vh;"></video>`;
   } else {
     target.innerHTML = `<img src="${src}">`;
   }
