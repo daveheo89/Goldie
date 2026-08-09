@@ -3758,6 +3758,3800 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getStorage, ref as storageRef, uploadString, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+const firebaseConfig = {
+  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  storageBucket: "goldie-shelter-d6c81.firebasestorage.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+// ☁️ Firebase Storage 업로드 헬퍼
+async function uploadImageAndGetUrl(dataUrl, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadString(r, dataUrl, 'data_url');
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Image Upload Error]:', err);
+    throw err;
+  }
+}
+
+async function uploadVideoFileAndGetUrl(file, path) {
+  try {
+    const r = storageRef(storage, path);
+    await uploadBytes(r, file);
+    return await getDownloadURL(r);
+  } catch (err) {
+    console.error('[Storage Video Upload Error]:', err);
+    throw err;
+  }
+}
+
+window.uploadImageAndGetUrl = uploadImageAndGetUrl;
+window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
+ng="ko">
+
+
+
+<head>
+
+
+
+<meta charset="UTF-8">
+
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+
+<title>골디쉼터 농장 관리</title>
+
+
+
+
+
+<script>
+  if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
+    document.documentElement.classList.add('authenticated');
+  }
+
+  function attemptLogin() {
+    var pwInput = document.getElementById('login-password');
+    var pw = pwInput ? pwInput.value.trim() : '';
+    var err = document.getElementById('login-error');
+    var overlay = document.getElementById('login-overlay');
+    var main = document.getElementById('main-content');
+    var loader = document.getElementById('loading-screen');
+
+    if (pw === '5900') {
+      sessionStorage.setItem('goldi_auth', 'authenticated');
+      document.documentElement.classList.add('authenticated');
+      if (err) err.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      if (main) {
+        main.style.display = 'block';
+        main.style.opacity = '1';
+      }
+      if (loader) loader.style.display = 'none';
+
+      var attempts = 0;
+      function tryRenderOnLogin() {
+        attempts++;
+        if (typeof window.renderDogs === 'function') {
+          try { window.renderDogs(); } catch(e){}
+          try {
+            var pupTab = document.getElementById('tab-puppies');
+            if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
+              window.renderPuppies();
+            }
+          } catch(e){}
+        } else if (attempts < 30) {
+          setTimeout(tryRenderOnLogin, 100);
+        }
+      }
+      tryRenderOnLogin();
+    } else {
+      if (err) err.style.display = 'block';
+      if (pwInput) {
+        pwInput.value = '';
+        pwInput.focus();
+      }
+      var card = overlay ? overlay.querySelector('.card') : null;
+      if (card) {
+        card.style.animation = 'none';
+        setTimeout(function() { card.style.animation = 'shake 0.4s ease'; }, 10);
+      }
+    }
+  }
+  window.attemptLogin = attemptLogin;
+
+  function showTab(tab) {
+    var tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
+    tabIds.forEach(function(t) {
+      var el = document.getElementById('tab-' + t);
+      if (el) el.classList.toggle('hidden', t !== tab);
+    });
+
+    var tabButtons = document.querySelectorAll('.tabs .tab');
+    tabButtons.forEach(function(btn, i) {
+      if (btn) btn.classList.toggle('active', tabIds[i] === tab);
+    });
+
+    try {
+      if (tab === 'dogs' && typeof window.renderDogs === 'function') window.renderDogs();
+      if (tab === 'kennels' && typeof window.renderKennels === 'function') window.renderKennels();
+      if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
+      if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
+      if (tab === 'move' && typeof window.renderMove === 'function') window.renderMove();
+      if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+    } catch(e) {
+      console.error('[Tab Switch Error]:', e);
+    }
+  }
+  window.showTab = showTab;
+</script>
+
+
+
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+
+
+<script defer src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+
+
+<style>
+
+
+
+:root {
+
+
+
+  --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
+
+
+
+  --brown:#6B3F0E; --brown-light:#A0632A; --cream:#FDF3DC;
+
+
+
+  --text:#2C1A06; --text-muted:#8B6A3A; --border:#E8D5A3;
+
+
+
+  --female:#D4547A; --female-bg:#FFF0F5;
+
+
+
+  --male:#3A7AC8;  --male-bg:#EEF5FF;
+
+
+
+  --puppy:#7B5EA7; --puppy-bg:#F3EEFF;
+
+
+
+  --kennel-bg:#F5F0E8;
+
+
+
+  --shadow:0 4px 20px rgba(100,60,10,.10); --radius:16px;
+
+
+
+}
+
+
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+
+
+body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(--text);min-height:100vh;}
+
+
+
+#main-content { display: none; opacity: 0; transition: opacity 0.4s ease; }
+
+
+
+.authenticated #main-content { display: block; opacity: 1; }
+
+
+
+.authenticated #login-overlay { display: none !important; }
+
+
+
+@keyframes shake {
+
+
+
+  0%, 100% { transform: translateX(0); }
+
+
+
+  20%, 60% { transform: translateX(-6px); }
+
+
+
+  40%, 80% { transform: translateX(6px); }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+/* loading */
+
+
+
+#loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--brown),var(--gold));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
+
+
+
+#loading-screen .ls-icon{font-size:4rem;animation:bounce .8s infinite alternate;}
+
+
+
+#loading-screen .ls-text{color:#fff;font-size:1.1rem;font-weight:700;}
+
+
+
+#loading-screen .ls-sub{color:rgba(255,255,255,.7);font-size:.82rem;}
+
+
+
+@keyframes bounce{from{transform:translateY(0);}to{transform:translateY(-12px);}}
+
+
+
+
+
+
+
+header{background:linear-gradient(135deg,var(--brown),var(--gold));padding:18px 20px 14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(100,60,10,.25);}
+
+
+
+header h1{color:#fff;font-size:1.4rem;font-weight:900;}
+
+
+
+header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
+
+
+
+
+
+
+
+/* sync indicator */
+
+
+
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-left:8px;vertical-align:middle;}
+
+
+
+.sync-dot.syncing{background:#FFC107;animation:pulse .6s infinite alternate;}
+
+
+
+.sync-dot.error{background:#f44336;}
+
+
+
+@keyframes pulse{from{opacity:1;}to{opacity:.3;}}
+
+
+
+
+
+
+
+.tabs { position: sticky; top: 0; z-index: 1000; display: flex; overflow-x: auto; scrollbar-width: none; background: var(--card-bg, #ffffff); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+
+
+.tab{flex:1;min-width:60px;padding:11px 4px;text-align:center;font-size:.78rem;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+
+
+
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);background:var(--gold-pale);}
+
+
+
+.tab:hover:not(.active){background:#f5ead0;}
+
+
+
+
+
+
+
+.content{padding:18px 14px 70px;max-width:700px;margin:0 auto;}
+
+
+
+.sec-title{font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+
+
+.badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--gold);color:#fff;}
+
+
+
+.badge.badge-avail{background:#E8F8EF;color:#27AE60;border:1px solid #A8DDB9;}
+
+
+
+.badge.badge-rsv{background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;}
+
+
+
+.badge.badge-sold{background:#F0F0F0;color:#888;border:1px solid #CCC;}
+
+
+
+
+
+
+
+.add-dog-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:16px;border:2.5px dashed var(--border);border-radius:var(--radius);background:var(--gold-pale);color:var(--text-muted);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
+
+
+
+.add-dog-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+
+
+
+
+
+
+.dog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:24px;}
+
+
+
+.dog-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;transition:transform .18s,box-shadow .18s;border:2px solid transparent;position:relative;overflow:hidden;}
+
+
+
+.dog-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(100,60,10,.15);}
+
+
+
+.dog-card.selected{border-color:var(--gold);}
+
+
+
+.dog-photo{width:100%;height:100px;object-fit:cover;display:block;}
+
+
+
+.dog-photo-placeholder{width:100%;height:100px;display:flex;align-items:center;justify-content:center;background:var(--gold-pale);font-size:2.2rem;}
+
+
+
+.dog-card-body{padding:8px 10px 10px;}
+
+
+
+.dog-card .code{font-size:1rem;font-weight:900;margin-bottom:3px;}
+
+
+
+.dog-card.female .code{color:var(--female);}
+
+
+
+.dog-card.male .code{color:var(--male);}
+
+
+
+.kennel-tag{font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;display:inline-block;}
+
+
+
+.dog-card.female .kennel-tag{background:var(--female-bg);color:var(--female);}
+
+
+
+.dog-card.male .kennel-tag{background:var(--male-bg);color:var(--male);}
+
+
+
+.due-badge,.pregnant-badge{position:absolute;top:6px;right:6px;font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:5px;z-index:2;}
+
+
+
+.due-badge{background:#FF6B35;color:#fff;}
+
+
+
+.pregnant-badge{background:#8BC34A;color:#fff;}
+
+
+
+.edit-btn{position:absolute;top:6px;left:6px;width:26px;height:26px;background:rgba(0,0,0,.38);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;z-index:3;cursor:pointer;border:none;transition:background .2s;}
+
+
+
+.edit-btn:hover{background:rgba(200,134,10,.9);}
+
+
+
+
+
+
+
+.detail-panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:20px;border-left:5px solid var(--gold);display:none;}
+
+
+
+.detail-panel.show{display:block;}
+
+
+
+.info-row{display:flex;gap:7px;margin-bottom:7px;flex-wrap:wrap;}
+
+
+
+.info-item{background:var(--gold-pale);border-radius:9px;padding:7px 11px;flex:1;min-width:110px;}
+
+
+
+.info-item .label{font-size:.65rem;color:var(--text-muted);margin-bottom:1px;}
+
+
+
+.info-item .value{font-size:.9rem;font-weight:700;}
+
+
+
+
+
+
+
+.kennel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:16px;}
+
+
+
+.kennel-box{background:var(--kennel-bg);border-radius:13px;padding:12px;border:2px solid var(--border);min-height:80px;cursor:pointer;transition:border-color .2s;}
+
+
+
+.kennel-box:hover{border-color:var(--gold);}
+
+
+
+.kennel-box .kname{font-size:.9rem;font-weight:900;color:var(--brown);margin-bottom:6px;}
+
+
+
+.kennel-dog{font-size:.68rem;font-weight:700;padding:2px 5px;border-radius:5px;display:inline-block;margin:1px;}
+
+
+
+.kennel-dog.f{background:var(--female-bg);color:var(--female);}
+
+
+
+.kennel-dog.m{background:var(--male-bg);color:var(--male);}
+
+
+
+.kennel-empty{font-size:.72rem;color:#bbb;}
+
+
+
+
+
+
+
+.breeding-list{display:flex;flex-direction:column;gap:10px;}
+
+
+
+.breeding-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border-left:5px solid #8BC34A;cursor:pointer;transition:transform .15s;}
+
+
+
+.breeding-card:hover{transform:translateY(-2px);}
+
+
+
+.breeding-card.due-soon{border-left-color:#FF6B35;}
+
+
+
+.breeding-card.bc-open{border:2px solid var(--gold);}
+
+
+
+.bc-body{padding:12px 14px;}
+
+
+
+.bc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+
+
+
+.bc-title{font-weight:900;font-size:.9rem;}
+
+
+
+.bc-days{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:99px;}
+
+
+
+.breeding-card.due-soon .bc-days{background:#FFEDE5;color:#FF6B35;}
+
+
+
+.breeding-card:not(.due-soon) .bc-days{background:#EEF7E0;color:#5A9E1A;}
+
+
+
+.bc-info{font-size:.78rem;color:var(--text-muted);}
+
+
+
+.bc-thumb-row{display:flex;gap:5px;margin-top:7px;overflow-x:auto;padding-bottom:2px;}
+
+
+
+.bc-thumb{width:48px;height:48px;border-radius:7px;object-fit:cover;flex-shrink:0;border:2px solid var(--border);}
+
+
+
+.bc-thumb-more{width:48px;height:48px;border-radius:7px;background:var(--gold-pale);border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--text-muted);}
+
+
+
+
+
+
+
+.breeding-detail{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;border:2px solid var(--gold);display:none;}
+
+
+
+.breeding-detail.show{display:block;}
+
+
+
+.bd-header{background:linear-gradient(135deg,var(--brown),var(--gold));padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
+
+
+
+.bd-header h3{color:#fff;font-size:.95rem;font-weight:900;}
+
+
+
+.bd-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;}
+
+
+
+.bd-info-strip{display:flex;border-bottom:1px solid var(--border);}
+
+
+
+.bd-info-cell{flex:1;padding:9px 10px;text-align:center;border-right:1px solid var(--border);}
+
+
+
+.bd-info-cell:last-child{border-right:none;}
+
+
+
+.bd-info-cell .lbl{font-size:.6rem;color:var(--text-muted);margin-bottom:1px;}
+
+
+
+.bd-info-cell .val{font-size:.82rem;font-weight:900;color:var(--brown);}
+
+
+
+.bd-photos-section{padding:12px 14px;}
+
+
+
+.bd-photos-title{font-size:.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+
+
+
+.bd-photo-count{font-size:.68rem;background:var(--gold-pale);color:var(--gold);padding:2px 7px;border-radius:99px;font-weight:700;}
+
+
+
+.bd-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:7px;}
+
+
+
+.bd-photo-cell{position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;border:2px solid var(--border);cursor:pointer;transition:transform .15s;}
+
+
+
+.bd-photo-cell:hover{transform:scale(1.04);}
+
+
+
+.bd-photo-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+
+
+
+.bd-photo-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:.58rem;font-weight:700;text-align:center;padding:3px;}
+
+
+
+.bd-photo-del{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(0,0,0,.6);border-radius:50%;border:none;color:#fff;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;}
+
+
+
+.bd-photo-add-cell{border-radius:9px;aspect-ratio:1;border:2.5px dashed var(--border);background:var(--gold-pale);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;position:relative;transition:border-color .2s;}
+
+
+
+.bd-photo-add-cell:hover{border-color:var(--gold);}
+
+
+
+.bd-photo-add-cell .ai{font-size:1.5rem;}
+
+
+
+.bd-photo-add-cell .at{font-size:.6rem;color:var(--text-muted);font-weight:700;}
+
+
+
+.bd-photo-add-cell input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+
+
+
+.bd-memo{padding:0 14px 12px;}
+
+
+
+.bd-memo-lbl{font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:5px;}
+
+
+
+.bd-memo textarea{width:100%;border:2px solid var(--border);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:.83rem;background:var(--gold-pale);color:var(--text);resize:none;outline:none;transition:border-color .2s;min-height:56px;}
+
+
+
+.bd-memo textarea:focus{border-color:var(--gold);}
+
+
+
+
+
+
+
+.litter-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;border-left:5px solid var(--puppy);}
+
+
+
+.litter-header{background:linear-gradient(135deg,#5B3E8A,var(--puppy));padding:12px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+
+
+
+.litter-header h3{color:#fff;font-size:.9rem;font-weight:900;}
+
+
+
+.litter-toggle{color:#fff;font-size:1rem;}
+
+
+
+.litter-body{padding:14px;}
+
+
+
+.vax-row{display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap;}
+
+
+
+.vax-chip{flex:1;min-width:90px;border-radius:9px;padding:7px 10px;border:2px solid var(--border);text-align:center;background:var(--gold-pale);}
+
+
+
+.vax-chip .vc-label{font-size:.62rem;color:var(--text-muted);margin-bottom:2px;}
+
+
+
+.vax-chip .vc-date{font-size:.82rem;font-weight:900;color:var(--brown);}
+
+
+
+.vax-chip.done{background:#EEF7E0;border-color:#8BC34A;}
+
+
+
+.vax-chip.done .vc-date{color:#5A9E1A;}
+
+
+
+.vax-chip.overdue{background:#FFEDE5;border-color:#FF6B35;}
+
+
+
+.vax-chip.overdue .vc-date{color:#FF6B35;}
+
+
+
+.vax-chip.today-due{background:#FFF3CD;border-color:#FFC107;}
+
+
+
+.vax-chip.today-due .vc-date{color:#B8860B;}
+
+
+
+.litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
+
+
+
+.puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
+
+
+
+.puppy-card:hover{border-color:var(--puppy);}
+
+
+
+.puppy-card.reserved{background:#FFF4E0;opacity:0.85;color:#D35400;border-color:#FFE4A0;}
+
+
+
+.puppy-card.reserved .p-placeholder{background:#FFE4A0;color:#D35400;}
+
+
+
+.puppy-card.reserved .p-name{color:#D35400;}
+
+
+
+.puppy-card.reserved:hover{border-color:#FFC107;}
+
+
+
+
+
+
+
+.puppy-card.sold{background:#eaeaea;opacity:0.65;color:#999;border-color:#d5d5d5;}
+
+
+
+.puppy-card.sold .p-placeholder{background:#dbdbdb;color:#999;}
+
+
+
+.puppy-card.sold .p-name{color:#888;}
+
+
+
+.puppy-card.sold:hover{border-color:#ccc;}
+
+
+
+.puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:5px;}
+
+
+
+.puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:5px;}
+
+
+
+.puppy-card .p-name{font-size:.7rem;font-weight:700;color:var(--puppy);}
+
+
+
+.puppy-card .p-sex{font-size:.6rem;color:var(--text-muted);}
+
+
+
+
+
+
+
+.form-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px;}
+
+
+
+.form-card h3{font-size:.95rem;font-weight:900;color:var(--brown);margin-bottom:14px;}
+
+
+
+.form-group{margin-bottom:12px;}
+
+
+
+.form-group label{font-size:.8rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;}
+
+
+
+.form-group select,.form-group input[type="date"],.form-group input[type="text"],.form-group input[type="number"]{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:9px;font-family:inherit;font-size:.92rem;background:var(--gold-pale);color:var(--text);appearance:none;outline:none;transition:border-color .2s;}
+
+
+
+.form-group select:focus,.form-group input:focus{border-color:var(--gold);}
+
+
+
+.sex-toggle{display:flex;gap:8px;}
+
+
+
+.sex-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:9px;background:var(--gold-pale);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;color:var(--text-muted);}
+
+
+
+.sex-btn.female.active{background:var(--female-bg);border-color:var(--female);color:var(--female);}
+
+
+
+.sex-btn.male.active{background:var(--male-bg);border-color:var(--male);color:var(--male);}
+
+
+
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--gold),var(--brown-light));color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;transition:opacity .2s;}
+
+
+
+.btn:hover{opacity:.88;}
+
+
+
+.btn-sm{padding:8px 16px;font-size:.82rem;border-radius:8px;width:auto;}
+
+
+
+.btn-outline{background:none;border:2px solid var(--gold);color:var(--gold);padding:8px 16px;font-size:.82rem;border-radius:8px;width:auto;font-family:inherit;font-weight:700;cursor:pointer;transition:all .2s;}
+
+
+
+.btn-outline:hover{background:var(--gold);color:#fff;}
+
+
+
+.btn-cancel{background:linear-gradient(135deg,#aaa,#888);}
+
+
+
+.btn-danger{background:linear-gradient(135deg,#e74c3c,#c0392b);}
+
+
+
+
+
+
+
+.photo-upload-wrap{position:relative;width:100%;height:150px;border:2.5px dashed var(--border);border-radius:13px;overflow:hidden;background:var(--gold-pale);cursor:pointer;margin-bottom:14px;transition:border-color .2s;}
+
+
+
+.photo-upload-wrap:hover{border-color:var(--gold);}
+
+
+
+.photo-upload-wrap input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2;}
+
+
+
+.photo-upload-wrap .pu-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;}
+
+
+
+.photo-upload-wrap .pu-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.8rem;color:var(--text-muted);gap:5px;z-index:0;pointer-events:none;}
+
+
+
+.photo-upload-wrap .pu-hint .ph-icon{font-size:2rem;}
+
+
+
+.photo-upload-wrap .pu-overlay{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.42);color:#fff;text-align:center;padding:6px;font-size:.75rem;font-weight:700;z-index:1;pointer-events:none;display:none;}
+
+
+
+
+
+
+
+.move-log{display:flex;flex-direction:column;gap:8px;}
+
+
+
+.move-item{background:#fff;border-radius:11px;padding:11px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;}
+
+
+
+.move-item .mi-code{font-weight:900;font-size:.9rem;min-width:42px;}
+
+
+
+.move-item .mi-code.f{color:var(--female);}
+
+
+
+.move-item .mi-code.m{color:var(--male);}
+
+
+
+.move-item .mi-route{font-size:.8rem;color:var(--text-muted);flex:1;}
+
+
+
+.move-item .mi-date{font-size:.68rem;color:#bbb;}
+
+
+
+
+
+
+
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;flex-direction:column;gap:10px;}
+
+
+
+.lightbox.open{opacity:1;pointer-events:all;}
+
+
+
+.lightbox img{max-width:100%;max-height:80vh;border-radius:12px;}
+
+
+
+.lightbox-lbl{color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;}
+
+
+
+.lightbox-close{position:absolute;top:14px;right:14px;width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:50%;border:none;color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+
+
+
+
+
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;}
+
+
+
+.modal-overlay.open{opacity:1;pointer-events:all;}
+
+
+
+.modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.22);transform:translateY(20px);transition:transform .22s;max-height:90vh;overflow-y:auto;}
+
+
+
+.modal-overlay.open .modal{transform:translateY(0);}
+
+
+
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+
+
+
+.modal-header h2{font-size:1rem;font-weight:900;color:var(--brown);}
+
+
+
+.modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);}
+
+
+
+.modal-actions{display:flex;gap:8px;margin-top:16px;}
+
+
+
+.modal-actions .btn{flex:1;}
+
+
+
+
+
+
+
+.vax-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;}
+
+
+
+.vax-popup{background:#fff;border-radius:20px;padding:24px;max-width:360px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.25);max-height:80vh;overflow-y:auto;}
+
+
+
+.vax-popup h2{font-size:1.1rem;font-weight:900;color:var(--brown);margin-bottom:4px;}
+
+
+
+.vax-popup .vp-sub{font-size:.82rem;color:var(--text-muted);margin-bottom:14px;}
+
+
+
+.vax-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:8px;background:var(--gold-pale);border-left:4px solid var(--gold);}
+
+
+
+.vax-item.overdue{background:#FFEDE5;border-left-color:#FF6B35;}
+
+
+
+.vax-item.today{background:#FFF3CD;border-left-color:#FFC107;}
+
+
+
+.vax-item .vi-icon{font-size:1.4rem;}
+
+
+
+.vax-item .vi-info{flex:1;}
+
+
+
+.vax-item .vi-title{font-size:.85rem;font-weight:700;}
+
+
+
+.vax-item .vi-date{font-size:.72rem;color:var(--text-muted);}
+
+
+
+
+
+
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--brown);color:#fff;padding:11px 20px;border-radius:99px;font-weight:700;font-size:.88rem;transition:transform .3s;z-index:999;box-shadow:0 4px 18px rgba(0,0,0,.18);white-space:nowrap;}
+
+
+
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+
+
+.paw-bg{position:fixed;right:-30px;bottom:-30px;font-size:160px;opacity:.04;pointer-events:none;z-index:0;transform:rotate(-20deg);}
+
+
+
+.hidden{display:none!important;}
+
+
+
+
+
+
+
+@media(max-width:560px){
+
+
+
+  /* 헤더/여백 튜닝 */
+
+
+
+  header{padding:12px 16px 10px}
+
+
+
+  header h1{font-size:1.15rem}
+
+
+
+  header p{font-size:0.7rem}
+
+
+
+  .content{padding:12px 8px 60px}
+
+
+
+  
+
+
+
+  /* 관성 스크롤 모바일 탭 바 */
+
+
+
+  .tabs { position: sticky; top: 0; z-index: 1000; display: flex; overflow-x: auto; scrollbar-width: none; background: var(--card-bg, #ffffff); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+
+
+  .tabs::-webkit-scrollbar{display:none}
+
+
+
+  .tab{flex:none;min-width:76px;padding:12px 6px;font-size:0.8rem}
+
+
+
+  
+
+
+
+  /* 개체 카드 그리드 반응형 (2열 또는 3열이 꽉 차도록 minmax 95px 설정) */
+
+
+
+  .dog-grid{grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:6px;margin-bottom:18px}
+
+
+
+  .dog-card{border-radius:12px}
+
+
+
+  .dog-photo, .dog-photo-placeholder{height:76px;font-size:1.8rem}
+
+
+
+  .dog-card-body{padding:6px 8px 8px}
+
+
+
+  .dog-card .code{font-size:0.85rem;margin-bottom:1px}
+
+
+
+  .kennel-tag{font-size:0.6rem;padding:1px 4px;border-radius:4px}
+
+
+
+  
+
+
+
+  .sec-title{font-size:0.9rem;margin-bottom:8px}
+
+
+
+  .add-dog-btn{padding:10px;border-radius:12px;font-size:0.8rem;margin-bottom:12px}
+
+
+
+  
+
+
+
+  /* selectedInfo 및 상세 패널 압축 */
+
+
+
+  .detail-panel{padding:12px;border-radius:12px;border-left-width:4px}
+
+
+
+  .info-row{gap:6px}
+
+
+
+  .info-item{padding:5px 8px;min-width:85px;border-radius:6px}
+
+
+
+  .info-item .label{font-size:0.6rem}
+
+
+
+  .info-item .value{font-size:0.8rem}
+
+
+
+  
+
+
+
+  /* 견사 탭 그리드 튜닝 */
+
+
+
+  .kennel-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px}
+
+
+
+  .kennel-box{padding:8px;border-radius:10px;min-height:68px}
+
+
+
+  .kennel-box .kname{font-size:0.75rem;margin-bottom:4px}
+
+
+
+  
+
+
+
+  /* 새끼 탭 그리드 튜닝 */
+
+
+
+  .litter-card{border-radius:12px;border-left-width:4px}
+
+
+
+  .litter-header{padding:10px 12px}
+
+
+
+  .litter-header h3{font-size:0.82rem}
+
+
+
+  .litter-body{padding:10px}
+
+
+
+  .vax-row{gap:4px;margin-bottom:6px}
+
+
+
+  .vax-chip{padding:5px 4px;min-width:70px;border-radius:6px}
+
+
+
+  .vax-chip .vc-label{font-size:0.55rem}
+
+
+
+  .vax-chip .vc-date{font-size:0.72rem}
+
+
+
+  
+
+
+
+  /* 새끼 카드 썸네일 그리드 */
+
+
+
+  .litter-puppies{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:5px}
+
+
+
+  .puppy-card{padding:6px;border-radius:8px}
+
+
+
+  .puppy-card .p-name{font-size:0.65rem}
+
+
+
+  .puppy-card .p-sex{font-size:0.55rem;margin-bottom:2px}
+
+
+
+  
+
+
+
+  /* 모달 레이아웃 95% 폭 통제 */
+
+
+
+  .modal{max-width:94%;margin:16px auto;padding:16px;border-radius:16px;max-height:92vh}
+
+
+
+  .modal-header{margin-bottom:12px}
+
+
+
+  .form-group{margin-bottom:10px}
+
+
+
+  .form-group label{font-size:0.75rem;margin-bottom:3px}
+
+
+
+  .form-group select, .form-group input{padding:8px 10px;font-size:0.85rem}
+
+
+
+  .photo-upload-wrap{height:120px;border-radius:10px}
+
+
+
+  
+
+
+
+  /* 배송 캘린더 모바일 튜닝 */
+
+
+
+  .calendar-day {
+
+
+
+    min-height: 58px;
+
+
+
+    padding: 2px;
+
+
+
+  }
+
+
+
+  .calendar-day-num {
+
+
+
+    font-size: 0.65rem;
+
+
+
+    width: 14px;
+
+
+
+    height: 14px;
+
+
+
+    line-height: 14px;
+
+
+
+  }
+
+
+
+  .delivery-chip {
+
+
+
+    font-size: 0.52rem;
+
+
+
+    padding: 1px 2px;
+
+
+
+    border-left-width: 2px;
+
+
+
+  }
+
+
+
+}
+
+
+
+
+
+
+
+/* 배송 캘린더 데스크톱 스타일 */
+
+
+
+.calendar-container {
+
+
+
+  background: #fff;
+
+
+
+  border-radius: var(--radius);
+
+
+
+  box-shadow: var(--shadow);
+
+
+
+  padding: 16px;
+
+
+
+  margin-top: 14px;
+
+
+
+}
+
+
+
+.calendar-header {
+
+
+
+  display: flex;
+
+
+
+  justify-content: space-between;
+
+
+
+  align-items: center;
+
+
+
+  margin-bottom: 14px;
+
+
+
+}
+
+
+
+.calendar-header h2 {
+
+
+
+  font-size: 1.1rem;
+
+
+
+  color: var(--brown);
+
+
+
+  font-weight: 900;
+
+
+
+}
+
+
+
+.calendar-grid {
+
+
+
+  display: grid;
+
+
+
+  grid-template-columns: repeat(7, 1fr);
+
+
+
+  gap: 4px;
+
+
+
+  border-top: 1px solid var(--border);
+
+
+
+  border-left: 1px solid var(--border);
+
+
+
+}
+
+
+
+.calendar-day-header {
+
+
+
+  text-align: center;
+
+
+
+  font-weight: 700;
+
+
+
+  font-size: 0.72rem;
+
+
+
+  color: var(--text-muted);
+
+
+
+  background: var(--gold-pale);
+
+
+
+  padding: 6px 0;
+
+
+
+  border-right: 1px solid var(--border);
+
+
+
+  border-bottom: 1px solid var(--border);
+
+
+
+}
+
+
+
+.calendar-day-header:nth-child(7n+1) { color: #e74c3c; } /* 일요일 */
+
+
+
+.calendar-day-header:nth-child(7n) { color: var(--male); } /* 토요일 */
+
+
+
+
+
+
+
+.calendar-day {
+
+
+
+  background: #fff;
+
+
+
+  min-height: 85px;
+
+
+
+  padding: 4px;
+
+
+
+  border-right: 1px solid var(--border);
+
+
+
+  border-bottom: 1px solid var(--border);
+
+
+
+  cursor: pointer;
+
+
+
+  transition: background 0.15s;
+
+
+
+}
+
+
+
+.calendar-day:hover {
+
+
+
+  background: var(--gold-pale);
+
+
+
+}
+
+
+
+.calendar-day.empty {
+
+
+
+  background: #fafaf8;
+
+
+
+  cursor: default;
+
+
+
+}
+
+
+
+.calendar-day.today {
+
+
+
+  background: #FFFDF0;
+
+
+
+  border: 2px solid var(--gold);
+
+
+
+}
+
+
+
+.calendar-day-num {
+
+
+
+  font-size: 0.75rem;
+
+
+
+  font-weight: 700;
+
+
+
+  color: var(--text);
+
+
+
+  margin-bottom: 4px;
+
+
+
+  display: inline-block;
+
+
+
+  width: 18px;
+
+
+
+  height: 18px;
+
+
+
+  text-align: center;
+
+
+
+  line-height: 18px;
+
+
+
+}
+
+
+
+.calendar-day.today .calendar-day-num {
+
+
+
+  background: var(--gold);
+
+
+
+  color: #fff;
+
+
+
+  border-radius: 50%;
+
+
+
+}
+
+
+
+.calendar-day:nth-child(7n+1) .calendar-day-num { color: #e74c3c; } /* 일요일 */
+
+
+
+.calendar-day:nth-child(7n) .calendar-day-num { color: var(--male); } /* 토요일 */
+
+
+
+
+
+
+
+.calendar-chips {
+
+
+
+  display: flex;
+
+
+
+  flex-direction: column;
+
+
+
+  gap: 2px;
+
+
+
+}
+
+
+
+.delivery-chip {
+
+
+
+  font-size: 0.6rem;
+
+
+
+  font-weight: 700;
+
+
+
+  padding: 2px 4px;
+
+
+
+  border-radius: 4px;
+
+
+
+  background: var(--puppy-bg);
+
+
+
+  color: var(--puppy);
+
+
+
+  border-left: 3px solid var(--puppy);
+
+
+
+  overflow: hidden;
+
+
+
+  text-overflow: ellipsis;
+
+
+
+  white-space: nowrap;
+
+
+
+}
+
+
+
+.delivery-chip:hover {
+
+
+
+  opacity: 0.8;
+
+
+
+}
+
+
+
+.delivery-chip.completed {
+
+
+
+  background: #eaeaea;
+
+
+
+  color: #888;
+
+
+
+  border-left-color: #aaa;
+
+
+
+  text-decoration: line-through;
+
+
+
+}
+
+
+
+.delivery-chip.treatment-chip {
+
+
+
+  background: #FFFDF0;
+
+
+
+  color: #D35400;
+
+
+
+  border-left-color: #E67E22;
+
+
+
+}
+
+
+
+.delivery-chip.vax-chip-cal {
+
+
+
+  background: #EEF7E0;
+
+
+
+  color: #5A9E1A;
+
+
+
+  border-left-color: #8BC34A;
+
+
+
+}
+
+
+
+
+
+/* ═══════════════════════════════════════
+
+   새끼 상세 모달 내부 스타일
+
+   ═══════════════════════════════════════ */
+
+.pd-section{padding:14px 18px;}
+
+.pd-section-title{font-size:.78rem;font-weight:900;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+.pd-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:4px;}
+
+.pd-media-cell{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid var(--border);background:var(--gold-pale);cursor:pointer;transition:transform .15s;}
+
+.pd-media-cell:hover{transform:scale(1.03);}
+
+.pd-media-cell img,.pd-media-cell video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+
+.pd-media-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,.65);border-radius:50%;border:none;color:#fff;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;}
+
+.pd-media-dl{position:absolute;bottom:4px;right:4px;width:22px;height:22px;background:rgba(200,134,10,.85);border-radius:50%;border:none;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;}
+
+.pd-media-kakao{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:#FEE500;color:#191919;border:none;border-radius:8px;font-size:.7rem;font-weight:900;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:4px;z-index:4;box-shadow:0 3px 8px rgba(0,0,0,.3);transition:transform .1s, background .15s;white-space:nowrap;}
+
+.pd-media-kakao:hover{background:#FADA00;}
+
+.pd-media-type-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:.55rem;padding:2px 5px;border-radius:4px;font-weight:700;pointer-events:none;}
+
+.pd-video-play-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.8rem;pointer-events:none;}
+
+.pd-media-add{border-radius:10px;aspect-ratio:1;border:2.5px dashed var(--border);background:var(--gold-pale);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;position:relative;transition:border-color .2s;}
+
+.pd-media-add:hover{border-color:var(--gold);}
+
+.pd-media-add .ai{font-size:1.5rem;}
+
+.pd-media-add .at{font-size:.58rem;color:var(--text-muted);font-weight:700;}
+
+.pd-media-add input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+
+.pd-info-table{width:100%;border-collapse:collapse;}
+
+.pd-info-table tr{border-bottom:1px solid var(--border);}
+
+.pd-info-table tr:last-child{border-bottom:none;}
+
+.pd-info-table td{padding:9px 4px;font-size:.88rem;vertical-align:middle;}
+
+.td-label{color:var(--text-muted);font-weight:700;width:95px;font-size:.76rem;white-space:nowrap;}
+
+.td-value{font-weight:700;color:var(--text);}
+
+.pd-reserve-badge{display:inline-block;background:#FFF3CD;color:#B8860B;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:5px;}
+
+.pd-sire-photo{width:100%;border-radius:12px;object-fit:contain;background:var(--gold-pale);display:block;border:2px solid var(--border);max-height:360px;}
+
+.pd-sire-placeholder{width:100%;height:120px;border-radius:12px;background:var(--gold-pale);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:3rem;}
+
+.pd-profile-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--brown-light));color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;transition:opacity .2s;margin-bottom:8px;}
+
+.pd-profile-btn:hover{opacity:.88;}
+
+.pd-edit-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px;background:none;border:2px solid var(--border);color:var(--text-muted);border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:8px;}
+
+.pd-edit-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+.pd-contract-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:none;border:2px solid var(--puppy);color:var(--puppy);border-radius:12px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
+
+.pd-contract-btn:hover{background:var(--puppy);color:#fff;}
+
+.lightbox video{max-width:100%;max-height:80vh;border-radius:12px;}
+
+@media(max-width:560px){
+
+  .pd-gallery{gap:5px;}
+
+  .pd-section{padding:10px 14px;}
+
+  .td-label{width:76px;font-size:.7rem;}
+
+  .pd-info-table td{padding:7px 3px;font-size:.82rem;}
+
+  .pd-profile-btn{font-size:.88rem;padding:12px;}
+
+}
+
+
+
+</style>
+
+
+
+<!-- Firebase SDK 프리로드 (HTML 파싱과 동시에 다운로드 시작) -->
+
+<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" as="script" crossorigin>
+
+<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js" as="script" crossorigin>
+
+
+
+</head>
+
+
+
+<body>
+
+
+
+<!-- 🚀 초고속 인라인 부팅 (Firebase SDK 로드 전에 즉시 실행) -->
+
+<script>
+
+(function(){
+
+  var isAuth = sessionStorage.getItem('goldi_auth') === 'authenticated';
+
+  if (!isAuth) return; // 미인증 상태면 기존 로그인 흐름 유지
+
+
+
+  // 이미 인증된 세션: 로그인 화면 제거 & 메인 화면 즉시 표시
+
+  document.addEventListener('DOMContentLoaded', function(){
+
+    var login = document.getElementById('login-overlay');
+
+    var main = document.getElementById('main-content');
+
+    var loader = document.getElementById('loading-screen');
+
+
+
+    if (login) login.style.display = 'none';
+
+    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
+
+
+
+    // 캐시 데이터가 있으면 로딩 화면도 즉시 제거 (0.01초 체감)
+
+    try {
+
+      var cf = localStorage.getItem('goldie_cache_females');
+
+      var cm = localStorage.getItem('goldie_cache_males');
+
+      if ((cf && JSON.parse(cf).length > 0) || (cm && JSON.parse(cm).length > 0)) {
+
+        if (loader) loader.style.display = 'none';
+
+      }
+
+    } catch(e) {}
+
+
+
+    // 캐시 없어도 최대 0.5초 후 로딩 화면 강제 제거
+
+    setTimeout(function(){
+
+      if (loader && loader.style.display !== 'none') {
+
+        loader.style.display = 'none';
+
+      }
+
+    }, 500);
+
+  });
+
+})();
+
+</script>
+
+
+
+<!-- 로그인 오버레이 -->
+
+
+
+<div id="login-overlay" style="position:fixed;inset:0;background:var(--gold-bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px">
+
+
+
+  <div class="card" style="max-width:360px;width:100%;text-align:center;box-shadow:var(--shadow);padding:30px;border-radius:12px;border:1px solid var(--border);background:#fff">
+
+
+
+    <div style="font-size:3.5rem;margin-bottom:14px">🔑</div>
+
+
+
+    <h2 style="font-size:1.1rem;font-weight:900;color:var(--brown);margin-bottom:8px">골디쉼터 보안 인증</h2>
+
+
+
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px">농장관리 비밀번호를 입력해주세요.</p>
+
+
+
+    <div style="margin-bottom:16px">
+
+
+
+      <input type="password" id="login-password" placeholder="비밀번호 입력" style="border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;width:100%;outline:none;text-align:center;background:var(--gold-pale);color:var(--text);font-family:inherit">
+
+
+
+    </div>
+
+
+
+    <button class="btn" onclick="attemptLogin()" style="width:100%;justify-content:center;padding:12px">인증하기</button>
+
+
+
+    <div id="login-error" style="color:#C0392B;font-size:12px;margin-top:10px;font-weight:700;display:none">⚠️ 비밀번호가 일치하지 않습니다.</div>
+
+
+
+  </div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<div id="main-content">
+
+
+
+  <!-- 로딩 화면 -->
+
+
+
+  <div id="loading-screen">
+
+
+
+    <div class="ls-icon">🐕</div>
+
+
+
+    <div class="ls-text">불러오는 중...</div>
+
+    <div class="ls-sub">잠시만 기다려주세요</div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <div class="paw-bg">🐾</div>
+
+
+
+
+
+
+
+  <header>
+
+
+
+    <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
+
+
+
+    <p>골든리트리버 번식·견사 통합 관리</p>
+
+
+
+  </header>
+
+
+
+
+
+
+
+  <div class="tabs">
+
+
+
+    <div class="tab active" onclick="showTab('dogs')">🐶 개체</div>
+
+
+
+    <div class="tab" onclick="showTab('kennels')">🏠 견사</div>
+
+
+
+    <div class="tab" onclick="showTab('breeding')">🌸 번식</div>
+
+
+
+    <div class="tab" onclick="showTab('puppies')">🐾 새끼</div>
+
+
+
+    <div class="tab" onclick="showTab('move')">🔄 이동</div>
+
+
+
+    <div class="tab" onclick="showTab('delivery')">🚗 배송</div>
+
+
+
+    <div class="tab" onclick="showTab('treatment')">🩺 치료</div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <div class="content">
+
+
+
+    <!-- 개체 탭 -->
+
+
+
+    <div id="tab-dogs">
+
+
+
+      <div class="sec-title">🐕‍🦺 모견 <span class="badge" id="female-count">0</span></div>
+
+
+
+      <button class="add-dog-btn" onclick="openAddDog('female')">＋ 모견 추가</button>
+
+
+
+      <div class="dog-grid" id="female-grid"></div>
+
+
+
+      <div class="sec-title">🐕 부견 <span class="badge" id="male-count">0</span></div>
+
+
+
+      <button class="add-dog-btn" onclick="openAddDog('male')">＋ 부견 추가</button>
+
+
+
+      <div class="dog-grid" id="male-grid"></div>
+
+
+
+      <div class="detail-panel" id="dog-detail"></div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 견사 탭 -->
+
+
+
+    <div id="tab-kennels" class="hidden">
+
+
+
+      <div class="sec-title">🏠 견사 현황</div>
+
+
+
+      <div class="kennel-grid" id="kennel-grid"></div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 번식 탭 -->
+
+
+
+    <div id="tab-breeding" class="hidden">
+
+
+
+      <div class="sec-title">🌸 교배 현황</div>
+
+
+
+      <div class="breeding-list" id="breeding-list"></div>
+
+
+
+      <div style="margin-top:20px;" class="sec-title">교배 등록</div>
+
+
+
+      <div class="form-card">
+
+
+
+        <div class="form-group"><label>모견</label><select id="b-female"></select></div>
+
+
+
+        <div class="form-group"><label>부견</label><select id="b-male"></select></div>
+
+
+
+        <div class="form-group"><label>교배일</label><input type="date" id="b-date"></div>
+
+
+
+        <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 새끼 탭 -->
+
+
+
+    <div id="tab-puppies" class="hidden">
+
+
+
+      <div class="sec-title">🐾 새끼 현황</div>
+
+
+
+      <button class="add-dog-btn" onclick="openAddLitter()">＋ 출산 기록 추가</button>
+
+
+
+      <div id="litter-list"></div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 이동 탭 -->
+
+
+
+    <div id="tab-move" class="hidden">
+
+
+
+      <div class="sec-title">🔄 견사 이동</div>
+
+
+
+      <div class="form-card">
+
+
+
+        <div class="form-group"><label>이동할 아이</label><select id="m-dog"></select></div>
+
+
+
+        <div class="form-group"><label>이동할 견사</label><select id="m-kennel"></select></div>
+
+
+
+        <div class="form-group"><label>이동 날짜</label><input type="date" id="m-date"></div>
+
+
+
+        <button class="btn" onclick="moveKennel()">이동 완료</button>
+
+
+
+      </div>
+
+
+
+      <div class="sec-title">📋 이동 기록</div>
+
+
+
+      <div class="move-log" id="move-log"></div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 배송 캘린더 탭 -->
+
+
+
+    <div id="tab-delivery" class="hidden">
+
+
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+
+
+
+        <div class="sec-title" style="margin-bottom:0;">🚗 배송 일정 관리</div>
+
+
+
+        <button class="btn btn-outline btn-sm" onclick="openAddDeliveryModal()" style="margin:0; width:auto; font-size:12px;">＋ 배송 일정 추가</button>
+
+
+
+      </div>
+
+
+
+      
+
+
+
+      <div class="calendar-container">
+
+
+
+        <div class="calendar-header">
+
+
+
+          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(-1)" style="padding:4px 8px; width:auto;">◀ 이전달</button>
+
+
+
+          <h2 id="calendar-month-year">YYYY년 MM월</h2>
+
+
+
+          <button class="btn-outline btn-sm" onclick="changeCalendarMonth(1)" style="padding:4px 8px; width:auto;">다음달 ▶</button>
+
+
+
+        </div>
+
+
+
+        <div class="calendar-grid" id="calendar-grid"></div>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- 치료 탭 -->
+
+
+
+    <div id="tab-treatment" class="hidden">
+
+
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+
+
+
+        <div class="sec-title" style="margin-bottom:0;">🩺 치료 관리</div>
+
+
+
+      </div>
+
+
+
+      
+
+
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+
+
+        <!-- 치료 등록 폼 -->
+
+
+
+        <div class="form-card">
+
+
+
+          <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">📝 신규 치료 등록</h3>
+
+
+
+          
+
+
+
+          <div class="form-group">
+
+
+
+            <label>대상 구분 *</label>
+
+
+
+            <div style="display: flex; gap: 8px;">
+
+
+
+              <button type="button" id="btn-treat-type-puppy" class="sex-btn female active" onclick="setTreatmentTargetType('puppy')" style="flex:1; margin:0; border-radius:9px; height:38px;">🐶 새끼 (자견)</button>
+
+
+
+              <button type="button" id="btn-treat-type-adult" class="sex-btn male" onclick="setTreatmentTargetType('adult')" style="flex:1; margin:0; border-radius:9px; height:38px;">🐕 성견 (모/부견)</button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 새끼 선택 필드 -->
+
+
+
+          <div class="form-group" id="treat-target-puppy-wrap">
+
+
+
+            <label>새끼 (형제 그룹) 지정 *</label>
+
+
+
+            <select id="treat-puppy-select" onchange="onTreatmentPuppyChanged()">
+
+
+
+              <option value="">-- 새끼 (형제 그룹) 선택 --</option>
+
+
+
+            </select>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 성견 선택 필드 -->
+
+
+
+          <div class="form-group" id="treat-target-adult-wrap" style="display:none;">
+
+
+
+            <label>성견 지정 *</label>
+
+
+
+            <div style="display:flex; gap:6px; margin-bottom:6px;">
+
+
+
+              <select id="treat-adult-select" onchange="onTreatmentAdultSelectChanged(this.value)" style="flex:1;">
+
+
+
+                <option value="">-- 성견 선택 --</option>
+
+
+
+              </select>
+
+
+
+              <input type="text" id="treat-adult-input" list="treat-adult-suggestions" placeholder="직접 입력" oninput="onTreatmentAdultChanged()" style="flex:1;">
+
+
+
+            </div>
+
+
+
+            <datalist id="treat-adult-suggestions"></datalist>
+
+
+
+            
+
+
+
+            <label style="display: flex; align-items: center; gap: 6px; font-size: .8rem; margin-top: 6px; font-weight: 700; color: #e74c3c; cursor: pointer;">
+
+
+
+              <input type="checkbox" id="treat-pregnant-check" onchange="checkBaytrilWarning()"> 🤰 현재 임신 중인 모견입니다.
+
+
+
+            </label>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 몸무게 입력 -->
+
+
+
+          <div class="form-group">
+
+
+
+            <label>몸무게 (kg) *</label>
+
+
+
+            <input type="number" id="treat-weight" step="0.1" min="0.1" placeholder="예: 3.5" oninput="onTreatmentWeightChanged()">
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 증상 선택 -->
+
+
+
+          <div class="form-group">
+
+
+
+            <label>증상 / 질병 선택 *</label>
+
+
+
+            <select id="treat-symptom-select" onchange="onTreatmentSymptomChanged(this.value)">
+
+
+
+              <option value="direct">직접 약품 선택 (기타)</option>
+
+
+
+              <option value="cold_wet">콧물 감기 (단프론 + 바이트릴 + 아미톱)</option>
+
+
+
+              <option value="cold_dry">마른 기침 감기 [캑캑] (브롬신 + 바이트릴 + 아미톱)</option>
+
+
+
+              <option value="diarrhea_simple">설사 [식욕 정상/구토 없음] (킹벨린 + 아미톱)</option>
+
+
+
+              <option value="diarrhea_anorexia">설사 + 밥 안먹음 [식욕부진] (킹벨린 + 카라실 + 아미톱)</option>
+
+
+
+              <option value="diarrhea_vomit">설사 + 토함 [위장관] (킹벨린 + 제스롱 + 아미톱)</option>
+
+
+
+              <option value="diarrhea_fever">설사 + 열/염증 동반 (킹벨린 + 바이트릴 + 단프론 + 아미톱)</option>
+
+
+
+              <option value="wound_inflammation">외부 상처 염증 (덱사손 + 바이트릴 + 아미톱)</option>
+
+
+
+              <option value="anorexia_simple">단순 식욕 부진 [밥 안먹음] (카라실 + 아미톱)</option>
+
+
+
+            </select>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 주사제 조합 구성 -->
+
+
+
+          <div class="form-group">
+
+
+
+            <label>주사제 조합 및 투약량 (1kg당 0.1ml 계산) *</label>
+
+
+
+            <div style="background: var(--gold-pale); border-radius: 9px; padding: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; border: 2px solid var(--border);">
+
+
+
+              <!-- 바이트릴 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-baytril" onchange="onInjCheckChanged('baytril')"> 바이트릴 (항생제)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-baytril" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 단프론 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-danpron" onchange="onInjCheckChanged('danpron')"> 단프론 (해열진통)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-danpron" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 브롬신 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-bromhexine" onchange="onInjCheckChanged('bromhexine')"> 브롬신 (마른기침)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-bromhexine" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 킹벨린 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-kingbelin" onchange="onInjCheckChanged('kingbelin')"> 킹벨린 (지사제)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-kingbelin" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 카라실 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-carasil" onchange="onInjCheckChanged('carasil')"> 카라실 (대사촉진)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-carasil" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 제스롱 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-jeslong" onchange="onInjCheckChanged('jeslong')"> 제스롱 (항구토제)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-jeslong" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 덱사손 -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text); cursor:pointer;">
+
+
+
+                  <input type="checkbox" id="inj-check-dexasone" onchange="onInjCheckChanged('dexasone')"> 덱사손 (소염제)
+
+
+
+                </label>
+
+
+
+                <div style="display:flex; align-items:center; gap:4px;">
+
+
+
+                  <input type="number" id="inj-val-dexasone" step="0.01" style="width: 70px; padding: 4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;" disabled> <span style="font-size:11px;color:var(--text-muted)">ml</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <!-- 아미톱 (상시 고정) -->
+
+
+
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:.82rem; border-top: 1px dashed var(--border); padding-top:6px; margin-top:2px;">
+
+
+
+                <label style="display:flex; align-items:center; gap:6px; font-weight:800; color:#27AE60;">
+
+
+
+                  🧪 아미톱 (영양제)
+
+
+
+                </label>
+
+
+
+                <div style="font-size: .72rem; font-weight: 700; color: #27AE60; background: #EEF7E0; padding: 2px 8px; border-radius: 4px;">
+
+
+
+                  혼합 (주사기 끝까지)
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <!-- 투약 경고판 -->
+
+
+
+            <div id="treat-warning-box" style="display:none; margin-top:8px; padding:8px 10px; background:#FFEDE5; border:2px solid #FF6B35; border-radius:9px; font-size:.78rem; font-weight:800; color:#FF6B35; line-height:1.4;">
+
+
+
+              ⚠️ 경고: 바이트릴은 임신견 및 백신 접종 당일 투약이 절대 불가합니다. 약품 조합을 다시 확인해 주세요.
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- 기간 및 날짜 설정 -->
+
+
+
+          <div style="display:flex; gap:8px;">
+
+
+
+            <div class="form-group" style="flex:1;">
+
+
+
+              <label>시작일 *</label>
+
+
+
+              <input type="date" id="treat-start-date" onchange="onTreatmentDateChanged()">
+
+
+
+            </div>
+
+
+
+            <div class="form-group" style="flex:1;">
+
+
+
+              <label>기간 (일) * <span id="treat-duration-hint" style="font-size:11px; font-weight:700; color:var(--gold); margin-left:4px;">💡 추천: 3일</span></label>
+
+
+
+              <input type="number" id="treat-duration" value="3" min="1" oninput="onTreatmentDateChanged()">
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <div style="font-size: .8rem; font-weight:700; color: var(--text-muted); margin-bottom: 14px; background:var(--gold-pale); padding:8px 10px; border-radius:9px;">
+
+
+
+            📅 투약 완료 예정일: <span id="treat-end-date-display" style="color:var(--text); font-weight:900;">-</span>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div class="form-group">
+
+
+
+            <label>치료 메모 (특이사항)</label>
+
+
+
+            <textarea id="treat-memo" placeholder="예: 기침 소리가 심함, 식욕 저하 동반 등" style="width:100%; border:2px solid var(--border); border-radius:9px; padding:9px 12px; font-size:.9rem; font-family:inherit; outline:none; resize:vertical; min-height:60px; background:var(--gold-pale); color:var(--text);"></textarea>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <button type="button" class="btn" onclick="saveTreatment()" style="height: 42px; margin-top: 8px;">🩺 치료 등록</button>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- 치료 현황 목록 -->
+
+
+
+        <div class="form-card">
+
+
+
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+
+
+
+            <h3 style="margin-bottom:0;">📋 치료 및 처방 현황</h3>
+
+
+
+            <!-- 필터 버튼 -->
+
+
+
+            <div style="display:flex; background:var(--gold-pale); padding:2px; border-radius:6px; gap:2px; border: 1.5px solid var(--border);">
+
+
+
+              <button type="button" id="filter-treat-all" class="btn-outline btn-sm" onclick="filterTreatments('all')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; background:#fff; font-weight:800; border:none; height:auto;">전체</button>
+
+
+
+              <button type="button" id="filter-treat-active" class="btn-outline btn-sm" onclick="filterTreatments('active')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; border:none; height:auto; background:transparent; color:var(--text-muted); font-weight:700;">진행중</button>
+
+
+
+              <button type="button" id="filter-treat-done" class="btn-outline btn-sm" onclick="filterTreatments('done')" style="padding:4px 10px; font-size:11px; margin:0; border-radius:4px; border:none; height:auto; background:transparent; color:var(--text-muted); font-weight:700;">완료</button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <!-- 치료 카드 목록 영역 -->
+
+
+
+          <div id="treatmentListContent" style="display:flex; flex-direction:column; gap:12px;">
+
+
+
+            <div class="loading"><div class="spinner"></div>치료 내역을 불러오는 중...</div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 라이트박스 -->
+
+
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+
+
+
+    <button class="lightbox-close">✕</button>
+
+
+
+    <img id="lightbox-img" src="" alt="">
+
+    <video id="lightbox-video" src="" controls style="display:none;max-width:100%;max-height:80vh;border-radius:12px;" onclick="event.stopPropagation()"></video>
+
+
+
+    <div class="lightbox-lbl" id="lightbox-lbl"></div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 개체 추가/편집 모달 -->
+
+
+
+  <div class="modal-overlay" id="dog-modal" onclick="handleDogModalOverlay(event)">
+
+
+
+    <div class="modal">
+
+
+
+      <div class="modal-header">
+
+
+
+        <h2 id="dog-modal-title">개체 추가</h2>
+
+
+
+        <button class="modal-close" onclick="closeDogModal()">✕</button>
+
+
+
+      </div>
+
+
+
+      <div class="photo-upload-wrap" id="dm-photo-wrap">
+
+
+
+        <input type="file" accept="image/*,image/heic,image/heif" id="dm-photo-input" multiple onchange="handleDogPhoto(event)">
+
+
+
+        <div class="pu-hint" id="dm-hint"><div class="ph-icon">📷</div><div>기기에서 업로드 (선택)</div></div>
+
+
+
+        <div class="pu-overlay" id="dm-overlay">📷 사진 변경</div>
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>암수 구분</label>
+
+
+
+        <div class="sex-toggle">
+
+
+
+          <button class="sex-btn female" id="sex-btn-female" onclick="selectSex('female')">🐕‍🦺 암컷 (모견)</button>
+
+
+
+          <button class="sex-btn male"   id="sex-btn-male"   onclick="selectSex('male')">🐕 수컷 (부견)</button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+      <div class="form-group"><label>번호 / 코드</label><input type="text" id="dm-code" placeholder="예: F21, M06"></div>
+
+
+
+      <div class="form-group"><label>견사</label><select id="dm-kennel"></select></div>
+
+
+
+      <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
+
+
+
+      <div class="modal-actions">
+
+
+
+        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
+
+
+
+        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 출산 기록 추가 모달 -->
+
+
+
+  <div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
+
+
+
+    <div class="modal">
+
+
+
+      <div class="modal-header">
+
+
+
+        <h2 id="litter-modal-title">출산 기록 추가</h2>
+
+
+
+        <button class="modal-close" onclick="closeLitterModal()">✕</button>
+
+
+
+      </div>
+
+
+
+      <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
+
+
+
+      <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
+
+
+
+      <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
+
+
+
+      <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
+
+
+
+      <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
+
+
+
+      <div class="modal-actions" style="display:flex; gap:8px;">
+
+
+
+        <button class="btn btn-danger" id="lm-delete-btn" onclick="deleteLitter()" style="display:none; flex:1;">🗑️ 삭제</button>
+
+
+
+        <button class="btn btn-cancel" onclick="closeLitterModal()" style="flex:1;">취소</button>
+
+
+
+        <button class="btn" onclick="saveLitter()" style="flex:1;" id="lm-save-btn">✅ 저장</button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 새끼 정보 수정 모달 -->
+
+
+
+    <!-- 새끼 정보 수정 모달 -->
+  <div class="modal-overlay" id="puppy-modal" onclick="handlePuppyModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>새끼 정보 수정 & 미디어 관리</h2>
+        <button class="modal-close" onclick="closePuppyModal()">✕</button>
+      </div>
+
+      <div class="photo-upload-wrap" id="pm-photo-wrap">
+        <input type="file" accept="image/*,image/heic,image/heif" id="pm-photo-input" onchange="handlePuppyPhoto(event)">
+        <div class="pu-hint" id="pm-hint"><div class="ph-icon">📷</div><div>대표 사진 등록 (선택)</div></div>
+        <div class="pu-overlay" id="pm-overlay">📷 사진 변경</div>
+      </div>
+
+      <div class="form-group">
+        <label>이름</label>
+        <input type="text" id="pm-name" placeholder="예: 순심, 똘이">
+      </div>
+
+      <div class="form-group">
+        <label>성별</label>
+        <select id="pm-sex">
+          <option value="unknown">미정</option>
+          <option value="female">♀ 암컷</option>
+          <option value="male">♂ 수컷</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>분양 상태</label>
+        <select id="pm-status">
+          <option value="분양 전">분양 전</option>
+          <option value="예약">예약</option>
+          <option value="분양 완료">분양 완료</option>
+        </select>
+      </div>
+
+      <!-- ⚙️ 부/모견 공개 프로필 노출 설정 -->
+      <div class="form-group" style="background:#F8FAFC; border:1px solid #CBD5E1; padding:12px; border-radius:10px; margin-bottom:14px;">
+        <label style="font-size:12px; font-weight:800; color:#334155; margin-bottom:6px;">⚙️ 공개 분양 프로필(웹) 부/모견 노출 설정</label>
+        <div style="display:flex; gap:16px; margin-top:6px;">
+          <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="pm-show-sire"> 🐕 부견 노출
+          </label>
+          <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="pm-show-dam"> 🐕‍🦺 모견 노출
+          </label>
+        </div>
+      </div>
+
+      <!-- 📸 미디어 순서 변경 그리드 -->
+      <div class="form-group">
+        <label style="font-size:12px; font-weight:800;">📸 사진 & 🎥 영상 순서 변경 (드래그하여 이동)</label>
+        <p style="font-size:11px; color:#64748B; margin-top:2px; margin-bottom:8px;">💡 항목을 마우스/손가락으로 끌어서 원하는 위치에 놓으세요.</p>
+        <div id="pm-media-reorder-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; min-height:60px; background:#F1F5F9; padding:8px; border-radius:8px; border:1px dashed #CBD5E1;"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closePuppyModal()">취소</button>
+        <button class="btn" id="pm-save-btn" onclick="savePuppy()">✅ 설정 및 순서 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 배송 일정 등록/수정 모달 -->
+
+
+
+  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
+
+
+
+    <div class="modal">
+
+
+
+      <div class="modal-header">
+
+
+
+        <h2 id="delivery-modal-title">배송 일정 등록</h2>
+
+
+
+        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>분양 계약건 <span class="req">*</span></label>
+
+
+
+        <select id="dev-contract">
+
+
+
+          <option value="">-- 계약 선택 --</option>
+
+
+
+        </select>
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>배송 예정 날짜 <span class="req">*</span></label>
+
+
+
+        <input type="date" id="dev-date">
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>배송 예정 시간 <span class="req">*</span></label>
+
+
+
+        <input type="time" id="dev-time">
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>배송 주소 <span class="req">*</span></label>
+
+
+
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+
+
+
+          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
+
+
+
+          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
+
+
+
+        </div>
+
+
+
+        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
+
+
+
+      </div>
+
+
+
+      <div class="form-group">
+
+
+
+        <label>비고 (메모)</label>
+
+
+
+        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+
+
+
+      </div>
+
+
+
+      <div class="form-group" id="dev-status-group" style="display:none;">
+
+
+
+        <label>배송 상태</label>
+
+
+
+        <select id="dev-status">
+
+
+
+          <option value="예정">배송 예정</option>
+
+
+
+          <option value="완료">배송 완료</option>
+
+
+
+        </select>
+
+
+
+      </div>
+
+
+
+      <div class="modal-actions">
+
+
+
+        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
+
+
+
+        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
+
+
+
+        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 백신 알림 팝업 -->
+
+
+
+  <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
+
+    <div class="vax-popup">
+
+      <h2>💉 오늘의 백신 알림</h2>
+
+      <p class="vp-sub">오늘 또는 놓친 일정이 있어요!</p>
+
+      <div id="vax-popup-list"></div>
+
+
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:10px; border-top:1px solid #eee; font-size:0.8rem; color:var(--text-muted);">
+
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+
+          <input type="checkbox" id="hideVaxTodayChk" style="width:16px; height:16px; cursor:pointer; accent-color:var(--gold);">
+
+          <span style="font-weight:700;">오늘 하루 안 보기</span>
+
+        </label>
+
+        <button class="btn btn-gold btn-sm" onclick="closeVaxPopup()" style="padding:6px 16px; font-weight:700;">닫기 ✓</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+
+
+
+
+  <!-- 새끼 상세 모달 (표준 modal-overlay 적용) -->
+
+  <div class="modal-overlay" id="puppy-detail-overlay" onclick="handlePuppyDetailOverlay(event)">
+
+    <div class="modal" style="max-width:560px; padding:0 0 16px; border-radius:20px;">
+
+      <div class="modal-header" style="padding:14px 18px 10px; margin-bottom:0; border-bottom:1px solid var(--border);">
+
+        <h2 id="pd-title" style="font-size:1rem; font-weight:900; color:var(--brown);">🐾 새끼 상세 정보</h2>
+
+        <button class="modal-close" onclick="closePuppyDetail()">✕</button>
+
+      </div>
+
+      <div id="pd-content"></div>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="toast" id="toast"></div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<!-- Firebase SDK -->
+
+
+
+<script type="module">
 
 
 
