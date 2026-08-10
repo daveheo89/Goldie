@@ -12013,7 +12013,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
         } else {
           const r = storageRef(storage, storagePath);
           const metadata = { contentType: f.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
-          const task = uploadBytesResumable(r, f, metadata);
+          const task = window.uploadBytesResumable(r, f, metadata);
 
           await new Promise((resolve, reject) => {
             task.on('state_changed', 
