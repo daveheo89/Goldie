@@ -8265,66 +8265,37 @@ window.changeCalendarMonth = function(offset) {
     const c = (contracts || []).find(item => item._key === contractId);
     if (!c) return;
 
-    if (c.delivery_date) {
-      document.getElementById('dev-date').value = c.delivery_date;
-    }
-    if (c.buyer_address || c.address) {
-      document.getElementById('dev-addr').value = c.buyer_address || c.address || '';
-    }
-    if (c.buyer_address_detail || c.address_detail) {
-      document.getElementById('dev-addr-detail').value = c.buyer_address_detail || c.address_detail || '';
-    }
+    const buyerName = c.buyer_name || c.buyerName || c.buyer || c.name || '';
+    const buyerPhone = c.buyer_phone || c.buyerPhone || c.phone || '';
+    const buyerAddr = c.buyer_address || c.buyerAddress || c.address || c.addr || '';
+    const buyerAddrDetail = c.buyer_address_detail || c.buyerAddressDetail || c.address_detail || c.addressDetail || c.detailAddress || '';
+    const deliveryDate = c.delivery_date || c.deliveryDate || c.date || '';
+    const dogName = c.dogname || c.dogName || c.puppyName || '이름없음';
+    const femaleCode = c.femaleCode || c.female_code || c.damCode || '모견';
+    const maleCode = c.maleCode || c.male_code || c.sireCode || '부견';
+    const notes = c.notes || c.memo || c.remark || '없음';
 
-    const memoText = '[계약자: ' + (c.buyer_name || '미기입') + ' / ' + (c.buyer_phone || '연락처없음') + '] ' +
-                     '[분양자견: ' + (c.dogname || '이름없음') + ' (' + (c.femaleCode || '모견') + 'x' + (c.maleCode || '부견') + ')] ' +
-                     '[계약비고: ' + (c.notes || '없음') + ']';
-    document.getElementById('dev-memo').value = memoText;
-    showToast('📋 ' + (c.buyer_name || '계약자') + '님의 주소 및 분양 정보가 자동 입력되었습니다.');
-  };
-
-  // ── 구글 캘린더 연동 일정 새 탭 오픈 ──
-  window.openGoogleCalendarForDelivery = function() {
-    const contractId = document.getElementById('dev-contract').value;
-    const dateVal = document.getElementById('dev-date').value;
-    const timeVal = document.getElementById('dev-time').value || '12:00';
-    const addr = document.getElementById('dev-addr').value.trim();
-    const addrDetail = document.getElementById('dev-addr-detail').value.trim();
-    const memo = document.getElementById('dev-memo').value.trim();
-
-    if (!dateVal) {
-      showToast('배송 날짜를 먼저 선택해주세요.');
-      return;
+    if (deliveryDate) {
+      const dateEl = document.getElementById('dev-date');
+      if (dateEl) dateEl.value = deliveryDate;
+    }
+    if (buyerAddr) {
+      const addrEl = document.getElementById('dev-addr');
+      if (addrEl) addrEl.value = buyerAddr;
+    }
+    if (buyerAddrDetail) {
+      const addrDetailEl = document.getElementById('dev-addr-detail');
+      if (addrDetailEl) addrDetailEl.value = buyerAddrDetail;
     }
 
-    const c = (contracts || []).find(item => item._key === contractId) || {};
-    const buyerName = c.buyer_name || '계약자';
-    const buyerPhone = c.buyer_phone || '';
-    const dogName = c.dogname || '골든리트리버';
-    const femaleCode = c.femaleCode || '모견';
-    const maleCode = c.maleCode || '부견';
+    const memoText = '[계약자: ' + (buyerName || '미기입') + ' / ' + (buyerPhone || '연락처없음') + '] ' +
+                     '[분양자견: ' + dogName + ' (' + femaleCode + 'x' + maleCode + ')] ' +
+                     '[계약비고: ' + notes + ']';
 
-    const fullAddr = (addr + ' ' + addrDetail).trim();
-    const title = '[골디쉼터 배송] ' + buyerName + '님 자택 배송 (' + dogName + ')';
+    const memoEl = document.getElementById('dev-memo');
+    if (memoEl) memoEl.value = memoText;
 
-    const cleanDate = dateVal.replace(/-/g, '');
-    const cleanTime = timeVal.replace(/:/g, '') + '00';
-    const startIso = cleanDate + 'T' + cleanTime;
-
-    const startDateObj = new Date(dateVal + 'T' + timeVal + ':00');
-    const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
-    const endYear = endDateObj.getFullYear();
-    const endMonth = String(endDateObj.getMonth() + 1).padStart(2, '0');
-    const endDate = String(endDateObj.getDate()).padStart(2, '0');
-    const endHours = String(endDateObj.getHours()).padStart(2, '0');
-    const endMins = String(endDateObj.getMinutes()).padStart(2, '0');
-    const endIso = String(endYear) + String(endMonth) + String(endDate) + 'T' + String(endHours) + String(endMins) + '00';
-
-    const details = '🐾 [골디쉼터 자택 배송 일정]\n- 계약자: ' + buyerName + ' (' + buyerPhone + ')\n- 분양 강아지: ' + dogName + ' (모견: ' + femaleCode + ' / 부견: ' + maleCode + ')\n- 배송 주소: ' + fullAddr + '\n- 비고 메모: ' + memo;
-
-    const gcalUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + startIso + '/' + endIso + '&location=' + encodeURIComponent(fullAddr) + '&details=' + encodeURIComponent(details);
-
-    window.open(gcalUrl, '_blank');
-    showToast('📅 구글 캘린더 일정 등록 화면으로 이동합니다!');
+    showToast('📋 ' + (buyerName || '계약자') + '님의 주소 및 분양 정보가 자동 입력되었습니다.');
   };
 
   window.closeDeliveryModal = function() {
@@ -8420,6 +8391,7 @@ window.searchDeliveryAddress = function() {
 
 
 window.openAddDeliveryModal = function(dateStr) {
+  setTimeout(() => { const sel = document.getElementById("dev-contract"); if(sel) sel.onchange = function() { window.handleContractSelectForDelivery(this.value); }; }, 50);
 
 
 
