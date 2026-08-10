@@ -8273,9 +8273,13 @@ window.changeCalendarMonth = function(offset) {
       document.getElementById('dev-addr-detail').value = c.buyer_address_detail || c.address_detail || '';
     }
 
-    const memoText = `[계약자: ${c.buyer_name || '미기입'} / ${c.buyer_phone || '연락처없음'}]\n[분양자견: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})]\n[계약비고: ${c.notes || '없음'}]`;
+    const memoText = '[계약자: ' + (c.buyer_name || '미기입') + ' / ' + (c.buyer_phone || '연락처없음') + ']
+' +
+                     '[분양자견: ' + (c.dogname || '이름없음') + ' (' + (c.femaleCode || '모견') + 'x' + (c.maleCode || '부견') + ')]
+' +
+                     '[계약비고: ' + (c.notes || '없음') + ']';
     document.getElementById('dev-memo').value = memoText;
-    showToast(`📋 ${c.buyer_name || '계약자'}님의 주소 및 분양 정보가 자동 입력되었습니다.`);
+    showToast('📋 ' + (c.buyer_name || '계약자') + '님의 주소 및 분양 정보가 자동 입력되었습니다.');
   };
 
   // ── 구글 캘린더 연동 일정 새 탭 오픈 ──
@@ -8300,24 +8304,28 @@ window.changeCalendarMonth = function(offset) {
     const maleCode = c.maleCode || '부견';
 
     const fullAddr = (addr + ' ' + addrDetail).trim();
-    const title = `[골디쉼터 배송] ${buyerName}님 자택 배송 (${dogName})`;
+    const title = '[골디쉼터 배송] ' + buyerName + '님 자택 배송 (' + dogName + ')';
 
     const cleanDate = dateVal.replace(/-/g, '');
     const cleanTime = timeVal.replace(/:/g, '') + '00';
-    const startIso = `${cleanDate}T${cleanTime}`;
+    const startIso = cleanDate + 'T' + cleanTime;
 
-    const startDateObj = new Date(`${dateVal}T${timeVal}:00`);
+    const startDateObj = new Date(dateVal + 'T' + timeVal + ':00');
     const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
     const endYear = endDateObj.getFullYear();
     const endMonth = String(endDateObj.getMonth() + 1).padStart(2, '0');
     const endDate = String(endDateObj.getDate()).padStart(2, '0');
     const endHours = String(endDateObj.getHours()).padStart(2, '0');
     const endMins = String(endDateObj.getMinutes()).padStart(2, '0');
-    const endIso = `${endYear}${endMonth}${endDate}T${endHours}${endMins}00`;
+    const endIso = endYear + endMonth + endDate + 'T' + endHours + endMins + '00';
 
-    const details = `🐾 [골디쉼터 자택 배송 일정]\n- 계약자: ${buyerName} (${buyerPhone})\n- 분양 강아지: ${dogName} (모견: ${femaleCode} / 부견: ${maleCode})\n- 배송 주소: ${fullAddr}\n- 비고 메모: ${memo}`;
+    const details = '🐾 [골디쉼터 자택 배송 일정]
+- 계약자: ' + buyerName + ' (' + buyerPhone + ')
+- 분양 강아지: ' + dogName + ' (모견: ' + femaleCode + ' / 부견: ' + maleCode + ')
+- 배송 주소: ' + fullAddr + '
+- 비고 메모: ' + memo;
 
-    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startIso}/${endIso}&location=${encodeURIComponent(fullAddr)}&details=${encodeURIComponent(details)}`;
+    const gcalUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + startIso + '/' + endIso + '&location=' + encodeURIComponent(fullAddr) + '&details=' + encodeURIComponent(details);
 
     window.open(gcalUrl, '_blank');
     showToast('📅 구글 캘린더 일정 등록 화면으로 이동합니다!');
@@ -8428,9 +8436,13 @@ window.searchDeliveryAddress = function() {
       document.getElementById('dev-addr-detail').value = c.buyer_address_detail || c.address_detail || '';
     }
 
-    const memoText = `[계약자: ${c.buyer_name || '미기입'} / ${c.buyer_phone || '연락처없음'}]\n[분양자견: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})]\n[계약비고: ${c.notes || '없음'}]`;
+    const memoText = '[계약자: ' + (c.buyer_name || '미기입') + ' / ' + (c.buyer_phone || '연락처없음') + ']
+' +
+                     '[분양자견: ' + (c.dogname || '이름없음') + ' (' + (c.femaleCode || '모견') + 'x' + (c.maleCode || '부견') + ')]
+' +
+                     '[계약비고: ' + (c.notes || '없음') + ']';
     document.getElementById('dev-memo').value = memoText;
-    showToast(`📋 ${c.buyer_name || '계약자'}님의 주소 및 분양 정보가 자동 입력되었습니다.`);
+    showToast('📋 ' + (c.buyer_name || '계약자') + '님의 주소 및 분양 정보가 자동 입력되었습니다.');
   };
 
   // ── 구글 캘린더 연동 일정 새 탭 오픈 ──
@@ -8455,28 +8467,28 @@ window.searchDeliveryAddress = function() {
     const maleCode = c.maleCode || '부견';
 
     const fullAddr = (addr + ' ' + addrDetail).trim();
-    const title = `[골디쉼터 배송] ${buyerName}님 자택 배송 (${dogName})`;
+    const title = '[골디쉼터 배송] ' + buyerName + '님 자택 배송 (' + dogName + ')';
 
-    // 구글 캘린더 날짜/시간 포맷 (YYYYMMDDTHHmmSS)
     const cleanDate = dateVal.replace(/-/g, '');
     const cleanTime = timeVal.replace(/:/g, '') + '00';
-    
-    // 시작 시간
-    const startIso = `${cleanDate}T${cleanTime}`;
+    const startIso = cleanDate + 'T' + cleanTime;
 
-    # 1시간 뒤 종료 시간 계산
-    const startDateObj = new Date(`${dateVal}T${timeVal}:00`);
+    const startDateObj = new Date(dateVal + 'T' + timeVal + ':00');
     const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
     const endYear = endDateObj.getFullYear();
     const endMonth = String(endDateObj.getMonth() + 1).padStart(2, '0');
     const endDate = String(endDateObj.getDate()).padStart(2, '0');
     const endHours = String(endDateObj.getHours()).padStart(2, '0');
     const endMins = String(endDateObj.getMinutes()).padStart(2, '0');
-    const endIso = `${endYear}${endMonth}${endDate}T${endHours}${endMins}00`;
+    const endIso = endYear + endMonth + endDate + 'T' + endHours + endMins + '00';
 
-    const details = `🐾 [골디쉼터 자택 배송 일정]\n- 계약자: ${buyerName} (${buyerPhone})\n- 분양 강아지: ${dogName} (모견: ${femaleCode} / 부견: ${maleCode})\n- 배송 주소: ${fullAddr}\n- 비고 메모: ${memo}`;
+    const details = '🐾 [골디쉼터 자택 배송 일정]
+- 계약자: ' + buyerName + ' (' + buyerPhone + ')
+- 분양 강아지: ' + dogName + ' (모견: ' + femaleCode + ' / 부견: ' + maleCode + ')
+- 배송 주소: ' + fullAddr + '
+- 비고 메모: ' + memo;
 
-    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startIso}/${endIso}&location=${encodeURIComponent(fullAddr)}&details=${encodeURIComponent(details)}`;
+    const gcalUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + startIso + '/' + endIso + '&location=' + encodeURIComponent(fullAddr) + '&details=' + encodeURIComponent(details);
 
     window.open(gcalUrl, '_blank');
     showToast('📅 구글 캘린더 일정 등록 화면으로 이동합니다!');
