@@ -5,7 +5,7 @@
 
 
 <head>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐕</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,%3CSvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22%3E%3Ctext%20y=%22.9em%22%20font-size=%2290%22%3E🐕%3C/text%3E%3C/svg%3E">
 
 
 
@@ -86,6 +86,8 @@
 
 
 
+
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 
@@ -4767,6 +4769,16 @@ window.renderPuppies = renderPuppies;
 window.renderMove = renderMove;
 if (typeof renderDeliveryCalendar === 'function') { window.renderDeliveryCalendar = renderDeliveryCalendar; }
 
+function getLocalCache(key) {
+  try {
+    const raw = localStorage.getItem('goldie_cache_' + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+window.getLocalCache = getLocalCache;
+
 function restoreLocalCache() {
   try {
     const cachedFemales = getLocalCache('females');
@@ -6762,7 +6774,7 @@ window.openEditPuppyModal = function(litterKey, puppyId) {
       cell.innerHTML = `
         ${mediaHtml}
         <button type="button" class="reorder-del-btn" onclick="event.stopPropagation(); removeMediaFromEditArray(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(225,29,72,0.9); color:#fff; border:none; width:20px; height:20px; border-radius:50%; font-size:11px; font-weight:bold; cursor:pointer; z-index:4; display:flex; align-items:center; justify-content:center;">✕</button>
-        <!-- ◀ ▶ 1칸 위치 이동 버튼 (justify-content: space-between 수정 완료) -->
+        /* ◀ ▶ 1칸 위치 이동 버튼 (justify-content: space-between 수정 완료) */
         <div style="position:absolute; bottom:4px; left:4px; right:4px; display:flex; justify-content:space-between; gap:4px; z-index:4;" onclick="event.stopPropagation();">
           <button type="button" onclick="nudgeEditMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">◀</button>
           <button type="button" onclick="nudgeEditMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">▶</button>
@@ -10931,7 +10943,7 @@ function renderPuppyDetailContent(){
         <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
         <button class="pd-media-del" title="삭제" style="z-index:4;" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
         
-        <!-- ◀ / ▶ 위치 변경 버튼 -->
+        /* ◀ / ▶ 위치 변경 버튼 */
         <div style="position:absolute;bottom:4px;left:4px;display:flex;gap:3px;z-index:5;">
           <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},-1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">◀</button>
           <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},1)" ${idx === mediaList.length-1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">▶</button>
@@ -10945,7 +10957,7 @@ function renderPuppyDetailContent(){
         <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
 
-        <!-- ◀ / ▶ 위치 변경 버튼 -->
+        /* ◀ / ▶ 위치 변경 버튼 */
         <div style="position:absolute;bottom:4px;left:4px;display:flex;gap:3px;z-index:5;" onclick="event.stopPropagation();">
           <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},-1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">◀</button>
           <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},1)" ${idx === mediaList.length-1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">▶</button>
@@ -10973,7 +10985,7 @@ function renderPuppyDetailContent(){
   }
 
   container.innerHTML = `
-    <!-- 미디어 갤러리 섹션 -->
+    /* 미디어 갤러리 섹션 */
     <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
       <div class="pd-section-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <span>📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</span>
@@ -11000,7 +11012,7 @@ function renderPuppyDetailContent(){
       </div>
     </div>
 
-    <!-- 기본 정보 섹션 -->
+    /* 기본 정보 섹션 */
     <div class="pd-section">
       <div class="pd-section-title">📋 강아지 정보</div>
       <table class="pd-info-table">
@@ -11028,7 +11040,7 @@ function renderPuppyDetailContent(){
       </table>
     </div>
 
-    <!-- ⚙️ 공개 프로필 노출 설정 (부견/모견) -->
+    /* ⚙️ 공개 프로필 노출 설정 (부견/모견) */
     <div class="pd-section" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; margin:12px 0; padding:12px;">
       <div class="pd-section-title" style="font-size:12px; color:#334155; margin-bottom:8px;">⚙️ 공개 분양 프로필(웹) 부/모견 노출 설정</div>
       <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -11043,7 +11055,7 @@ function renderPuppyDetailContent(){
       </div>
     </div>
 
-    <!-- 🐕 부견 프로필 사진 섹션 -->
+    /* 🐕 부견 프로필 사진 섹션 */
     <div class="pd-section" style="border-top:1px solid var(--border);">
       <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필</div>
       ${sireInfo.photo ? 
@@ -11052,7 +11064,7 @@ function renderPuppyDetailContent(){
       }
     </div>
 
-    <!-- 🐕‍🦺 모견 프로필 사진 섹션 -->
+    /* 🐕‍🦺 모견 프로필 사진 섹션 */
     <div class="pd-section" style="border-top:1px solid var(--border);">
       <div class="pd-section-title">🐕‍🦺 모견 (${esc(motherInfo.name)}) 프로필</div>
       ${motherInfo.photo ? 
@@ -11061,7 +11073,7 @@ function renderPuppyDetailContent(){
       }
     </div>
 
-    <!-- 액션 버튼 섹션 -->
+    /* 액션 버튼 섹션 */
     <div class="pd-section" style="padding-top:0;">
       <button class="pd-profile-btn" onclick="openPublicPuppyProfileWeb('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,#C8931A 0%,#5C3D1E 100%); color:#fff; font-weight:800;">
         🌐 고화질 웹 프로필 링크 생성 & 카톡 전송
@@ -11420,15 +11432,15 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
       
       return `
         <div class="pm-reorder-item" data-idx="${idx}" onpointerdown="handleMediaPointerDown(event, ${idx})" style="position:relative;border:2px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff;touch-action:none;user-select:none;cursor:grab;">
-          <!-- 1, 2, 3 순번 배지 -->
+          /* 1, 2, 3 순번 배지 */
           <div style="position:absolute;top:3px;left:3px;background:rgba(15,23,42,0.85);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:10px;z-index:2;pointer-events:none;">${idx + 1}</div>
           
-          <!-- 삭제 버튼 -->
+          /* 삭제 버튼 */
           <button type="button" onclick="removeEditPuppyMedia(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(220,38,38,0.9);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;padding:0;">✕</button>
           
           ${thumb}
 
-          <!-- ◀ / ▶ 이동 폴백 버튼 -->
+          /* ◀ / ▶ 이동 폴백 버튼 */
           <div style="position:absolute;bottom:3px;left:0;right:0;display:flex;justify-space-between;padding:0 3px;z-index:3;">
             <button type="button" onclick="nudgeMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">◀</button>
             <button type="button" onclick="nudgeMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">▶</button>
@@ -11530,6 +11542,5 @@ init();
 
 
 </html>
-
 
 
