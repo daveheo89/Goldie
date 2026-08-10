@@ -3444,69 +3444,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         <p style="font-size:11px; color:#64748B; margin-top:2px; margin-bottom:8px;">💡 항목을 마우스/손가락으로 끌어서 원하는 위치에 놓으세요.</p>
         <div id="pm-media-reorder-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; min-height:60px; background:#F1F5F9; padding:8px; border-radius:8px; border:1px dashed #CBD5E1;"></div>
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-cancel" onclick="closePuppyModal()">취소</button>
-        <button class="btn" id="pm-save-btn" onclick="savePuppy()">✅ 설정 및 순서 저장</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 새끼 상세 정보 모달 -->
-  <div class="modal-overlay" id="puppy-detail-overlay" onclick="handlePuppyDetailOverlay(event)">
-    <div class="modal" style="max-width:560px; padding:0 0 16px; border-radius:20px;">
-      <div class="modal-header" style="padding:14px 18px 10px; margin-bottom:0; border-bottom:1px solid var(--border);">
-        <h2 id="pd-title" style="font-size:1rem; font-weight:900; color:var(--brown);">🐾 새끼 상세 정보</h2>
-        <button class="modal-close" onclick="closePuppyDetail()">✕</button>
-      </div>
-      <div id="pd-content"></div>
-    </div>
-  </div>
-
-
-  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="delivery-modal-title">배송 일정 등록</h2>
-        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
-      </div>
-      <div class="form-group">
-        <label>분양 계약건 <span class="req">*</span></label>
-        <select id="dev-contract" onchange="window.handleContractSelectForDelivery(this.value)">
-          <option value="">-- 계약 선택 --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>배송 예정 날짜 <span class="req">*</span></label>
-        <input type="date" id="dev-date">
-      </div>
-      <div class="form-group">
-        <label>배송 예정 시간 <span class="req">*</span></label>
-        <input type="time" id="dev-time">
-      </div>
-      <div class="form-group">
-        <label>배송 주소 <span class="req">*</span></label>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
-          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
-        </div>
-        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
-      </div>
-      <div class="form-group">
-        <label>비고 (메모)</label>
-        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
-      </div>
-      <div class="form-group" id="dev-status-group" style="display:none;">
-        <label>배송 상태</label>
-        <select id="dev-status">
-          <option value="예정">배송 예정</option>
-          <option value="완료">배송 완료</option>
-        </select>
-      </div>
-      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn" id="dev-gcal-btn" onclick="openGoogleCalendarForDelivery()" style="background:#4285F4;color:#fff;flex:1;font-weight:900;">📅 구글 캘린더 등록</button>
-        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
-        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
-        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ DB 저장</button>
+            <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
+        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
       </div>
     </div>
   </div>
@@ -5150,50 +5090,43 @@ async function init(){
 
 
 
-window.showTab=function(tab){
+window.showTab = function(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
 
+  const btn = document.querySelector(`.tab-btn[onclick*="${tab}"]`);
+  if (btn) btn.classList.add('active');
 
+  const content = document.getElementById(`tab-${tab}`);
+  if (content) content.style.display = 'block';
 
-  ['dogs','kennels','breeding','puppies','move','delivery','treatment'].forEach(t=>
-
-
-
-    document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
-
-
-
-  document.querySelectorAll('.tab').forEach((el,i)=>
-
-
-
-    el.classList.toggle('active',['dogs','kennels','breeding','puppies','move','delivery','treatment'][i]===tab));
-
-
-
-  if(tab==='kennels')renderKennels();
-
-
-
-  if(tab==='breeding')renderBreeding();
-
-
-
-  if(tab==='puppies')renderPuppies();
-
-
-
-  if(tab==='move')renderMove();
-
-
-
-  if(tab==='delivery' && typeof window.renderDeliveryCalendar === 'function') if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
-
-
-
-  if(tab==='treatment')initTreatmentTab();
-
-
-
+  // (P2.d) 새끼 탭 진입 시 지연 구독 (중복 구독 방지)
+  if (tab === 'puppies') {
+    if (!window._littersSubscribed) {
+      window._littersSubscribed = true;
+      onValue(ref(db, 'litters'), snap => {
+        litters = [];
+        snap.forEach(child => { litters.push({ _key: child.key, ...child.val() }); });
+        saveLocalCache('litters', litters);
+        if (typeof window.renderPuppies === 'function') window.renderPuppies();
+      }, error => {
+        showFirebaseError(error);
+      });
+    } else {
+      if (typeof window.renderPuppies === 'function') window.renderPuppies();
+    }
+  } else if (tab === 'dogs') {
+    if (typeof window.renderDogs === 'function') window.renderDogs();
+  } else if (tab === 'breeding') {
+    if (typeof window.renderBreeding === 'function') window.renderBreeding();
+  } else if (tab === 'kennel') {
+    if (typeof window.renderKennels === 'function') window.renderKennels();
+  } else if (tab === 'delivery') {
+    if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+  } else if (tab === 'treatment') {
+    if (typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+  }
 };
 
 
@@ -5641,146 +5574,49 @@ window.handleDogPhoto=async function(e){
 
 
 
-window.saveDog=async function(){
+window.saveDog = async function() {
+  const code = (document.getElementById('dm-code') ? document.getElementById('dm-code').value : '').trim();
+  if (!code) { showToast('개체 번호/코드를 입력해주세요.'); return; }
 
+  // (P3.a) path 선언을 함수 앞부분으로 이동하여 ReferenceError 방지
+  const path = dogSelectedSex === 'female' ? 'females' : 'males';
 
+  const kennel = document.getElementById('dm-kennel') ? document.getElementById('dm-kennel').value : '';
+  const birth = document.getElementById('dm-birth') ? document.getElementById('dm-birth').value : '';
 
-  const code=document.getElementById('dm-code').value.trim();
+  let coverUrl = '';
+  if (dogPhotoFile) {
+    const coverPath = `${path}/${code}/cover_${Date.now()}`;
+    coverUrl = await uploadImageAndGetUrl(dogPhotoFile, coverPath);
+  }
 
-
-
-  const kennel=document.getElementById('dm-kennel').value;
-
-
-
-  const birth=document.getElementById('dm-birth').value;
-
-
-
-  if(!code){showToast('번호를 입력해주세요');return;}
-
-
-
-  const saveBtn=document.getElementById('dm-save-btn');
-
-
-
-  saveBtn.textContent='저장 중...'; saveBtn.disabled=true;
-
-
-
-  try{
-
-
-
-    if(dogModalMode==='add'){
-
-
-
-      if(allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-
-
-
-      let finalDogCover = dogPendingPhoto || null;
-      if (finalDogCover && finalDogCover.startsWith('data:')) {
-        const coverPath = `${path}/${code}/cover.jpg`;
-        finalDogCover = await window.uploadImageAndGetUrl(finalDogCover, coverPath);
-      }
-      const newDog={code,sex:dogSelectedSex,kennel,birth:birth||null,photo:finalDogCover,breeding:null,dueDate:null,mateCode:null};
-
-
-
-      const path=dogSelectedSex==='female'?'females':'males';
-
-      const newRef = await fbPush(path, newDog);
-      const newKey = newRef ? newRef.key : null;
-
-      // Upload any pending additional media
-      if (newKey && dogPendingMedia && dogPendingMedia.length > 0) {
-        for (const item of dogPendingMedia) {
-          const mk = 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
-          try {
-            if (item.type === 'image') {
-              const url = await window.uploadImageAndGetUrl(item.compressed, path + '/' + newKey + '/' + mk + '.jpg');
-              await fbSet(path + '/' + newKey + '/media/' + mk, { type: 'image', src: url, createdAt: Date.now() });
-            } else if (item.type === 'video') {
-              const url = await window.uploadVideoFileAndGetUrl(item.file, path + '/' + newKey + '/' + mk + '.mp4');
-              await fbSet(path + '/' + newKey + '/media/' + mk, { type: 'video', src: url, name: item.file.name, createdAt: Date.now() });
-            }
-          } catch(me) { console.warn('Dog media upload error:', me); }
-        }
-        dogPendingMedia = [];
-      }
-
-      showToast(`✅ ${code} 추가 완료!`);
-
-
-
+  setSyncing(true);
+  try {
+    if (dogEditKey) {
+      const updates = { code, kennel, birth };
+      if (coverUrl) updates.photo = coverUrl;
+      await fbUpdate(`${path}/${dogEditKey}`, updates);
+      showToast('🐕 개체 정보가 수정되었습니다.');
     } else {
-
-
-
-      const dog=allDogs().find(d=>d._key===dogEditCode);
-
-
-
-      if(!dog)return;
-
-
-
-      if(code!==dog.code&&allDogs().some(d=>d.code===code)){showToast('이미 사용 중인 번호예요');return;}
-
-
-
-      const path=dog.sex==='female'?'females':'males';
-
-
-
-      const updates={code,kennel,birth:birth||null};
-
-
-
-      if(dogPendingPhoto!==null) {
-        let finalEditCover = dogPendingPhoto;
-        if (finalEditCover && finalEditCover.startsWith('data:')) {
-          const coverPath = `${path}/${dogEditCode}/cover.jpg`;
-          finalEditCover = await window.uploadImageAndGetUrl(finalEditCover, coverPath);
-        }
-        updates.photo = finalEditCover;
-      }
-
-      await fbUpdate(`${path}/${dogEditCode}`,updates);
-
-      // Upload any pending additional media
-      if (dogPendingMedia && dogPendingMedia.length > 0) {
-        for (const item of dogPendingMedia) {
-          const mk = 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
-          try {
-            if (item.type === 'image') {
-              const url = await window.uploadImageAndGetUrl(item.compressed, path + '/' + dogEditCode + '/' + mk + '.jpg');
-              await fbSet(path + '/' + dogEditCode + '/media/' + mk, { type: 'image', src: url, createdAt: Date.now() });
-            } else if (item.type === 'video') {
-              const url = await window.uploadVideoFileAndGetUrl(item.file, path + '/' + dogEditCode + '/' + mk + '.mp4');
-              await fbSet(path + '/' + dogEditCode + '/media/' + mk, { type: 'video', src: url, name: item.file.name, createdAt: Date.now() });
-            }
-          } catch(me) { console.warn('Dog media upload error:', me); }
-        }
-        dogPendingMedia = [];
-      }
-
-      showToast(`✅ ${dog.code} 수정 완료!`);
-
-
-
+      const newDog = {
+        code,
+        kennel,
+        birth,
+        photo: coverUrl || '',
+        created_at: new Date().toISOString()
+      };
+      // (P3.b) fbPush는 key 문자열 직접 반환
+      const newKey = await fbPush(path, newDog);
+      showToast('🐕 새 개체가 등록되었습니다.');
     }
-
-
-
     closeDogModal();
-
-
-
-  } finally {saveBtn.textContent='✅ 저장'; saveBtn.disabled=false;}
+    if (typeof renderDogs === 'function') renderDogs();
+  } catch (err) {
+    showToast('⚠ 저장 실패: ' + err.message);
+  } finally {
+    setSyncing(false);
+  }
+}; finally {saveBtn.textContent='✅ 저장'; saveBtn.disabled=false;}
 
 
 
@@ -6384,275 +6220,85 @@ window.goToAdminContract=(lid, pid, status)=>{
 
 
 function renderPuppies(){
+  const list = document.getElementById('litter-list');
+  if (!list) return;
+  list.innerHTML = '';
 
+  const lmFemale = document.getElementById('lm-female');
+  if (lmFemale) lmFemale.innerHTML = (females || []).map(f => `<option value="${f._key}">${f.code}</option>`).join('');
 
+  const lmMale = document.getElementById('lm-male');
+  if (lmMale) lmMale.innerHTML = (males || []).map(m => `<option value="${m._key}">${m.code}</option>`).join('');
 
-  const list=document.getElementById('litter-list');list.innerHTML='';
-
-
-
-  document.getElementById('lm-female').innerHTML=females.map(f=>`<option value="${f._key}">${f.code}</option>`).join('');
-
-
-
-  document.getElementById('lm-male').innerHTML=males.map(m=>`<option value="${m._key}">${m.code}</option>`).join('');
-
-
-
-  if(!litters.length){
-
-
-
-    list.innerHTML='<div style="color:#bbb;text-align:center;padding:30px;">출산 기록이 없어요<br><small>위 버튼을 눌러 추가하세요</small></div>';return;
-
-
-
+  if (!litters.length) {
+    list.innerHTML = '<div style="color:#bbb;text-align:center;padding:30px;">출산 기록이 없어요<br><small>위 버튼을 눌러 추가하세요</small></div>';
+    return;
   }
 
-
-
-  litters.forEach(lt=>{
-
-
-
-    const card=document.createElement('div');card.className='litter-card';
-
-
-
-    function vc(d){if(!d)return'';const n=daysFrom(d);if(n<-1)return'done';if(n===0||n===-1)return'today-due';if(n<0)return'overdue';return'';}
-
-
-
-    function vl(d){if(!d)return'미정';const n=daysFrom(d);if(n<-1)return`${fmtDate(d)} ✓`;if(n===0)return'오늘! 🔔';if(n===-1)return'어제 ⚠️';if(n<0)return`${fmtDate(d)} ⚠️`;return fmtDate(d);}
-
-
-
-    const puppyEntries=lt.puppies?Object.entries(lt.puppies):[];
-
-
-
-    const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
-
-
-
-      const getWeight = (status) => {
-
-
-
-        if (status === '예약') return 1;
-
-
-
-        if (status === '분양 완료') return 2;
-
-
-
-        return 0;
-
-
-
-      };
-
-
-
-      return getWeight(a.status) - getWeight(b.status);
-
-
-
-    });
-
-
-
-    const puppyCards=sortedPuppyEntries.map(([pid,p])=>{
-
-
-
-      const status = p.status || '분양 전';
-
-
-
-      let badgeClass = 'badge-avail';
-
-
-
-      let cardClass = '';
-
-
-
-      if(status === '예약') {
-
-
-
-        badgeClass = 'badge-rsv';
-
-
-
-        cardClass = ' reserved';
-
-
-
-      }
-
-
-
-      if(status === '분양 완료') {
-
-
-
-        badgeClass = 'badge-sold';
-
-
-
-        cardClass = ' sold';
-
-
-
-      }
-
-
-
-      let puppyCardImg = p.photo;
-
-      if (!puppyCardImg && p.media) {
-
-        const mediaList = Object.values(p.media);
-
-        const firstImgObj = mediaList.find(m => m.type === 'image' || (m.src && !m.src.includes('.mp4') && m.type !== 'video'));
-
-        if (firstImgObj && firstImgObj.src) puppyCardImg = firstImgObj.src;
-
-      }
-
-
-
-      return `
-
-
-
-      <div class="puppy-card${cardClass}" onclick="openPuppyDetail('${lt._key}','${pid}')" style="cursor:pointer; position:relative;">
-
-
-
-        <span class="puppy-edit-btn" onclick="event.stopPropagation(); openEditPuppyModal('${lt._key}','${pid}')" style="position:absolute; top:4px; right:4px; font-size:10px; cursor:pointer; background:rgba(255,255,255,0.85); border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15); z-index:5;">✏️</span>
-
-
-
-        ${puppyCardImg ? `<img class="p-photo" loading="lazy" decoding="async" src="${puppyCardImg}">` : `<div class="p-placeholder">🐶</div>`}
-
-
-
-        <div class="p-name">${esc(p.name||pid)}</div>
-
-
-
-        <div class="p-sex" style="margin-bottom:4px">${p.sex==='female'?'♀ 암':p.sex==='male'?'♂ 수':'미정'}</div>
-
-
-
-        <span class="badge ${badgeClass}" style="font-size:9px;padding:1px 5px">${status}</span>
-
-
-
-      </div>`;}).join('');
-
-
-
-    card.innerHTML=`
-
-
-
-      <div class="litter-header" onclick="toggleLitter(this)">
-
-
-
-        <h3>🐾 ${lt.femaleCode} × ${lt.maleCode} &nbsp;·&nbsp; 출산 A: ${fmtDate(lt.birthA)} &nbsp;|&nbsp; 출생 B: ${fmtDate(lt.birthB)||'−'}</h3>
-
-
-
-        <span class="litter-toggle">▼</span>
-
-
-
-      </div>
-
-
-
-      <div class="litter-body">
-
-
-
-        <div class="vax-row">
-
-
-
-          <div class="vax-chip ${vc(lt.vax1)}"><div class="vc-label">💉 1차 백신</div><div class="vc-date">${vl(lt.vax1)}</div></div>
-
-
-
-          <div class="vax-chip ${vc(lt.vax2)}"><div class="vc-label">💉 2차 백신</div><div class="vc-date">${vl(lt.vax2)}</div></div>
-
-
-
-          <div class="vax-chip ${vc(lt.vax3)}"><div class="vc-label">💉 3차 백신</div><div class="vc-date">${vl(lt.vax3)}</div></div>
-
-
-
-        </div>
-
-
-
-        <div class="vax-row">
-
-
-
-          <div class="vax-chip ${vc(lt.deworm1)}"><div class="vc-label">🪱 1차 구충</div><div class="vc-date">${vl(lt.deworm1)}</div></div>
-
-
-
-          <div class="vax-chip ${vc(lt.deworm2)}"><div class="vc-label">🪱 2차 구충</div><div class="vc-date">${vl(lt.deworm2)}</div></div>
-
-
-
-          <div class="vax-chip ${vc(lt.deworm3)}"><div class="vc-label">🪱 3차 구충</div><div class="vc-date">${vl(lt.deworm3)}</div></div>
-
-
-
-        </div>
-
-
-
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:.8rem; font-weight:700; color:var(--text-muted); margin:10px 0 6px;">
-
-
-
-          <span>🐶 새끼 ${lt.count}마리</span>
-
-
-
-          <button class="btn-outline" onclick="openEditLitterModal('${lt._key}')" style="font-size:11px; padding:3px 8px; width:auto;">✏️ 형제 정보 수정</button>
-
-
-
-        </div>
-
-
-
-        <div class="litter-puppies">${puppyCards}</div>
-
-
-
-      </div>`;
-
-
-
-    list.appendChild(card);
-
-
-
+  // (P2.b) 리터 정렬: birthB(없으면 birthA) 기준 최신순 내림차순 정렬
+  const sortedLitters = [...litters].sort((a, b) => {
+    const dateA = a.birthB || a.birthA || '';
+    const dateB = b.birthB || b.birthA || '';
+    return dateB.localeCompare(dateA);
   });
 
+  // (P2.a) 기본 접힌 상태 렌더링 (가장 최근 출산 1개만 자동 펼침)
+  sortedLitters.forEach((lt, idx) => {
+    const isFirst = idx === 0;
+    const card = document.createElement('div');
+    card.className = 'litter-card';
 
+    const puppyEntries = lt.puppies ? Object.entries(lt.puppies) : [];
+    const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
+      const getWeight = (status) => {
+        if (status === '예약') return 1;
+        if (status === '분양 완료') return 2;
+        return 0;
+      };
+      return getWeight(a.status) - getWeight(b.status);
+    });
 
+    const puppyCards = sortedPuppyEntries.map(([pid, p]) => {
+      const status = p.status || '분양 전';
+      let badgeClass = 'badge-avail';
+      let cardClass = '';
+
+      if (status === '예약') { badgeClass = 'badge-res'; cardClass = 'status-reserved'; }
+      else if (status === '분양 완료') { badgeClass = 'badge-done'; cardClass = 'status-done'; }
+
+      const photoStyle = p.photo ? `background-image:url("${p.photo}"); background-size:cover; background-position:center; width:100%; height:100%; aspect-ratio: 1 / 1;` : '';
+      const photoHtml = p.photo ? `<div style="${photoStyle}"></div>` : '📷';
+
+      return `<div class="puppy-card ${cardClass}" onclick="openPuppyDetail('${lt._key}','${pid}')">
+        <div class="puppy-photo" style="aspect-ratio: 1 / 1; overflow:hidden;">${photoHtml}</div>
+        <div class="puppy-info">
+          <div class="puppy-name">${esc(p.name || '미지정')}</div>
+          <div class="puppy-sex">${p.sex === 'female' ? '♀ 암컷' : p.sex === 'male' ? '♂ 수컷' : '미정'}</div>
+          <div class="puppy-status-badge ${badgeClass}">${status}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="litter-header" onclick="toggleLitter(this)">
+        <div class="litter-title-wrap">
+          <span class="litter-toggle-icon">${isFirst ? '▼' : '▶'}</span>
+          <strong>${getFemaleCode(lt.femaleCode)} × ${getMaleCode(lt.maleCode)}</strong>
+          <span class="litter-count">(${puppyEntries.length}마리)</span>
+        </div>
+        <div class="litter-dates">
+          <span>출산A: ${fmtDate(lt.birthA)}</span>
+          ${lt.birthB ? `<span>출산B: ${fmtDate(lt.birthB)}</span>` : ''}
+        </div>
+        <button class="btn-sm btn-outline" onclick="event.stopPropagation(); openEditLitterModal('${lt._key}')">✏️ 수정</button>
+      </div>
+      <div class="litter-body" style="display:${isFirst ? 'block' : 'none'};">
+        <div class="puppy-grid">${puppyCards}</div>
+        <button class="add-puppy-btn" onclick="openAddPuppyModal('${lt._key}')">＋ 새끼 추가</button>
+      </div>`;
+
+    list.appendChild(card);
+  });
 }
 
 
@@ -6661,30 +6307,21 @@ function renderPuppies(){
 
 
 
-window.toggleLitter=function(header){
+window.toggleLitter = function(headerEl) {
+  const card = headerEl.closest('.litter-card');
+  if (!card) return;
+  const body = card.querySelector('.litter-body');
+  const icon = card.querySelector('.litter-toggle-icon');
+  if (!body) return;
 
-
-
-  const body=header.nextElementSibling;
-
-
-
-  const toggle=header.querySelector('.litter-toggle');
-
-
-
-  const isOpen=body.style.display!=='none'&&body.style.display!=='';
-
-
-
-  body.style.display=isOpen?'none':'block';
-
-
-
-  toggle.textContent=isOpen?'▶':'▼';
-
-
-
+  const isHidden = getComputedStyle(body).display === 'none';
+  if (isHidden) {
+    body.style.display = 'block';
+    if (icon) icon.textContent = '▼';
+  } else {
+    body.style.display = 'none';
+    if (icon) icon.textContent = '▶';
+  }
 };
 
 
@@ -7226,75 +6863,94 @@ let editPuppyMediaArray = [];
 let draggedEditMediaIdx = null;
 
 window.openEditPuppyModal = function(litterKey, puppyId) {
-    puppyEditLitterKey = litterKey;
-    puppyEditPuppyId = puppyId;
-    puppyPendingPhoto = null;
-    
-    const lt = litters.find(l => l._key === litterKey);
-    const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
-    if (!p) return;
+  editPuppyLitterKey = litterKey;
+  editPuppyId = puppyId;
 
-    editPuppyMediaArray = getSortedMedia(p);
-    renderEditPuppyMediaReorderGrid();
+  const lt = (litters || []).find(l => l._key === litterKey);
+  if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
 
-    document.getElementById('edit-p-name').value = p.name || '';
-    document.getElementById('edit-p-sex').value = p.sex || 'male';
-    document.getElementById('edit-p-color').value = p.color || '';
-    document.getElementById('edit-p-price').value = p.price || '';
-    document.getElementById('edit-p-status').value = p.status || '분양가능';
-    document.getElementById('edit-p-notes').value = p.notes || '';
-    document.getElementById('edit-p-showSire').checked = p.showSire !== false;
-    document.getElementById('edit-p-showDam').checked = p.showDam !== false;
-    
-    document.getElementById('puppy-modal').classList.add('open');
+  const p = lt.puppies[puppyId];
+
+  // DOM id 매핑 (pm-*)
+  const nameEl = document.getElementById('pm-name');
+  if (nameEl) nameEl.value = p.name || '';
+
+  const sexEl = document.getElementById('pm-sex');
+  if (sexEl) sexEl.value = p.sex || 'unknown';
+
+  const statusEl = document.getElementById('pm-status');
+  if (statusEl) statusEl.value = p.status || '분양 전';
+
+  const showSireEl = document.getElementById('pm-show-sire');
+  if (showSireEl) showSireEl.checked = p.showSireInProfile !== false;
+
+  const showDamEl = document.getElementById('pm-show-dam');
+  if (showDamEl) showDamEl.checked = p.showDamInProfile !== false;
+
+  // 대표 사진 프리뷰 세팅
+  setPuppyPhotoPreview(p.photo || '');
+
+  // 미디어 정렬 목록 세팅 (Pointer Events 방식)
+  editPuppyMediaArray = getSortedMedia(p);
+  renderEditPuppyMediaReorderGrid();
+
+  const modal = document.getElementById('puppy-modal');
+  if (modal) modal.classList.add('open');
+};;
+
+
+  // ── 미디어 순서 재정렬 그리드 (Pointer Events 모바일/데스크톱 터치 드래그 지원) ──
+  window.renderEditPuppyMediaReorderGrid = function() {
+    const grid = document.getElementById('pm-media-reorder-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (!editPuppyMediaArray || !editPuppyMediaArray.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1; color:#94A3B8; font-size:12px; text-align:center; padding:12px;">등록된 사진/동영상이 없습니다.</div>';
+      return;
+    }
+
+    editPuppyMediaArray.forEach((item, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'reorder-cell';
+      cell.style.cssText = 'position:relative; background:#0F172A; border-radius:8px; overflow:hidden; aspect-ratio:1; touch-action:none; cursor:grab; border:2px solid #334155; display:flex; align-items:center; justify-content:center;';
+
+      let mediaHtml = '';
+      if (item.type === 'video' || (item.src && (item.src.includes('.mp4') || item.src.includes('.mov')))) {
+        mediaHtml = `<video src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;" preload="metadata" playsinline></video><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2;">🎥 동영상</span>`;
+      } else {
+        mediaHtml = `<img src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2;">📷 ${idx + 1}</span>`;
+      }
+
+      cell.innerHTML = `
+        ${mediaHtml}
+        <button type="button" class="reorder-del-btn" onclick="event.stopPropagation(); removeMediaFromEditArray(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(225,29,72,0.9); color:#fff; border:none; width:20px; height:20px; border-radius:50%; font-size:11px; font-weight:bold; cursor:pointer; z-index:4; display:flex; align-items:center; justify-content:center;">✕</button>
+        <!-- ◀ ▶ 1칸 위치 이동 버튼 (justify-content: space-between 수정 완료) -->
+        <div style="position:absolute; bottom:4px; left:4px; right:4px; display:flex; justify-content:space-between; gap:4px; z-index:4;" onclick="event.stopPropagation();">
+          <button type="button" onclick="nudgeEditMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">◀</button>
+          <button type="button" onclick="nudgeEditMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">▶</button>
+        </div>
+      `;
+
+      cell.onpointerdown = (e) => handleMediaPointerDown(e, idx);
+      grid.appendChild(cell);
+    });
   };
 
-window.renderEditPuppyMediaReorderGrid = function() {
-  const grid = document.getElementById('pm-media-reorder-grid');
-  if (!grid) return;
-  if (!editPuppyMediaArray.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94A3B8; font-size:11px; padding:12px;">등록된 사진/영상이 없습니다.</div>';
-    return;
-  }
+  window.removeMediaFromEditArray = function(idx) {
+    if (idx < 0 || idx >= editPuppyMediaArray.length) return;
+    editPuppyMediaArray.splice(idx, 1);
+    renderEditPuppyMediaReorderGrid();
+  };
 
-  grid.innerHTML = editPuppyMediaArray.map((m, idx) => {
-    const isVideo = m.type === 'video';
-    const thumbHtml = isVideo
-      ? `<div style="width:100%; height:100%; background:#1E293B; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.2rem;">🎥</div>`
-      : `<img src="${m.src}" style="width:100%; height:100%; object-fit:cover;">`;
+  window.nudgeEditMedia = function(idx, direction) {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= editPuppyMediaArray.length) return;
+    const item = editPuppyMediaArray.splice(idx, 1)[0];
+    editPuppyMediaArray.splice(targetIdx, 0, item);
+    renderEditPuppyMediaReorderGrid();
+  };
 
-    return `
-    <div draggable="true" ondragstart="handleEditMediaDragStart(event, ${idx})" ondragover="handleEditMediaDragOver(event)" ondrop="handleEditMediaDrop(event, ${idx})" style="position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; border:2px solid #3B82F6; cursor:grab; background:#000;">
-      ${thumbHtml}
-      <span style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); color:#fff; font-size:9px; font-weight:800; padding:1px 4px; border-radius:4px; z-index:2;">${idx+1}</span>
-      <button type="button" onclick="deleteEditPuppyMedia(${idx})" style="position:absolute; top:2px; right:2px; background:rgba(239,68,68,0.9); color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;">✕</button>
-    </div>`;
-  }).join('');
-};
-
-window.handleEditMediaDragStart = function(e, idx) {
-  draggedEditMediaIdx = idx;
-  e.dataTransfer.effectAllowed = 'move';
-};
-
-window.handleEditMediaDragOver = function(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-};
-
-window.handleEditMediaDrop = function(e, targetIdx) {
-  e.preventDefault();
-  if (draggedEditMediaIdx === null || draggedEditMediaIdx === targetIdx) return;
-  const item = editPuppyMediaArray.splice(draggedEditMediaIdx, 1)[0];
-  editPuppyMediaArray.splice(targetIdx, 0, item);
-  draggedEditMediaIdx = null;
-  renderEditPuppyMediaReorderGrid();
-};
-
-window.deleteEditPuppyMedia = function(idx) {
-  editPuppyMediaArray.splice(idx, 1);
-  renderEditPuppyMediaReorderGrid();
-};
 
 window.savePuppy = async function() {
     const name = document.getElementById('edit-p-name').value.trim();
@@ -12014,7 +11670,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
       }
     } catch(e) {}
   }
-  fetchGitHubLastCommit();
+  setTimeout(fetchGitHubLastCommit, 3000);
 
 init();
 
