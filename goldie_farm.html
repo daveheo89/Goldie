@@ -8570,7 +8570,8 @@ window.openAddDeliveryModal = function(dateStr) {
 
 
 
-  const sortedContracts = [...contracts].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  const contractSource = (window.contracts && window.contracts.length) ? window.contracts : (contracts || []);
+  const sortedContracts = [...contractSource].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
 
 
