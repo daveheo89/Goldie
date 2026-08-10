@@ -16476,24 +16476,38 @@ window.closeLightbox = function(){
     renderDogMediaGrid();
   };
 
+  let pmDragSrcIdx = null;
   window.pmDragStart = function(e, idx) {
     pmDragSrcIdx = idx;
-    e.dataTransfer.effectAllowed = 'move';
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
     e.currentTarget.style.opacity = '0.5';
   };
-  window.pmDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-  window.pmDragEnd = function(e) { e.currentTarget.style.opacity = '1'; };
+  window.pmDragOver = function(e) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  };
+  window.pmDragEnd = function(e) {
+    e.currentTarget.style.opacity = '1';
+  };
   window.pmDrop = function(e, targetIdx) {
     e.preventDefault();
     if (pmDragSrcIdx === null || pmDragSrcIdx === targetIdx) return;
-    const dragged = editPuppyMediaArray.splice(pmDragSrcIdx, 1)[0];
-    editPuppyMediaArray.splice(targetIdx, 0, dragged);
+    if (typeof editPuppyMediaArray !== 'undefined' && editPuppyMediaArray) {
+      const dragged = editPuppyMediaArray.splice(pmDragSrcIdx, 1)[0];
+      editPuppyMediaArray.splice(targetIdx, 0, dragged);
+    }
     pmDragSrcIdx = null;
-    renderEditPuppyMediaReorderGrid();
+    if (typeof renderEditPuppyMediaReorderGrid === 'function') {
+      renderEditPuppyMediaReorderGrid();
+    }
   };
   window.removeEditPuppyMedia = function(idx) {
-    editPuppyMediaArray.splice(idx, 1);
-    renderEditPuppyMediaReorderGrid();
+    if (typeof editPuppyMediaArray !== 'undefined' && editPuppyMediaArray) {
+      editPuppyMediaArray.splice(idx, 1);
+    }
+    if (typeof renderEditPuppyMediaReorderGrid === 'function') {
+      renderEditPuppyMediaReorderGrid();
+    }
   };
 
 init();
