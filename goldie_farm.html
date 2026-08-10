@@ -3373,6 +3373,57 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+  
+  <!-- 배송 일정 등록/수정 모달 -->
+  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="delivery-modal-title">배송 일정 등록</h2>
+        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>분양 계약건 <span class="req">*</span></label>
+        <select id="dev-contract" onchange="window.handleContractSelectForDelivery(this.value)">
+          <option value="">-- 계약 선택 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>배송 예정 날짜 <span class="req">*</span></label>
+        <input type="date" id="dev-date">
+      </div>
+      <div class="form-group">
+        <label>배송 예정 시간 <span class="req">*</span></label>
+        <input type="time" id="dev-time">
+      </div>
+      <div class="form-group">
+        <label>배송 주소 <span class="req">*</span></label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
+          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
+        </div>
+        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
+      </div>
+      <div class="form-group">
+        <label>비고 (메모)</label>
+        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+      </div>
+      <div class="form-group" id="dev-status-group" style="display:none;">
+        <label>배송 상태</label>
+        <select id="dev-status">
+          <option value="예정">배송 예정</option>
+          <option value="완료">배송 완료</option>
+        </select>
+      </div>
+      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn" id="dev-gcal-btn" onclick="openGoogleCalendarForDelivery()" style="background:#4285F4;color:#fff;flex:1;font-weight:900;">📅 구글 캘린더 등록</button>
+        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
+        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
+        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ DB 저장</button>
+      </div>
+    </div>
+  </div>
+
+
   <div class="vax-popup-overlay hidden" id="vax-popup-overlay">
 
     <div class="vax-popup">
