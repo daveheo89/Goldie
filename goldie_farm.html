@@ -712,7 +712,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.litter-puppies{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-top:10px;}
+.litter-puppies,.puppy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:8px;margin-top:10px;}
 
 
 
@@ -6064,13 +6064,13 @@ function renderPuppies(){
   const lmMale = document.getElementById('lm-male');
   if (lmMale) lmMale.innerHTML = (males || []).map(m => `<option value="${m._key}">${m.code}</option>`).join('');
 
-  if (!litters.length) {
+  const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
+  if (!targetLitters.length) {
     list.innerHTML = '<div style="color:#bbb;text-align:center;padding:30px;">출산 기록이 없어요<br><small>위 버튼을 눌러 추가하세요</small></div>';
     return;
   }
 
   // (P2.b) 리터 정렬: birthB(없으면 birthA) 기준 최신순 내림차순 정렬
-  const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
   const sortedLitters = [...targetLitters].sort((a, b) => {
     const dateA = a.birthB || a.birthA || '';
     const dateB = b.birthB || b.birthA || '';
@@ -6095,22 +6095,20 @@ function renderPuppies(){
 
     const puppyCards = sortedPuppyEntries.map(([pid, p]) => {
       const status = p.status || '분양 전';
-      let badgeClass = 'badge-avail';
       let cardClass = '';
 
-      if (status === '예약') { badgeClass = 'badge-res'; cardClass = 'status-reserved'; }
-      else if (status === '분양 완료') { badgeClass = 'badge-done'; cardClass = 'status-done'; }
+      if (status === '예약') { cardClass = 'reserved'; }
+      else if (status === '분양 완료') { cardClass = 'sold'; }
 
-      const photoStyle = p.photo ? `background-image:url("${p.photo}"); background-size:cover; background-position:center; width:100%; height:100%; aspect-ratio: 1 / 1;` : '';
-      const photoHtml = p.photo ? `<div style="${photoStyle}"></div>` : '📷';
+      const photoHtml = p.photo
+        ? `<img src="${p.photo}" class="p-photo" alt="${esc(p.name || '')}" onerror="this.outerHTML='<div class=\'p-placeholder\'>🐶</div>';">`
+        : `<div class="p-placeholder">🐶</div>`;
 
       return `<div class="puppy-card ${cardClass}" onclick="openPuppyDetail('${lt._key}','${pid}')">
-        <div class="puppy-photo" style="aspect-ratio: 1 / 1; overflow:hidden;">${photoHtml}</div>
-        <div class="puppy-info">
-          <div class="puppy-name">${esc(p.name || '미지정')}</div>
-          <div class="puppy-sex">${p.sex === 'female' ? '♀ 암컷' : p.sex === 'male' ? '♂ 수컷' : '미정'}</div>
-          <div class="puppy-status-badge ${badgeClass}">${status}</div>
-        </div>
+        ${photoHtml}
+        <div class="p-name">${esc(p.name || '미지정')}</div>
+        <div class="p-sex">${p.sex === 'female' ? '♀ 암컷' : p.sex === 'male' ? '♂ 수컷' : '미정'}</div>
+        <div class="p-status" style="font-size:0.6rem; font-weight:bold; margin-top:2px;">${status}</div>
       </div>`;
     }).join('');
 
@@ -6128,19 +6126,13 @@ function renderPuppies(){
         <button class="btn-sm btn-outline" onclick="event.stopPropagation(); openEditLitterModal('${lt._key}')">✏️ 수정</button>
       </div>
       <div class="litter-body" style="display:${isFirst ? 'block' : 'none'};">
-        <div class="puppy-grid">${puppyCards}</div>
-        <button class="add-puppy-btn" onclick="openAddPuppyModal('${lt._key}')">＋ 새끼 추가</button>
+        <div class="litter-puppies">${puppyCards || '<div style="color:#bbb;padding:12px;font-size:0.8rem;text-align:center;">새끼 정보가 없습니다</div>'}</div>
+        <button class="add-puppy-btn" onclick="openAddPuppyModal('${lt._key}')" style="margin-top:10px;">＋ 새끼 추가</button>
       </div>`;
 
     list.appendChild(card);
   });
 }
-
-
-
-
-
-
 
 window.toggleLitter = function(headerEl) {
   const card = headerEl.closest('.litter-card');
