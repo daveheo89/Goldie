@@ -6567,6 +6567,23 @@ window.goToAdminContract=(lid, pid, status)=>{
 
 
 
+
+  // ── 공통 미디어 정렬 헬퍼 (order 필드 우선, 없으면 createdAt / _key 오름차순) ──
+  function getSortedMedia(p) {
+    if (!p || !p.media) return [];
+    const list = Object.entries(p.media).map(([k, v]) => ({ _key: k, ...v }));
+    return list.sort((a, b) => {
+      const ao = (a.order !== undefined && a.order !== null) ? a.order : null;
+      const bo = (b.order !== undefined && b.order !== null) ? b.order : null;
+      if (ao !== null && bo !== null) return ao - bo;
+      if (ao !== null) return -1;
+      if (bo !== null) return 1;
+      return String(a.createdAt || a._key).localeCompare(String(b.createdAt || b._key));
+    });
+  }
+  window.getSortedMedia = getSortedMedia;
+
+
 function renderPuppies(){
 
 
@@ -7410,29 +7427,28 @@ let editPuppyMediaArray = [];
 let draggedEditMediaIdx = null;
 
 window.openEditPuppyModal = function(litterKey, puppyId) {
-  puppyEditLitterKey = litterKey;
-  puppyEditPuppyId = puppyId;
+    puppyEditLitterKey = litterKey;
+    puppyEditPuppyId = puppyId;
+    puppyPendingPhoto = null;
+    
+    const lt = litters.find(l => l._key === litterKey);
+    const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
+    if (!p) return;
 
-  const lt = (litters || []).find(l => l._key === litterKey);
-  if (!lt) return;
-  const p = (lt.puppies || {})[puppyId];
-  if (!p) return;
+    editPuppyMediaArray = getSortedMedia(p);
+    renderEditPuppyMediaReorderGrid();
 
-  document.getElementById('pm-name').value = p.name || '';
-  document.getElementById('pm-sex').value = p.sex || 'unknown';
-  document.getElementById('pm-status').value = p.status || '분양 전';
-  document.getElementById('pm-show-sire').checked = p.showSireInProfile !== false;
-  document.getElementById('pm-show-dam').checked = p.showDamInProfile !== false;
-
-  puppyPendingPhoto = p.photo || null;
-  setPuppyPhotoPreview(puppyPendingPhoto);
-
-  // 미디어 배열 변환 & 순서 변경 그리드 렌더링
-  editPuppyMediaArray = p.media ? Object.entries(p.media).map(([k, v]) => ({ _key: k, ...v })) : [];
-  renderEditPuppyMediaReorderGrid();
-
-  document.getElementById('puppy-modal').classList.add('open');
-};
+    document.getElementById('edit-p-name').value = p.name || '';
+    document.getElementById('edit-p-sex').value = p.sex || 'male';
+    document.getElementById('edit-p-color').value = p.color || '';
+    document.getElementById('edit-p-price').value = p.price || '';
+    document.getElementById('edit-p-status').value = p.status || '분양가능';
+    document.getElementById('edit-p-notes').value = p.notes || '';
+    document.getElementById('edit-p-showSire').checked = p.showSire !== false;
+    document.getElementById('edit-p-showDam').checked = p.showDam !== false;
+    
+    document.getElementById('puppy-modal').classList.add('open');
+  };
 
 window.renderEditPuppyMediaReorderGrid = function() {
   const grid = document.getElementById('pm-media-reorder-grid');
@@ -7482,60 +7498,78 @@ window.deleteEditPuppyMedia = function(idx) {
 };
 
 window.savePuppy = async function() {
-  const name = document.getElementById('pm-name').value.trim();
-  const sex = document.getElementById('pm-sex').value;
-  const status = document.getElementById('pm-status').value;
-  const showSireInProfile = document.getElementById('pm-show-sire').checked;
-  const showDamInProfile = document.getElementById('pm-show-dam').checked;
+    const name = document.getElementById('edit-p-name').value.trim();
+    const sex = document.getElementById('edit-p-sex').value;
+    const color = document.getElementById('edit-p-color').value.trim();
+    const price = document.getElementById('edit-p-price').value.trim();
+    const status = document.getElementById('edit-p-status').value;
+    const notes = document.getElementById('edit-p-notes').value.trim();
+    const showSire = document.getElementById('edit-p-showSire').checked;
+    const showDam = document.getElementById('edit-p-showDam').checked;
 
-  const saveBtn = document.getElementById('pm-save-btn');
-  saveBtn.textContent = '저장 중...'; saveBtn.disabled = true;
-
-  try {
+    if (!puppyEditLitterKey || !puppyEditPuppyId) return;
     setSyncing(true);
 
-    // 순서가 변경된 미디어 배열을 파이어베이스 객체 지도로 다시 재구성
-    const reorderedMediaMap = {};
-    editPuppyMediaArray.forEach((m, idx) => {
-      const k = m._key || `m_${Date.now()}_${idx}`;
-      const clone = { ...m };
-      delete clone._key;
-      reorderedMediaMap[k] = clone;
-    });
+    try {
+      const updates = {
+        name: name || null,
+        sex,
+        color: color || null,
+        price: price || null,
+        status,
+        notes: notes || null,
+        showSire,
+        showDam
+      };
 
-    // Upload cover photo to Storage if it is a new data URL
-    let finalCoverPhoto = puppyPendingPhoto || null;
-    if (finalCoverPhoto && finalCoverPhoto.startsWith('data:')) {
-      const coverPath = 'litters/' + puppyEditLitterKey + '/puppies/' + puppyEditPuppyId + '/cover.jpg';
-      finalCoverPhoto = await window.uploadImageAndGetUrl(finalCoverPhoto, coverPath);
+      // 1. Reorder media map with explicit order field
+      const reorderedMediaMap = {};
+      let firstImageSrc = null;
+
+      editPuppyMediaArray.forEach((m, idx) => {
+        const k = m._key || `m_${Date.now()}_${idx}`;
+        const clone = { ...m };
+        delete clone._key;
+        clone.order = idx; // Explicit numeric order
+        reorderedMediaMap[k] = clone;
+
+        if (!firstImageSrc && clone.type === 'image' && clone.src) {
+          firstImageSrc = clone.src;
+        }
+      });
+
+      updates.media = reorderedMediaMap;
+
+      // 2. Cover photo handling (auto-sync first image src if updated)
+      if (puppyPendingPhoto) {
+        let finalCover = puppyPendingPhoto;
+        if (finalCover.startsWith('data:')) {
+          const coverPath = `litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}/cover.jpg`;
+          finalCover = await window.uploadImageAndGetUrl(finalCover, coverPath);
+        }
+        updates.photo = finalCover;
+      } else if (firstImageSrc) {
+        updates.photo = firstImageSrc;
+      }
+
+      await fbUpdate(`litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}`, updates);
+      
+      document.getElementById('puppy-modal').classList.remove('open');
+      showToast('💾 순서 및 설정이 성공적으로 저장되었습니다!');
+
+      if (typeof renderPuppyDetailContent === 'function') {
+        window.renderPuppyDetailContent();
+      }
+      if (typeof renderPuppies === 'function') {
+        window.renderPuppies();
+      }
+    } catch(e) {
+      console.error('새끼 수정 저장 오류:', e);
+      showToast('⚠ 저장 실패: ' + e.message);
+    } finally {
+      setSyncing(false);
     }
-
-    const updates = {
-      name,
-      sex,
-      status,
-      showSireInProfile,
-      showDamInProfile,
-      photo: finalCoverPhoto,
-      media: reorderedMediaMap
-    };
-
-    await fbUpdate('litters/' + puppyEditLitterKey + '/puppies/' + puppyEditPuppyId, updates);
-    window.toast && window.toast('✅ 새끼 정보, 부모견 노출 설정 및 미디어 순서가 저장되었습니다!');
-
-    closePuppyModal();
-    renderPuppies();
-    if (typeof window.renderPuppyDetailContent === 'function') {
-      window.renderPuppyDetailContent();
-    }
-  } catch(e) {
-    console.error('새끼 정보 저장 실패:', e);
-    alert('정보 저장에 실패했습니다: ' + e.message);
-  } finally {
-    saveBtn.textContent = '✅ 설정 및 순서 저장'; saveBtn.disabled = false;
-    setSyncing(false);
-  }
-};
+  };
 
 
 
@@ -11502,58 +11536,13 @@ window.handlePuppyDetailOverlay = function(e){
 // ── 🔄 자견 미디어 순서 변경 및 드래그 앤 드롭 ──
 window.draggedPuppyMediaIdx = null;
 
-window.handlePuppyMediaDragStart = function(e, idx) {
-  window.draggedPuppyMediaIdx = idx;
-  e.dataTransfer.effectAllowed = 'move';
-};
 
-window.handlePuppyMediaDragOver = function(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-};
 
-window.handlePuppyMediaDrop = function(e, targetIdx, litterKey, puppyId) {
-  e.preventDefault();
-  const srcIdx = window.draggedPuppyMediaIdx;
-  if (srcIdx === null || srcIdx === targetIdx) return;
 
-  const lt = (litters || []).find(l => l._key === litterKey);
-  if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
-  const p = lt.puppies[puppyId];
-  if (!p.media) return;
 
-  const mediaArray = Object.entries(p.media).map(([k, v]) => ({ _key: k, ...v }));
-  const draggedItem = mediaArray.splice(srcIdx, 1)[0];
-  mediaArray.splice(targetIdx, 0, draggedItem);
 
-  // 로컬 객체 재구성
-  const newMediaMap = {};
-  mediaArray.forEach((item, i) => {
-    const key = item._key;
-    delete item._key;
-    newMediaMap[key] = item;
-  });
 
-  p.media = newMediaMap;
-  window.renderPuppyDetailContent();
-  window.toast && window.toast('순서가 변경되었습니다. [미디어 순서 저장] 버튼을 누르세요!');
-};
 
-window.savePuppyMediaOrder = async function(litterKey, puppyId) {
-  const lt = (litters || []).find(l => l._key === litterKey);
-  if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
-  const p = lt.puppies[puppyId];
-
-  try {
-    setSyncing(true);
-    await fbSet(`litters/${litterKey}/puppies/${puppyId}/media`, p.media || {});
-    window.toast && window.toast('💾 미디어 순서가 파이어베이스에 저장되었습니다!');
-  } catch(e) {
-    alert('저장 실패: ' + e.message);
-  } finally {
-    setSyncing(false);
-  }
-};
 
 window.toggleParentVisibility = async function(litterKey, puppyId, parentType, isChecked) {
   const field = parentType === 'sire' ? 'showSireInProfile' : 'showDamInProfile';
@@ -11941,820 +11930,81 @@ function compressImageFile(file, maxSide = 1200, quality = 0.82) {
 // ── 미디어 업로드 (사진 & 폰 카톡 전송용 동영상 파일) ──
 
 window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
-  const files = e.target.files;
-  if (!files || !files.length) return;
-  setSyncing(true);
-
-  try {
-    for (let f of files) {
-      const mediaKey = `m_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      if (mediaType === 'image') {
-        const compressed = await compressImageFile(f);
-        const path = `litters/${litterKey}/puppies/${puppyId}/${mediaKey}.jpg`;
-        const storageUrl = await window.uploadImageAndGetUrl(compressed, path);
-        await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, {
-          type: 'image',
-          src: storageUrl,
-          createdAt: Date.now()
-        });
-      } else if (mediaType === 'video') {
-        const path = `litters/${litterKey}/puppies/${puppyId}/${mediaKey}.mp4`;
-        const storageUrl = await window.uploadVideoFileAndGetUrl(f, path);
-        await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, {
-          type: 'video',
-          src: storageUrl,
-          name: f.name,
-          createdAt: Date.now()
-        });
-      }
-    }
-    window.toast && window.toast('☁️ 미디어가 파이어베이스 스토리지에 저장되었습니다!');
-    renderPuppyDetailContent();
-  } catch(err) {
-    alert('미디어 업로드 실패: ' + err.message);
-  } finally {
-    setSyncing(false);
-  }
-};
-
-
-
-          
-
-
-
-// 카카오톡 '진짜 동영상 파일(.mp4)' 직접 첨부 전송 (링크 없음!)
-
-window.shareVideoFileToKakao = async function(videoUrl, puppyName, motherName, sireName){
-
-  showToast('⏳ 동영상 파일을 준비하는 중입니다...');
-
-
-
-  try {
-
-    let rawSrc = videoUrl;
-
-    if (videoUrl.startsWith('idb:')) {
-
-      const idbKey = videoUrl.replace('idb:', '');
-
-      const idbData = await getVideoFromIndexedDB(idbKey);
-
-      if (idbData) rawSrc = idbData;
-
-    }
-
-
-
-    // 1. 실제 MP4 바이너리 blob 변환
-
-    let blob;
-
-    if (rawSrc.startsWith('data:')) {
-
-      const parts = rawSrc.split(',');
-
-      const mime = parts[0].match(/:(.*?);/)[1];
-
-      const bstr = atob(parts[1]);
-
-      let n = bstr.length;
-
-      const u8arr = new Uint8Array(n);
-
-      while (n--) u8arr[n] = bstr.charCodeAt(n);
-
-      blob = new Blob([u8arr], { type: mime });
-
-    } else {
-
-      const res = await fetch(rawSrc);
-
-      blob = await res.blob();
-
-    }
-
-
-
-    const fileName = `${puppyName || '골디쉼터'}_강아지동영상.mp4`;
-
-    const videoFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
-
-
-
-    // 2. 모바일 기기(갤럭시/아이폰) 카톡에 진짜 동영상 파일 직접 첨부!
-
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [videoFile] })) {
-
-      await navigator.share({
-
-        files: [videoFile],
-
-        title: `[골디쉼터] ${puppyName} 강아지 동영상`
-
-      });
-
-      showToast('✅ 카카오톡으로 동영상 파일이 직접 전송되었습니다!');
-
-      return;
-
-    }
-
-
-
-    // 3. 파일 직접 공유 미지원 시: 폰 갤러리에 저장 후 카톡으로 바로 연결
-
-    downloadMedia(rawSrc, fileName);
-
-    showToast('💾 폰 갤러리에 영상이 저장되었습니다! 카톡 대화방 (+) 버튼에서 동영상을 바로 첨부해 주세요.');
-
-  } catch(err) {
-
-    console.error(err);
-
-    downloadMedia(videoUrl, `${puppyName||'골디쉼터'}_동영상.mp4`);
-
-    showToast('💾 폰 갤러리에 영상이 저장되었습니다! 카톡 대화방 (+) 버튼을 눌러 전송해 주세요.');
-
-  }
-
-};
-
-
-
-window.shareVideoToKakao = function(videoUrl, puppyName, motherName, sireName){
-
-  window.shareVideoFileToKakao(videoUrl, puppyName, motherName, sireName);
-
-};
-
-
-
-function copyVideoShareText(text) {
-
-  navigator.clipboard.writeText(text).then(() => {
-
-    showToast('📋 동영상 안내 문구와 링크가 복사되었습니다! 카톡 대화방에 붙여넣어 주세요.');
-
-  }).catch(() => {
-
-    alert('동영상 공유 링크:\n' + text);
-
-  });
-
-}
-
-
-
-window.deletePuppyMedia = async function(litterKey, puppyId, mediaKey){
-
-  if(!confirm('해당 미디어를 삭제하시겠습니까?')) return;
-
-  await fbRemove(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`);
-
-  showToast('삭제되었습니다.');
-
-  renderPuppyDetailContent();
-
-};
-
-
-
-window.downloadMedia = function(src, filename){
-
-  const a = document.createElement('a');
-
-  a.href = src;
-
-  a.download = filename;
-
-  document.body.appendChild(a);
-
-  a.click();
-
-  document.body.removeChild(a);
-
-};
-
-
-
-// ═══════════════════════════════════════
-
-//  Canvas 프로필 카드 자동 생성 & 저장
-
-// ═══════════════════════════════════════
-
-window.generateProfileCard = async function(litterKey, puppyId){
-
-  showToast('🎴 프로필 카드를 생성하는 중입니다...');
-
-  
-
-  const lt = litters.find(l => l._key === litterKey);
-
-  if(!lt) return;
-
-  const p = (lt.puppies || {})[puppyId];
-
-  if(!p) return;
-
-
-
-  const motherInfo = getMotherInfo(lt.femaleCode);
-
-  const sireInfo = getSireInfo(lt.maleCode);
-
-  const mediaList = p.media ? Object.values(p.media).filter(m => m.type==='image') : [];
-
-  
-
-  // 카드 사진 배열: p.photo가 있으면 맨 앞(메인), 그 다음 mediaList의 사진들
-
-  const photoSrcs = [];
-
-  if (p.photo) photoSrcs.push(p.photo);
-
-  mediaList.forEach(m => { if(m.src && !photoSrcs.includes(m.src)) photoSrcs.push(m.src); });
-
-
-
-  // 캔버스 크기 (정밀 배치 좌표)
-
-  const W = 600;
-
-  const H = 1150;
-
-  const canvas = document.createElement('canvas');
-
-  canvas.width = W;
-
-  canvas.height = H;
-
-  const ctx = canvas.getContext('2d');
-
-
-
-  // 1. 전체 배경 (따뜻한 크림톤)
-
-  ctx.fillStyle = '#FFFDF5';
-
-  ctx.fillRect(0, 0, W, H);
-
-
-
-  // 2. 상단 헤더 (골드 그라데이션)
-
-  const headGrad = ctx.createLinearGradient(0, 0, W, 70);
-
-  headGrad.addColorStop(0, '#6B3F0E');
-
-  headGrad.addColorStop(1, '#C8860A');
-
-  ctx.fillStyle = headGrad;
-
-  ctx.fillRect(0, 0, W, 70);
-
-
-
-  // 헤더 텍스트
-
-  ctx.fillStyle = '#FFFFFF';
-
-  ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
-
-  ctx.fillText('🐾 골디쉼터 프로필', 24, 44);
-
-
-
-  // 이미지 로드 헬퍼
-
-  const loadImage = (src) => new Promise((res) => {
-
-    if(!src) return res(null);
-
-    const img = new Image();
-
-    img.crossOrigin = 'anonymous';
-
-    img.onload = () => res(img);
-
-    img.onerror = () => res(null);
-
-    img.src = src;
-
-  });
-
-
-
-  const loadedPhotos = await Promise.all(photoSrcs.map(src => loadImage(src)));
-
-  const validPhotos = loadedPhotos.filter(img => img !== null);
-
-  const sireImg = await loadImage(sireInfo.photo);
-
-
-
-  // 3. 동적 강아지 사진 영역 (Y: 85 ~ 430)
-
-  const pX = 20, pY = 85, pW = 560, pH = 345;
-
-
-
-  function drawRoundedImg(img, x, y, w, h, radius=12) {
-
-    ctx.save();
-
-    ctx.beginPath();
-
-    ctx.moveTo(x + radius, y);
-
-    ctx.lineTo(x + w - radius, y);
-
-    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-
-    ctx.lineTo(x + w, y + h - radius);
-
-    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-
-    ctx.lineTo(x + radius, y + h);
-
-    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-
-    ctx.lineTo(x, y + radius);
-
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-
-    ctx.closePath();
-
-    ctx.clip();
-
-
-
-    // 바탕 은은한 크림색 채우기
-
-    ctx.fillStyle = '#FFFDF5';
-
-    ctx.fillRect(x, y, w, h);
-
-
-
-    if (img) {
-
-      // 비율 유지하며 짤림 없이 맞춤 (contain 로직)
-
-      const imgAspect = img.width / img.height;
-
-      const rectAspect = w / h;
-
-      let drawW, drawH;
-
-      if (imgAspect > rectAspect) {
-
-        drawW = w;
-
-        drawH = w / imgAspect;
-
-      } else {
-
-        drawH = h;
-
-        drawW = h * imgAspect;
-
-      }
-
-      const drawX = x + (w - drawW) / 2;
-
-      const drawY = y + (h - drawH) / 2;
-
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-    } else {
-
-      ctx.fillStyle = '#A0632A';
-
-      ctx.font = 'bold 16px sans-serif';
-
-      ctx.textAlign = 'center';
-
-      ctx.fillText('🐶 사진', x + w/2, y + h/2);
-
-      ctx.textAlign = 'left';
-
-    }
-
-    ctx.restore();
-
-
-
-    // 프레임 테두리
-
-    ctx.strokeStyle = '#E8D5A3';
-
-    ctx.lineWidth = 2;
-
-    ctx.stroke();
-
-  }
-
-
-
-  const count = validPhotos.length;
-
-  if (count <= 1) {
-
-    // 1장: 전체 영역 풀사이즈
-
-    drawRoundedImg(validPhotos[0] || null, pX, pY, pW, pH);
-
-  } else {
-
-    // 2장 이상: 좌측 대표사진 풀사이즈 (절반) + 우측 4개 분할 (절반)
-
-    const leftW = 270;
-
-    const rightX = pX + leftW + 10;
-
-    const rightW = pW - leftW - 10; // 280px
-
-
-
-    // 좌측 대표사진 (높이 전체)
-
-    drawRoundedImg(validPhotos[0], pX, pY, leftW, pH);
-
-
-
-    // 우측 서브 사진들 (나머지 1~4장+)
-
-    const subPhotos = validPhotos.slice(1);
-
-    const subCount = subPhotos.length;
-
-
-
-    if (subCount === 1) {
-
-      // 1장: 우측 전체
-
-      drawRoundedImg(subPhotos[0], rightX, pY, rightW, pH);
-
-    } else if (subCount === 2) {
-
-      // 2장: 위아래 2분할
-
-      const subH = (pH - 8) / 2;
-
-      drawRoundedImg(subPhotos[0], rightX, pY, rightW, subH);
-
-      drawRoundedImg(subPhotos[1], rightX, pY + subH + 8, rightW, subH);
-
-    } else {
-
-      // 3장~4장+: 우측 2x2 (4분할)
-
-      const subW = (rightW - 8) / 2;
-
-      const subH = (pH - 8) / 2;
-
-
-
-      // 1
-
-      drawRoundedImg(subPhotos[0], rightX, pY, subW, subH);
-
-      // 2
-
-      drawRoundedImg(subPhotos[1], rightX + subW + 8, pY, subW, subH);
-
-      // 3
-
-      drawRoundedImg(subPhotos[2], rightX, pY + subH + 8, subW, subH);
-
-      // 4
-
-      if (subPhotos[3]) {
-
-        drawRoundedImg(subPhotos[3], rightX + subW + 8, pY + subH + 8, subW, subH);
-
-      }
-
-
-
-      // 5개 이상일 때 4번째 사진 위치에 +N 표기
-
-      if (subCount > 4) {
-
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-
-        ctx.fillRect(rightX + subW + 8, pY + subH + 8, subW, subH);
-
-        ctx.fillStyle = '#FFFFFF';
-
-        ctx.font = 'bold 20px sans-serif';
-
-        ctx.textAlign = 'center';
-
-        ctx.fillText(`+${subCount - 3}`, rightX + subW + 8 + subW/2, pY + subH + 8 + subH/2 + 7);
-
-        ctx.textAlign = 'left';
-
-      }
-
-    }
-
-  }
-
-
-
-  // 4. 정보 카드 박스 (Y: 445 ~ 665)
-
-  const infoY = 445;
-
-  const infoH = 220;
-
-  ctx.fillStyle = '#FFFFFF';
-
-  ctx.shadowColor = 'rgba(100,60,10,0.08)';
-
-  ctx.shadowBlur = 15;
-
-  ctx.shadowOffsetY = 4;
-
-  ctx.fillRect(pX, infoY, pW, infoH);
-
-  ctx.shadowColor = 'transparent';
-
-
-
-  ctx.strokeStyle = '#E8D5A3';
-
-  ctx.lineWidth = 2;
-
-  ctx.strokeRect(pX, infoY, pW, infoH);
-
-
-
-  // 정보 행 구성
-
-  const rows = [
-
-    { label: '🐾 이름', val: p.name || puppyId },
-
-    { label: '성별', val: p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정' },
-
-    { label: '📅 출산일', val: fmtDate(lt.birthB || lt.birthA) },
-
-    { label: '🐕‍🦺 모견', val: motherInfo.name },
-
-    { label: '🐕 부견', val: sireInfo.name }
-
-  ];
-
-
-
-  // 60일 미만인 경우 분양시작일 추가
-
-  const birthBDateStr = lt.birthB || lt.birthA;
-
-  if (birthBDateStr && daysFrom(birthBDateStr) > -60) {
-
-    const bDate = new Date(birthBDateStr);
-
-    const startDate = new Date(bDate);
-
-    startDate.setDate(startDate.getDate() + 60);
-
-    const startStr = startDate.toISOString().slice(0,10).replace(/-/g, '.');
-
-    rows.push({ label: '🗓 분양시작일', val: `${startStr} (사전 예약 중)` });
-
-  }
-
-
-
-  let rowY = infoY + 30;
-
-  const rowStep = Math.min(34, (infoH - 20) / rows.length);
-
-
-
-  rows.forEach((r, idx) => {
-
-    ctx.fillStyle = '#8B6A3A';
-
-    ctx.font = 'bold 15px "Noto Sans KR", sans-serif';
-
-    ctx.fillText(r.label, pX + 20, rowY);
-
-
-
-    ctx.fillStyle = '#2C1A06';
-
-    ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
-
-    ctx.fillText(r.val, pX + 150, rowY);
-
-
-
-    if (idx < rows.length - 1) {
-
-      ctx.strokeStyle = '#F5EAD0';
-
-      ctx.lineWidth = 1;
-
-      ctx.beginPath();
-
-      ctx.moveTo(pX + 15, rowY + 9);
-
-      ctx.lineTo(pX + pW - 15, rowY + 9);
-
-      ctx.stroke();
-
-    }
-
-    rowY += rowStep;
-
-  });
-
-
-
-  // 5. 부견 사진 섹션 (여유 있는 여백 적용 Y: 695 ~ 1080)
-
-  const sireTitleY = 698;
-
-  ctx.fillStyle = '#6B3F0E';
-
-  ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
-
-  ctx.fillText(`🐕 부견 (${sireInfo.name}) 사진`, pX, sireTitleY);
-
-
-
-  // 부견 전용 세로 대형 프레임 (Y: 712, 높이 360px)
-
-  drawRoundedImg(sireImg, pX, 712, pW, 360, 14);
-
-
-
-  // 6. 푸터 (Y: 1115) - "한마리 한마리 정성을다해 키웠습니다."
-
-  ctx.fillStyle = '#A0632A';
-
-  ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
-
-  ctx.textAlign = 'center';
-
-  ctx.fillText('골디쉼터 • 한마리 한마리 정성을다해 키웠습니다.', W / 2, 1115);
-
-  ctx.textAlign = 'left';
-
-
-
-  // 7. 다운로드 처리
-
-  canvas.toBlob((blob) => {
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-
-    a.href = url;
-
-    a.download = `골디쉼터_프로필_${p.name||puppyId}.png`;
-
-    document.body.appendChild(a);
-
-    a.click();
-
-    document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
-
-    showToast('✅ 프로필 카드 이미지가 저장되었습니다!');
-
-  }, 'image/png');
-
-};
-
-
-
-// 라이트박스 확장 (영상 및 이미지 지원)
-
-window.openLightbox = function(src, lbl='', type='image'){
-
-  const imgEl = document.getElementById('lightbox-img');
-
-  const videoEl = document.getElementById('lightbox-video');
-
-  const lblEl = document.getElementById('lightbox-lbl');
-
-  lblEl.textContent = lbl;
-
-
-
-  if (type === 'video') {
-
-    imgEl.style.display = 'none';
-
-    let iframeEl = document.getElementById('lightbox-iframe');
-
-    if(iframeEl) { iframeEl.src=''; iframeEl.style.display='none'; }
-
-    // Cloudinary / 일반 영상 URL: video 태그로 직접 재생
-
-    videoEl.style.display = 'block';
-
-    videoEl.src = src;
-
-    videoEl.play().catch(()=>{});
-
-  } else {
-
-    let iframeEl = document.getElementById('lightbox-iframe');
-
-    if(iframeEl) { iframeEl.src=''; iframeEl.style.display='none'; }
-
-    videoEl.style.display = 'none';
-
-    videoEl.pause();
-
-    imgEl.style.display = 'block';
-
-    imgEl.src = src;
-
-  }
-
-  document.getElementById('lightbox').classList.add('open');
-
-};
-
-
-
-window.closeLightbox = function(){
-
-  const videoEl = document.getElementById('lightbox-video');
-
-  if (videoEl) { videoEl.pause(); videoEl.src = ''; }
-
-  const iframeEl = document.getElementById('lightbox-iframe');
-
-  if (iframeEl) { iframeEl.src = ''; iframeEl.style.display = 'none'; }
-
-  document.getElementById('lightbox').classList.remove('open');
-
-};
-
-
-
-
-  // ── 모듈 외부 HTML onclick에서 호출하기 위한 window 노출 ──
-  window.copyPuppyProfileLink = async function(litterKey, puppyId) {
-    const url = 'https://daveheo89.github.io/Goldie/puppy_profile.html?litter=' + litterKey + '&puppy=' + puppyId;
-    try {
-      await navigator.clipboard.writeText(url);
-      window.toast && window.toast('공개 분양 프로필 링크가 복사되었습니다! 카카오톡/문자로 전송하세요.');
-    } catch(e) {
-      prompt('아래 링크를 복사하세요:', url);
-    }
-  };
-
-  let dogPendingMedia = [];
-  function renderDogMediaGrid() {
-    const grid = document.getElementById('dm-media-grid');
-    if (!grid) return;
-    if (dogPendingMedia.length === 0) {
-      grid.innerHTML = '<div style="color:#94A3B8;font-size:11px;text-align:center;width:100%;padding:8px;">추가된 미디어 없음</div>';
-      return;
-    }
-    grid.innerHTML = dogPendingMedia.map(function(item, idx) {
-      const thumb = item.type === 'video'
-        ? '<div style="width:100%;height:65px;background:linear-gradient(135deg,#1E40AF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:1.4rem;border-radius:5px;">🎥</div>'
-        : '<img src="' + item.previewSrc + '" style="width:100%;height:65px;object-fit:cover;border-radius:5px;display:block;">';
-      return '<div style="position:relative;border:2px solid #CBD5E1;border-radius:7px;overflow:hidden;background:#fff;">' +
-        thumb +
-        '<button onclick="window.removeDogMedia(' + idx + ')" style="position:absolute;top:1px;right:1px;background:rgba(220,38,38,0.85);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>' +
-        '</div>';
-    }).join('');
-  }
-  window.addDogMediaFiles = async function(e, mediaType) {
     const files = Array.from(e.target.files);
-    if (!files.length) return;
+    if (!files || !files.length) return;
+
+    const lt = litters.find(l => l._key === litterKey);
+    const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
+    const existingList = getSortedMedia(p);
+    let maxOrder = existingList.reduce((max, m) => Math.max(max, (m.order !== undefined && m.order !== null) ? m.order : 0), -1);
+
+    const overlay = document.getElementById('upload-progress-overlay');
+    const progressText = document.getElementById('upload-progress-text');
+
     setSyncing(true);
     try {
-      for (const file of files) {
-        if (mediaType === 'image') {
-          const compressed = await compressImageFile(file);
-          dogPendingMedia.push({ type: 'image', file, previewSrc: compressed, compressed });
-        } else {
-          const previewUrl = URL.createObjectURL(file);
-          dogPendingMedia.push({ type: 'video', file, previewSrc: previewUrl });
+      for (const f of files) {
+        if (f.size > 100 * 1024 * 1024) {
+          const mb = Math.round(f.size / 1024 / 1024);
+          if (!confirm(`영상 용량이 커서 (${mb}MB) 업로드가 오래 걸릴 수 있습니다. 계속할까요?`)) {
+            continue;
+          }
         }
+
+        maxOrder++;
+        const ext = f.name.split('.').pop().toLowerCase() || (mediaType === 'video' ? 'mp4' : 'jpg');
+        const mediaKey = `m_${Date.now()}_${Math.random().toString(36).substr(2,5)}`;
+        const storagePath = `litters/${litterKey}/puppies/${puppyId}/${mediaKey}.${ext}`;
+
+        if (overlay) overlay.style.display = 'flex';
+        if (progressText) progressText.textContent = `🎥 미디어 업로드 준비 중... (0%)`;
+
+        let storageUrl = '';
+        if (mediaType === 'image') {
+          const compressed = await compressImageFile(f);
+          const r = storageRef(storage, storagePath);
+          const task = uploadString(r, compressed, 'data_url');
+          await task;
+          storageUrl = await getDownloadURL(r);
+        } else {
+          const r = storageRef(storage, storagePath);
+          const metadata = { contentType: f.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
+          const task = uploadBytesResumable(r, f, metadata);
+
+          await new Promise((resolve, reject) => {
+            task.on('state_changed', 
+              (snapshot) => {
+                const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
+              },
+              (err) => reject(err),
+              async () => {
+                storageUrl = await getDownloadURL(task.snapshot.ref);
+                resolve();
+              }
+            );
+          });
+        }
+
+        const mediaItem = {
+          type: mediaType,
+          src: storageUrl,
+          order: maxOrder,
+          name: f.name,
+          createdAt: Date.now()
+        };
+
+        await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, mediaItem);
       }
-      renderDogMediaGrid();
+
+      showToast('☁️ 미디어가 성공적으로 업로드되었습니다!');
+      if (typeof renderPuppyDetailContent === 'function') renderPuppyDetailContent();
+      if (typeof renderPuppies === 'function') renderPuppies();
     } catch(err) {
-      alert('미디어 처리 실패: ' + err.message);
+      console.error('[Puppy Media Upload Error]:', err);
+      showToast('⚠ 업로드 실패 (' + (err.code || err.message) + ')');
     } finally {
+      if (overlay) overlay.style.display = 'none';
       setSyncing(false);
       e.target.value = '';
     }
@@ -12764,39 +12014,105 @@ window.closeLightbox = function(){
     renderDogMediaGrid();
   };
 
-  let pmDragSrcIdx = null;
-  window.pmDragStart = function(e, idx) {
-    pmDragSrcIdx = idx;
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-    e.currentTarget.style.opacity = '0.5';
+  
+  // ── 📱 모바일 터치 + PC 마우스 Pointer Events 기반 순서 변경 & Nudge 버튼 ──
+  let activePointerId = null;
+  let dragSrcIdx = null;
+  let longPressTimer = null;
+
+  window.nudgeMedia = function(idx, direction) {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= editPuppyMediaArray.length) return;
+    const item = editPuppyMediaArray.splice(idx, 1)[0];
+    editPuppyMediaArray.splice(targetIdx, 0, item);
+    renderEditPuppyMediaReorderGrid();
   };
-  window.pmDragOver = function(e) {
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  };
-  window.pmDragEnd = function(e) {
-    e.currentTarget.style.opacity = '1';
-  };
-  window.pmDrop = function(e, targetIdx) {
-    e.preventDefault();
-    if (pmDragSrcIdx === null || pmDragSrcIdx === targetIdx) return;
-    if (typeof editPuppyMediaArray !== 'undefined' && editPuppyMediaArray) {
-      const dragged = editPuppyMediaArray.splice(pmDragSrcIdx, 1)[0];
-      editPuppyMediaArray.splice(targetIdx, 0, dragged);
+
+  window.renderEditPuppyMediaReorderGrid = function() {
+    const grid = document.getElementById('pm-media-reorder-grid');
+    if (!grid) return;
+    if (!editPuppyMediaArray || editPuppyMediaArray.length === 0) {
+      grid.innerHTML = '<div style="color:#94A3B8;font-size:11px;text-align:center;width:100%;padding:12px;">등록된 미디어가 없습니다. 하단에서 사진/영상을 추가해 주세요.</div>';
+      return;
     }
-    pmDragSrcIdx = null;
-    if (typeof renderEditPuppyMediaReorderGrid === 'function') {
-      renderEditPuppyMediaReorderGrid();
-    }
+    grid.innerHTML = editPuppyMediaArray.map((m, idx) => {
+      const isVideo = m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')));
+      const thumb = isVideo
+        ? '<div style="width:100%;height:75px;background:linear-gradient(135deg,#1E40AF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border-radius:6px;color:#fff;">🎥</div>'
+        : '<img src="' + m.src + '" style="width:100%;height:75px;object-fit:cover;border-radius:6px;display:block;pointer-events:none;">';
+      
+      return `
+        <div class="pm-reorder-item" data-idx="${idx}" onpointerdown="handleMediaPointerDown(event, ${idx})" style="position:relative;border:2px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff;touch-action:none;user-select:none;cursor:grab;">
+          <!-- 1, 2, 3 순번 배지 -->
+          <div style="position:absolute;top:3px;left:3px;background:rgba(15,23,42,0.85);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:10px;z-index:2;pointer-events:none;">${idx + 1}</div>
+          
+          <!-- 삭제 버튼 -->
+          <button type="button" onclick="removeEditPuppyMedia(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(220,38,38,0.9);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;padding:0;">✕</button>
+          
+          ${thumb}
+
+          <!-- ◀ / ▶ 이동 폴백 버튼 -->
+          <div style="position:absolute;bottom:3px;left:0;right:0;display:flex;justify-space-between;padding:0 3px;z-index:3;">
+            <button type="button" onclick="nudgeMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">◀</button>
+            <button type="button" onclick="nudgeMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">▶</button>
+          </div>
+        </div>
+      `;
+    }).join('');
   };
+
+  window.handleMediaPointerDown = function(e, idx) {
+    if (e.target.tagName === 'BUTTON') return;
+    dragSrcIdx = idx;
+    const itemEl = e.currentTarget;
+
+    longPressTimer = setTimeout(() => {
+      activePointerId = e.pointerId;
+      itemEl.setPointerCapture(e.pointerId);
+      itemEl.style.opacity = '0.4';
+      itemEl.style.borderColor = '#3B82F6';
+
+      itemEl.onpointermove = (ev) => {
+        ev.preventDefault();
+        const elementBelow = document.elementFromPoint(ev.clientX, ev.clientY);
+        if (!elementBelow) return;
+        const targetCell = elementBelow.closest('.pm-reorder-item');
+        if (targetCell) {
+          const targetIdx = parseInt(targetCell.getAttribute('data-idx'));
+          if (!isNaN(targetIdx) && targetIdx !== dragSrcIdx) {
+            const movedItem = editPuppyMediaArray.splice(dragSrcIdx, 1)[0];
+            editPuppyMediaArray.splice(targetIdx, 0, movedItem);
+            dragSrcIdx = targetIdx;
+            renderEditPuppyMediaReorderGrid();
+          }
+        }
+      };
+
+      itemEl.onpointerup = itemEl.onpointercancel = (ev) => {
+        clearTimeout(longPressTimer);
+        itemEl.onpointermove = null;
+        itemEl.onpointerup = null;
+        itemEl.onpointercancel = null;
+        if (activePointerId !== null) {
+          try { itemEl.releasePointerCapture(activePointerId); } catch(ex){}
+          activePointerId = null;
+        }
+        itemEl.style.opacity = '1';
+        itemEl.style.borderColor = '#CBD5E1';
+        renderEditPuppyMediaReorderGrid();
+      };
+    }, 150);
+
+    itemEl.onpointerleave = () => {
+      if (activePointerId === null) clearTimeout(longPressTimer);
+    };
+  };
+
   window.removeEditPuppyMedia = function(idx) {
-    if (typeof editPuppyMediaArray !== 'undefined' && editPuppyMediaArray) {
-      editPuppyMediaArray.splice(idx, 1);
-    }
-    if (typeof renderEditPuppyMediaReorderGrid === 'function') {
-      renderEditPuppyMediaReorderGrid();
-    }
+    editPuppyMediaArray.splice(idx, 1);
+    renderEditPuppyMediaReorderGrid();
   };
+
 
 init();
 
