@@ -23,10 +23,10 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--gray-l);padding:16px;margin-bottom:14px;overflow:hidden;}
 
 /* 📸 히어로 슬라이더 */
-.hero-slider{position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#000;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.hero-slider{position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#111;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
 .slide-track{display:flex;width:100%;height:100%;transition:transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);}
 .slide-item{flex:none;width:100%;height:100%;position:relative;background:#000;display:flex;align-items:center;justify-content:center;}
-.slide-item img,.slide-item video{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.slide-item img,.slide-item video{width:100%;height:100%;object-fit:contain;background:#1a1a1a;display:block;}
 
 /* 비디오 포스터 슬라이드 카드 (구글 포토용) */
 .video-card-slide{width:100%;height:100%;background:linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;padding:20px;text-align:center;cursor:pointer;}
@@ -302,7 +302,7 @@ function renderProfile(lt, p, sireData, damData) {
       `).join('');
 
       sireSliderContent = `
-        <div class="hero-slider" style="height:260px;aspect-ratio:auto;margin-top:8px;">
+        <div class="hero-slider" style="aspect-ratio:4/3;height:auto;margin-top:8px;">
           ${sireMedia.length > 1 ? `
             <button class="slider-arrow arrow-prev" onclick="prevSireSlide(event)">◀</button>
             <button class="slider-arrow arrow-next" onclick="nextSireSlide(event)">▶</button>
@@ -344,8 +344,9 @@ function renderProfile(lt, p, sireData, damData) {
     damHtml = `
       <div class="parent-card">
         <div class="parent-title">🐕‍🦺 모견 정보 (${motherName})</div>
-        <div class="hero-slider" style="height:260px;aspect-ratio:auto;margin-top:8px;">
-          <div class="slide-track">
+        <div class="hero-slider" id="damSlider" style="aspect-ratio:4/3;height:auto;margin-top:8px;">
+          ${damMedia.length > 1 ? '<button class="slider-arrow arrow-prev" onclick="prevDamSlide(event)">&#9664;</button><button class="slider-arrow arrow-next" onclick="nextDamSlide(event)">&#9654;</button>' : ''}
+          <div class="slide-track" id="damSlideTrack">
             ${damSlides}
           </div>
         </div>
@@ -432,6 +433,22 @@ window.nextSireSlide = function(e) {
   currentSireSlide++;
   track.style.transform = `translateX(-${currentSireSlide * 100}%)`;
 };
+let currentDamSlide = 0;
+window.prevDamSlide = function(e) {
+  if (e) e.stopPropagation();
+  const track = document.getElementById('damSlideTrack');
+  if (!track) return;
+  currentDamSlide = Math.max(0, currentDamSlide - 1);
+  track.style.transform = 'translateX(-' + (currentDamSlide * 100) + '%)';
+};
+window.nextDamSlide = function(e) {
+  if (e) e.stopPropagation();
+  const track = document.getElementById('damSlideTrack');
+  if (!track) return;
+  currentDamSlide++;
+  track.style.transform = 'translateX(-' + (currentDamSlide * 100) + '%)';
+};
+
 
 function initSwipeEvents() {
   const slider = document.getElementById('heroSlider');
