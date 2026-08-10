@@ -6220,6 +6220,15 @@ window.goToAdminContract=(lid, pid, status)=>{
   window.getSortedMedia = getSortedMedia;
 
 
+
+function getFemaleCode(code) {
+  return code || '모견 미지정';
+}
+
+function getMaleCode(code) {
+  return code || '부견 미지정';
+}
+
 function renderPuppies(){
   const list = document.getElementById('litter-list');
   if (!list) return;
