@@ -5152,7 +5152,7 @@ window.showTab = function(tab) {
 
 
 
-function allDogs(){return[...females,...males];}
+function allDogs(){ const fList = (window.females && window.females.length) ? window.females : (females || []); const mList = (window.males && window.males.length) ? window.males : (males || []); return [...fList.map(d=>({...d,sex:'female'})), ...mList.map(d=>({...d,sex:'male'}))]; }
 
 
 
@@ -6237,7 +6237,8 @@ function renderPuppies(){
   }
 
   // (P2.b) 리터 정렬: birthB(없으면 birthA) 기준 최신순 내림차순 정렬
-  const sortedLitters = [...litters].sort((a, b) => {
+  const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
+  const sortedLitters = [...targetLitters].sort((a, b) => {
     const dateA = a.birthB || a.birthA || '';
     const dateB = b.birthB || b.birthA || '';
     return dateB.localeCompare(dateA);
