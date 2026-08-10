@@ -6864,6 +6864,18 @@ let puppyPendingPhoto = null;
 let editPuppyMediaArray = [];
 let draggedEditMediaIdx = null;
 
+
+window.setPuppyPhotoPreview = function(url) {
+  const preview = document.getElementById('pm-photo-preview');
+  if (preview) {
+    if (url) {
+      preview.innerHTML = `<img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+    } else {
+      preview.innerHTML = `<div style="color:#94A3B8; font-size:12px; text-align:center; padding:12px;">📷 대표 사진 없음</div>`;
+    }
+  }
+};
+
 window.openEditPuppyModal = function(litterKey, puppyId) {
   editPuppyLitterKey = litterKey;
   editPuppyId = puppyId;
