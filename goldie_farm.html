@@ -6869,10 +6869,6 @@ window.editPuppyId = null;
 window.openEditPuppyModal = function(litterKey, puppyId) {
   editPuppyLitterKey = litterKey;
   editPuppyId = puppyId;
-  window.editPuppyLitterKey = litterKey;
-  window.editPuppyId = puppyId;
-  const editPuppyLitterKey = litterKey;
-  const editPuppyId = puppyId;
 
   const lt = (litters || []).find(l => l._key === litterKey);
   if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
