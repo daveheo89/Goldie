@@ -151,15 +151,13 @@
 
     <button class="btn-start" id="start-btn" onclick="startMigration()">🚀 1회성 마이그레이션 시작하기</button>
 
-    <div class="log-box" id="log-box">[준비] '마이그레이션 시작하기' 버튼을 누르면 전체 DB 검사가 시작됩니다.
-</div>
+    <div class="log-box" id="log-box">[준비] '마이그레이션 시작하기' 버튼을 누르면 전체 DB 검사가 시작됩니다.</div>
   </div>
 
   <script>
     function log(msg) {
       const box = document.getElementById('log-box');
-      box.textContent += msg + '
-';
+      box.textContent += '\n' + msg;
       box.scrollTop = box.scrollHeight;
     }
 
@@ -176,7 +174,7 @@
       log('[시작] Firebase Realtime Database 스캔을 시작합니다...');
 
       let totalScanned = 0;
-      let totalTargets = []; // { dbPath, base64Data, storagePath }
+      let totalTargets = [];
       let doneCount = 0;
       let failCount = 0;
 
@@ -190,9 +188,9 @@
               totalScanned++;
               if (dog.photo && dog.photo.startsWith('data:')) {
                 totalTargets.push({
-                  dbPath: `${sexPath}/${dogKey}/photo`,
+                  dbPath: sexPath + '/' + dogKey + '/photo',
                   base64Data: dog.photo,
-                  storagePath: `${sexPath}/${dog.code || dogKey}/cover_${Date.now()}.jpg`
+                  storagePath: sexPath + '/' + (dog.code || dogKey) + '/cover_' + Date.now() + '.jpg'
                 });
               }
               if (dog.media) {
@@ -200,9 +198,9 @@
                   totalScanned++;
                   if (mVal.src && mVal.src.startsWith('data:')) {
                     totalTargets.push({
-                      dbPath: `${sexPath}/${dogKey}/media/${mKey}/src`,
+                      dbPath: sexPath + '/' + dogKey + '/media/' + mKey + '/src',
                       base64Data: mVal.src,
-                      storagePath: `${sexPath}/${dog.code || dogKey}/media_${mKey}.jpg`
+                      storagePath: sexPath + '/' + (dog.code || dogKey) + '/media_' + mKey + '.jpg'
                     });
                   }
                 }
@@ -221,9 +219,9 @@
                 totalScanned++;
                 if (pup.photo && pup.photo.startsWith('data:')) {
                   totalTargets.push({
-                    dbPath: `litters/${ltKey}/puppies/${pupKey}/photo`,
+                    dbPath: 'litters/' + ltKey + '/puppies/' + pupKey + '/photo',
                     base64Data: pup.photo,
-                    storagePath: `litters/${ltKey}/puppies/${pupKey}/cover_${Date.now()}.jpg`
+                    storagePath: 'litters/' + ltKey + '/puppies/' + pupKey + '/cover_' + Date.now() + '.jpg'
                   });
                 }
                 if (pup.media) {
@@ -231,9 +229,9 @@
                     totalScanned++;
                     if (mVal.src && mVal.src.startsWith('data:')) {
                       totalTargets.push({
-                        dbPath: `litters/${ltKey}/puppies/${pupKey}/media/${mKey}/src`,
+                        dbPath: 'litters/' + ltKey + '/puppies/' + pupKey + '/media/' + mKey + '/src',
                         base64Data: mVal.src,
-                        storagePath: `litters/${ltKey}/puppies/${pupKey}/${mKey}.jpg`
+                        storagePath: 'litters/' + ltKey + '/puppies/' + pupKey + '/' + mKey + '.jpg'
                       });
                     }
                   }
@@ -253,9 +251,9 @@
                 totalScanned++;
                 if (pVal.src && pVal.src.startsWith('data:')) {
                   totalTargets.push({
-                    dbPath: `breeding/${bKey}/photos/${pKey}/src`,
+                    dbPath: 'breeding/' + bKey + '/photos/' + pKey + '/src',
                     base64Data: pVal.src,
-                    storagePath: `breeding/${bKey}/${pKey}.jpg`
+                    storagePath: 'breeding/' + bKey + '/' + pKey + '.jpg'
                   });
                 }
               }
@@ -265,7 +263,7 @@
 
         document.getElementById('st-total').textContent = totalScanned;
         document.getElementById('st-target').textContent = totalTargets.length;
-        log(`[스캔 완료] 총 ${totalScanned}개 필드 중 ${totalTargets.length}개의 base64 데이터가 감지되었습니다.`);
+        log('[스캔 완료] 총 ' + totalScanned + '개 필드 중 ' + totalTargets.length + '개의 base64 데이터가 감지되었습니다.');
 
         if (totalTargets.length === 0) {
           log('✅ 마이그레이션할 base64 데이터가 없습니다. 모든 이미지가 이미 Storage URL 상태입니다!');
@@ -277,7 +275,7 @@
         for (let i = 0; i < totalTargets.length; i++) {
           const item = totalTargets[i];
           try {
-            log(`[변환 중 ${i+1}/${totalTargets.length}] ${item.dbPath} ...`);
+            log('[변환 중 ' + (i+1) + '/' + totalTargets.length + '] ' + item.dbPath + ' ...');
             const url = await uploadBase64ToStorage(item.base64Data, item.storagePath);
             
             const updates = {};
@@ -286,11 +284,11 @@
 
             doneCount++;
             document.getElementById('st-done').textContent = doneCount;
-            log(`  ↳ ✅ 성공: Storage URL 적용 완료`);
+            log('  ↳ ✅ 성공: Storage URL 적용 완료');
           } catch(err) {
             failCount++;
             document.getElementById('st-fail').textContent = failCount;
-            log(`  ↳ ❌ 오류 (${item.dbPath}): ${err.message}`);
+            log('  ↳ ❌ 오류 (' + item.dbPath + '): ' + err.message);
           }
 
           const percent = Math.round(((i + 1) / totalTargets.length) * 100);
@@ -298,11 +296,10 @@
           document.getElementById('st-percent').textContent = percent + '% 진행 중';
         }
 
-        log(`
-🎉 [마이그레이션 최종 완료] 성공: ${doneCount}건 / 실패: ${failCount}건`);
+        log('\n🎉 [마이그레이션 최종 완료] 성공: ' + doneCount + '건 / 실패: ' + failCount + '건');
         btn.textContent = '🎉 마이그레이션 성공적으로 완료!';
       } catch(err) {
-        log(`❌ 마이그레이션 실행 실패: ${err.message}`);
+        log('❌ 마이그레이션 실행 실패: ' + err.message);
         btn.disabled = false;
         btn.textContent = '🔄 마이그레이션 재시도';
       }
