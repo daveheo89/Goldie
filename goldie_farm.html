@@ -2126,7 +2126,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  </header>
+  
+    <div id="github-last-update" style="font-size:11px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:4px 10px;border-radius:20px;border:1px solid rgba(212,175,55,0.3);font-weight:700;display:inline-flex;align-items:center;gap:4px;margin-left:auto;">
+      🕒 마지막 업데이트: 2026-08-10 16:22
+    </div>
+
+</header>
 
 
 
@@ -3807,7 +3812,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { getStorage, ref as storageRef, uploadString, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+import { getStorage, ref as storageRef, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -3846,6 +3851,7 @@ async function uploadVideoFileAndGetUrl(file, path) {
   }
 }
 
+window.uploadBytesResumable = uploadBytesResumable;
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 
@@ -5238,6 +5244,7 @@ function startListeners(){
 
 // 🚀 Module functions window exposure for global callers
 
+window.uploadBytesResumable = uploadBytesResumable;
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 window.renderDogs = renderDogs;
@@ -11570,54 +11577,46 @@ function renderPuppyDetailContent(){
 
   const motherInfo = getMotherInfo(lt.femaleCode);
   const sireInfo = getSireInfo(lt.maleCode);
-  const mediaList = p.media ? Object.entries(p.media).map(([mk, val]) => ({_key: mk, ...val})) : [];
+  const mediaList = getSortedMedia(p);
 
   const showSire = p.showSireInProfile !== false;
   const showDam = p.showDamInProfile !== false;
 
-  // 미디어 셀 HTML (드래그 앤 드롭 지원)
+  // 미디어 셀 HTML (order 순서 정렬 및 ◀ ▶ 위치 변경 버튼 지원)
   const mediaCells = mediaList.map((m, idx) => {
     let videoTagHtml = '';
-    if(m.type === 'video') {
+    const isVideo = m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')));
+    
+    if (isVideo) {
       const vidSrc = m.src;
-      const isPlayableFile = vidSrc && (vidSrc.startsWith('data:video') || vidSrc.startsWith('blob:') || vidSrc.endsWith('.mp4') || vidSrc.endsWith('.mov') || vidSrc.startsWith('idb:'));
-
-      if (vidSrc.startsWith('idb:')) {
-        const idbKey = vidSrc.replace('idb:', '');
-        const elemId = `idb-vid-${m._key}`;
-        setTimeout(async () => {
-          const idbData = await getVideoFromIndexedDB(idbKey);
-          const el = document.getElementById(elemId);
-          if (el && idbData && idbData.dataUrl) {
-            el.src = idbData.dataUrl;
-          }
-        }, 80);
-        videoTagHtml = `<video id="${elemId}" controls preload="metadata" playsinline style="width:100%; height:100%; object-fit:cover; display:block; background:#000;"></video>`;
-      } else if (isPlayableFile) {
-        videoTagHtml = `<video src="${vidSrc}" controls preload="metadata" playsinline style="width:100%; height:100%; object-fit:cover; display:block; background:#000;"></video>`;
-      } else {
-        videoTagHtml = `
-        <div onclick="window.open('${vidSrc}', '_blank')" style="width:100%; height:100%; background:linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px; text-align:center; cursor:pointer;">
-          <div style="font-size:1.6rem; margin-bottom:2px;">🎥</div>
-          <div style="font-size:10px; color:#fff; font-weight:800;">구글 포토 영상 링크</div>
-          <div style="font-size:9px; color:#93C5FD; margin-top:2px;">▶️ 열기 및 재생</div>
-        </div>`;
-      }
+      videoTagHtml = `<video src="${vidSrc}" controls preload="metadata" playsinline style="width:100%; height:100%; object-fit:cover; display:block; background:#000;"></video>`;
 
       return `
-      <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:default;">
+      <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:default; touch-action:none;">
         ${videoTagHtml}
-        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.65); color:#fff; z-index:2; font-size:10px;">🎥 동영상 (${idx+1})</span>
+        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.85); color:#fff; z-index:2; font-size:10px; font-weight:bold;">🎥 동영상 (${idx+1})</span>
         <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
         <button class="pd-media-del" title="삭제" style="z-index:4;" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
+        
+        <!-- ◀ / ▶ 위치 변경 버튼 -->
+        <div style="position:absolute;bottom:4px;left:4px;display:flex;gap:3px;z-index:5;">
+          <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},-1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">◀</button>
+          <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},1)" ${idx === mediaList.length-1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">▶</button>
+        </div>
       </div>`;
     } else {
       return `
-      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')" style="cursor:pointer;">
-        <img src="${m.src}">
-        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.6); color:#fff; z-index:2; font-size:10px;">📷 이미지 (${idx+1})</span>
+      <div class="pd-media-cell" style="position:relative; cursor:pointer;" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')">
+        <img src="${m.src}" style="width:100%;height:100%;object-fit:cover;">
+        <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.8); color:#fff; z-index:2; font-size:10px; font-weight:bold;">📷 이미지 (${idx+1})</span>
         <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
         <button class="pd-media-del" title="삭제" onclick="event.stopPropagation(); deletePuppyMedia('${pdLitterKey}','${pdPuppyId}','${m._key}')">✕</button>
+
+        <!-- ◀ / ▶ 위치 변경 버튼 -->
+        <div style="position:absolute;bottom:4px;left:4px;display:flex;gap:3px;z-index:5;" onclick="event.stopPropagation();">
+          <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},-1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">◀</button>
+          <button type="button" onclick="nudgeDetailMedia('${pdLitterKey}','${pdPuppyId}',${idx},1)" ${idx === mediaList.length-1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;">▶</button>
+        </div>
       </div>`;
     }
   }).join('');
@@ -11929,6 +11928,51 @@ function compressImageFile(file, maxSide = 1200, quality = 0.82) {
 
 // ── 미디어 업로드 (사진 & 폰 카톡 전송용 동영상 파일) ──
 
+
+  // ── 자견 상세정보 모달 내 미디어 ◀ ▶ 순서 변경 및 즉시 저장 ──
+  window.nudgeDetailMedia = async function(litterKey, puppyId, idx, direction) {
+    const lt = litters.find(l => l._key === litterKey);
+    const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
+    if (!p) return;
+
+    let mediaList = getSortedMedia(p);
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= mediaList.length) return;
+
+    const item = mediaList.splice(idx, 1)[0];
+    mediaList.splice(targetIdx, 0, item);
+
+    const reorderedMediaMap = {};
+    let firstImageSrc = null;
+
+    mediaList.forEach((m, i) => {
+      const k = m._key || `m_${Date.now()}_${i}`;
+      const clone = { ...m };
+      delete clone._key;
+      clone.order = i;
+      reorderedMediaMap[k] = clone;
+      if (!firstImageSrc && clone.type === 'image' && clone.src) {
+        firstImageSrc = clone.src;
+      }
+    });
+
+    const updates = { media: reorderedMediaMap };
+    if (firstImageSrc) updates.photo = firstImageSrc;
+
+    setSyncing(true);
+    try {
+      await fbUpdate(`litters/${litterKey}/puppies/${puppyId}`, updates);
+      showToast('↕️ 미디어 순서가 즉시 변경되었습니다!');
+      if (typeof renderPuppyDetailContent === 'function') renderPuppyDetailContent();
+      if (typeof renderPuppies === 'function') renderPuppies();
+    } catch(err) {
+      showToast('⚠ 순서 변경 실패: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+
 window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
     const files = Array.from(e.target.files);
     if (!files || !files.length) return;
@@ -12113,6 +12157,24 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
     renderEditPuppyMediaReorderGrid();
   };
 
+
+
+  // ── 깃허브 마지막 수정 시간 표출 ──
+  async function fetchGitHubLastCommit() {
+    try {
+      const res = await fetch('https://api.github.com/repos/daveheo89/Goldie/commits?per_page=1');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0] && data[0].commit && data[0].commit.committer) {
+          const date = new Date(data[0].commit.committer.date);
+          const dateStr = `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+          const el = document.getElementById('github-last-update');
+          if (el) el.innerHTML = `🕒 깃허브 마지막 수정: ${dateStr}`;
+        }
+      }
+    } catch(e) {}
+  }
+  fetchGitHubLastCommit();
 
 init();
 
