@@ -12122,6 +12122,14 @@ init();
 
 
 
+
+<!-- 미디어 업로드 진행률 오버레이 -->
+<div id="upload-progress-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.75);backdrop-filter:blur(4px);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:'Noto Sans KR',sans-serif;">
+  <div style="font-size:3rem;margin-bottom:12px;animation:pulse 1.5s infinite;">🎥</div>
+  <div id="upload-progress-text" style="font-size:1.2rem;font-weight:900;letter-spacing:-0.5px;">🎥 영상 업로드 중... 0%</div>
+  <div style="font-size:0.85rem;color:#94A3B8;margin-top:6px;">잠시만 기다려주세요 (창을 닫지 마세요)</div>
+</div>
+
 </body>
 
 
