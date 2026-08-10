@@ -4248,225 +4248,30 @@ async function fbUpdate(path,data){
 
 
 
-function saveLocalCache(key, data) {
-
-  try {
-
-    if (key === 'litters') {
-
-      // litters 캐시: 미디어 base64 src 데이터 제외 (localStorage 용량 최적화)
-
-      const lite = data.map(lt => {
-
-        const clone = {...lt};
-
-        if (clone.puppies) {
-
-          const pups = {};
-
-          Object.entries(clone.puppies).forEach(([pid, pval]) => {
-
-            const pClone = {...pval};
-
-            if (pClone.media) {
-
-              const mediaCopy = {};
-
-              Object.entries(pClone.media).forEach(([mk, mv]) => {
-
-                // src가 https:// URL이면 보존, base64면 제외 (용량 절약)
-
-                if (mv.src && mv.src.startsWith('http')) {
-
-                  mediaCopy[mk] = mv;
-
-                } else {
-
-                  mediaCopy[mk] = {...mv, src: ''};
-
-                }
-
-              });
-
-              pClone.media = mediaCopy;
-
-            }
-
-            // 대표 사진도 base64면 제외
-
-            if (pClone.photo && !pClone.photo.startsWith('http')) {
-
-              pClone.photo = '';
-
-            }
-
-            pups[pid] = pClone;
-
-          });
-
-          clone.puppies = pups;
-
-        }
-
-        return clone;
-
-      });
-
-      localStorage.setItem('goldie_cache_' + key, JSON.stringify(lite));
-
+function stripBase64Deep(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(stripBase64Deep);
+  const res = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string' && v.startsWith('data:')) {
+      res[k] = '';
+    } else if (v && typeof v === 'object') {
+      res[k] = stripBase64Deep(v);
     } else {
-
-      // 모견/부견 사진도 base64면 제외
-
-      if (key === 'females' || key === 'males') {
-
-        const lite = data.map(d => {
-
-          if (d.photo && !d.photo.startsWith('http')) {
-
-            return {...d, photo: ''};
-
-          }
-
-          return d;
-
-        });
-
-        localStorage.setItem('goldie_cache_' + key, JSON.stringify(lite));
-
-      } else {
-
-        localStorage.setItem('goldie_cache_' + key, JSON.stringify(data));
-
-      }
-
+      res[k] = v;
     }
-
-  } catch(e) {
-
-    console.warn(`[Cache Limit] ${key} 로컬 캐싱 용량 제한 또는 실패:`, e);
-
-    // 용량 초과 시 해당 캐시 삭제 후 재시도
-
-    try {
-
-      localStorage.removeItem('goldie_cache_' + key);
-
-    } catch(e2) {}
-
   }
-
+  return res;
 }
 
-
-
-
-
-
-
-function restoreLocalCache() {
-
-
-
+function saveLocalCache(key, data) {
   try {
-
-
-
-    const cachedFemales = localStorage.getItem('goldie_cache_females');
-
-
-
-    const cachedMales = localStorage.getItem('goldie_cache_males');
-
-
-
-    const cachedBreeding = localStorage.getItem('goldie_cache_breeding');
-
-
-
-    const cachedLitters = localStorage.getItem('goldie_cache_litters');
-
-
-
-    const cachedMoveLog = localStorage.getItem('goldie_cache_moveLog');
-
-
-
-
-
-
-
-    if (cachedFemales) females = JSON.parse(cachedFemales);
-
-
-
-    if (cachedMales) males = JSON.parse(cachedMales);
-
-
-
-    if (cachedBreeding) breedingRecords = JSON.parse(cachedBreeding);
-
-
-
-    if (cachedLitters) litters = JSON.parse(cachedLitters);
-
-
-
-    if (cachedMoveLog) moveLog = JSON.parse(cachedMoveLog);
-
-
-
-    const cachedTreatments = localStorage.getItem('goldie_cache_treatments');
-
-
-
-    if (cachedTreatments) window._treatments = JSON.parse(cachedTreatments);
-
-
-
-
-
-
-
-    fillTreatmentSelects();
-
-
-
-
-
-
-
-    // 캐시된 데이터가 하나라도 있으면 즉시 로딩 화면 제거 & 전체 렌더링 (0.01초 체감)
-
-    if (females.length || males.length || litters.length) {
-
-      const loader = document.getElementById('loading-screen');
-
-      if (loader) loader.style.display = 'none';
-
-      renderDogs();
-
-      // 새끼탭이 보이면 즉시 렌더링
-
-      if(document.getElementById('tab-puppies') && !document.getElementById('tab-puppies').classList.contains('hidden')) renderPuppies();
-
-    }
-
-
-
+    const sanitized = stripBase64Deep(data);
+    localStorage.setItem('goldie_cache_' + key, JSON.stringify(sanitized));
   } catch(e) {
-
-    console.error('[Cache Restore Error]:', e);
-
+    try { localStorage.removeItem('goldie_cache_' + key); } catch(_) {}
   }
-
 }
-
-
-
-
-
-
 
 // ═══════════════════════════════════════
 
