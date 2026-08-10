@@ -5254,7 +5254,7 @@ window.renderKennels = renderKennels;
 window.renderBreeding = renderBreeding;
 window.renderPuppies = renderPuppies;
 window.renderMove = renderMove;
-window.renderDeliveryCalendar = renderDeliveryCalendar;
+if (typeof renderDeliveryCalendar === 'function') { window.renderDeliveryCalendar = renderDeliveryCalendar; }
 window.restoreLocalCache = restoreLocalCache;
 window.startListeners = startListeners;
 window.startListeners = startListeners;
