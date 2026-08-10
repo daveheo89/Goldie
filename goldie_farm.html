@@ -5,6 +5,7 @@
 
 
 <head>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐕</text></svg>">
 
 
 
@@ -4792,6 +4793,39 @@ window.renderBreeding = renderBreeding;
 window.renderPuppies = renderPuppies;
 window.renderMove = renderMove;
 if (typeof renderDeliveryCalendar === 'function') { window.renderDeliveryCalendar = renderDeliveryCalendar; }
+
+function restoreLocalCache() {
+  try {
+    const cachedFemales = getLocalCache('females');
+    if (cachedFemales && Array.isArray(cachedFemales) && cachedFemales.length) {
+      females = cachedFemales;
+    }
+    const cachedMales = getLocalCache('males');
+    if (cachedMales && Array.isArray(cachedMales) && cachedMales.length) {
+      males = cachedMales;
+    }
+    const cachedLitters = getLocalCache('litters');
+    if (cachedLitters && Array.isArray(cachedLitters) && cachedLitters.length) {
+      litters = cachedLitters;
+    }
+    const cachedBreeding = getLocalCache('breeding');
+    if (cachedBreeding && Array.isArray(cachedBreeding) && cachedBreeding.length) {
+      breeding = cachedBreeding;
+    }
+    const cachedKennels = getLocalCache('kennels');
+    if (cachedKennels && Array.isArray(cachedKennels) && cachedKennels.length) {
+      kennels = cachedKennels;
+    }
+
+    if (typeof renderDogs === 'function') renderDogs();
+    if (typeof renderPuppies === 'function') renderPuppies();
+    if (typeof renderBreeding === 'function') renderBreeding();
+    if (typeof renderKennels === 'function') renderKennels();
+  } catch (e) {
+    console.warn('[Cache Restore Exception]:', e);
+  }
+}
+
 window.restoreLocalCache = restoreLocalCache;
 window.startListeners = startListeners;
 window.startListeners = startListeners;
