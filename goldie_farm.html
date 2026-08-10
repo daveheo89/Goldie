@@ -82,31 +82,6 @@
   }
   window.attemptLogin = attemptLogin;
 
-  function showTab(tab) {
-    var tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
-    tabIds.forEach(function(t) {
-      var el = document.getElementById('tab-' + t);
-      if (el) el.classList.toggle('hidden', t !== tab);
-    });
-
-    var tabButtons = document.querySelectorAll('.tabs .tab');
-    tabButtons.forEach(function(btn, i) {
-      if (btn) btn.classList.toggle('active', tabIds[i] === tab);
-    });
-
-    try {
-      if (tab === 'dogs' && typeof window.renderDogs === 'function') window.renderDogs();
-      if (tab === 'kennels' && typeof window.renderKennels === 'function') window.renderKennels();
-      if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
-      if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
-      if (tab === 'move' && typeof window.renderMove === 'function') window.renderMove();
-      if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
-    } catch(e) {
-      console.error('[Tab Switch Error]:', e);
-    }
-  }
-  window.showTab = showTab;
-</script>
 
 
 
