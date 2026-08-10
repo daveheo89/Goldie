@@ -82,6 +82,37 @@ header h1{font-size:17px;font-weight:900;color:var(--gold-l);letter-spacing:-0.5
 .btn-share{flex:1;background:var(--br);color:#fff;font-weight:700;font-size:13px;border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;}
 
 .loading{text-align:center;padding:60px 20px;color:var(--gray);font-size:15px;}
+
+    .slide-indicator {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .thumb-video-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .thumb-play-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.35);
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
 </style>
 </head>
 <body>
@@ -127,293 +158,35 @@ const puppyId   = params.get('puppy');
 window._currentPuppyData = null;
 window._totalSlides = 0;
 window._currentSlide = 0;
-window._sireSlides = [];
+  window.goToSlide = function(idx) {
+    const track = document.getElementById('heroSlideTrack');
+    const indicator = document.getElementById('slideIndicator');
+    const slider = document.getElementById('heroSlider');
+    
+    if (!track || !window._totalSlides) return;
+    if (idx < 0) idx = window._totalSlides - 1;
+    if (idx >= window._totalSlides) idx = 0;
+    
+    window._currentSlide = idx;
+    track.style.transform = `translateX(-${idx * 100}%)`;
 
-function cleanDogName(raw, fallback = '') {
-  if (!raw) return fallback;
-  const s = String(raw).trim();
-  const parts = s.split('/');
-  let name = parts.length > 1 ? parts[1].trim() : parts[0].trim();
-  name = name.replace(/^[0-9]+\s*/, '').trim();
-  return name || fallback;
-}
-
-function findDogInNode(searchCode, nodeObj) {
-  if (!searchCode || !nodeObj) return null;
-  const cleanSearch = cleanDogName(searchCode).toLowerCase();
-
-  let found = null;
-  Object.entries(nodeObj).forEach(([dk, dval]) => {
-    if (!dval) return;
-    const code = String(dval.code || dk).toLowerCase();
-    const name = cleanDogName(dval.name || dval.code || dk).toLowerCase();
-    if (code.includes(cleanSearch) || cleanSearch.includes(code) || name.includes(cleanSearch) || cleanSearch.includes(name)) {
-      found = { ...dval, _key: dk };
-    }
-  });
-  return found;
-}
-
-async function loadProfile() {
-  const container = document.getElementById('app');
-  if (!litterKey || !puppyId) {
-    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 올바른 강아지 프로필 링크가 아닙니다.</div>';
-    return;
-  }
-
-  try {
-    const snap = await get(ref(db, `litters/${litterKey}`));
-    if (!snap.exists()) {
-      container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 등록된 분양 정보를 찾을 수 없습니다.</div>';
-      return;
-    }
-
-    const lt = snap.val();
-    const p = (lt.puppies || {})[puppyId];
-    if (!p) {
-      container.innerHTML = '<div class="card" style="text-align:center;padding:40px;">⚠️ 강아지 개체 정보를 찾을 수 없습니다.</div>';
-      return;
-    }
-
-    window._currentPuppyData = { lt, p, litterKey, puppyId };
-
-    let sireData = null;
-    let damData = null;
-
-    // Firebase males(부견) & females(모견) 데이터베이스 검색
-    try {
-      const malesSnap = await get(ref(db, 'males'));
-      if (malesSnap.exists()) {
-        sireData = findDogInNode(lt.maleCode, malesSnap.val());
-      }
-    } catch(e){}
-
-    try {
-      const femalesSnap = await get(ref(db, 'females'));
-      if (femalesSnap.exists()) {
-        damData = findDogInNode(lt.femaleCode, femalesSnap.val());
-      }
-    } catch(e){}
-
-    renderProfile(lt, p, sireData, damData);
-    document.getElementById('bottomBar').style.display = 'flex';
-  } catch (e) {
-    container.innerHTML = `<div class="card" style="text-align:center;padding:40px;">⚠️ 프로필 불러오기 실패: ${e.message}</div>`;
-  }
-}
-
-function renderProfile(lt, p, sireData, damData) {
-  const container = document.getElementById('app');
-
-  const motherName = cleanDogName(lt.femaleCode || (damData && damData.name));
-  const sireName   = cleanDogName(lt.maleCode   || (sireData && sireData.name), '부견');
-
-  const puppyName = p.name || '강아지';
-  const fullTitle = motherName ? `${motherName}네 — ${puppyName}` : puppyName;
-
-  const mediaList = p.media ? Object.values(p.media) : [];
-  let photos = [];
-  let videos = [];
-
-  if (p.photo) photos.push({ type: 'image', src: p.photo });
-  mediaList.forEach(m => {
-    if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('photos.app.goo.gl')))) {
-      videos.push(m);
-    } else if (m.src) {
-      if (!photos.some(ph => ph.src === m.src)) photos.push(m);
-    }
-  });
-
-  const allSlideMedia = [...photos, ...videos];
-  window._totalSlides = allSlideMedia.length;
-
-  let sliderHtml = '';
-  if (allSlideMedia.length > 0) {
-    const slides = allSlideMedia.map((m, i) => {
-      const isExternalVideo = m.type === 'video' || (m.src && m.src.includes('photos.app.goo.gl'));
-      if (isExternalVideo && m.src.includes('photos.app.goo.gl')) {
-        return `
-          <div class="slide-item">
-            <div class="video-card-slide" onclick="window.open('${m.src}', '_blank')">
-              <div class="play-icon">▶️</div>
-              <div class="v-title">🎥 분양 동영상 보기</div>
-              <div class="v-sub">터치하여 구글 포토에서 영상 재생</div>
-            </div>
-          </div>
-        `;
-      } else if (m.type === 'video' || (m.src && m.src.endsWith('.mp4'))) {
-        return `
-          <div class="slide-item" onclick="openLightbox('${m.src}', 'video')">
-            <video src="${m.src}" controls playsinline webkit-playsinline preload="auto"></video>
-          </div>
-        `;
-      } else {
-        return `
-          <div class="slide-item" onclick="openLightbox('${m.src}', 'image')">
-            <img src="${m.src}">
-          </div>
-        `;
-      }
-    }).join('');
-
-    const thumbs = allSlideMedia.map((m, i) => `
-      <div class="thumb-item ${i===0?'active':''}" id="thumb-${i}" onclick="goToSlide(${i})">
-        ${m.type==='video' ? `<div style="background:#1E3A8A;color:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎥</div>` : `<img src="${m.src}">`}
-      </div>
-    `).join('');
-
-    sliderHtml = `
-      <div class="hero-slider" id="heroSlider">
-        <span class="zoom-hint">🔍 크게 보기</span>
-        ${allSlideMedia.length > 1 ? `
-          <button class="slider-arrow arrow-prev" onclick="prevSlide(event)">◀</button>
-          <button class="slider-arrow arrow-next" onclick="nextSlide(event)">▶</button>
-        ` : ''}
-        <div class="slide-track" id="slideTrack">
-          ${slides}
-        </div>
-      </div>
-      ${allSlideMedia.length > 1 ? `<div class="thumb-nav">${thumbs}</div>` : ''}
-    `;
-  } else {
-    sliderHtml = `<div class="hero-slider" style="background:var(--gold-p);display:flex;align-items:center;justify-content:center;font-size:40px;">🐶</div>`;
-  }
-
-  // 부견 미디어 갤러리 슬라이더 구축
-  let sireMedia = [];
-  if (sireData) {
-    if (sireData.photo) sireMedia.push({ type: 'image', src: sireData.photo });
-    if (sireData.media) {
-      Object.values(sireData.media).forEach(m => {
-        if (m.src && !sireMedia.some(item => item.src === m.src)) sireMedia.push(m);
+    // Pause playing videos on slide change
+    if (slider) {
+      slider.querySelectorAll('video').forEach(v => {
+        try { v.pause(); } catch(e){}
       });
     }
-  }
 
-  let sireHtml = '';
-  if (p.showSireInProfile !== false && (lt.maleCode || sireData || sireMedia.length > 0)) {
-    let sireSliderContent = '';
-    if (sireMedia.length > 0) {
-      const sireSlides = sireMedia.map((m, i) => `
-        <div class="slide-item" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
-          ${m.type==='video' ? `<video src="${m.src}" controls playsinline webkit-playsinline></video>` : `<img src="${m.src}">`}
-        </div>
-      `).join('');
-
-      sireSliderContent = `
-        <div class="hero-slider" style="aspect-ratio:4/3;height:auto;margin-top:8px;">
-          ${sireMedia.length > 1 ? `
-            <button class="slider-arrow arrow-prev" onclick="prevSireSlide(event)">◀</button>
-            <button class="slider-arrow arrow-next" onclick="nextSireSlide(event)">▶</button>
-          ` : ''}
-          <div class="slide-track" id="sireSlideTrack">
-            ${sireSlides}
-          </div>
-        </div>
-      `;
+    if (indicator) {
+      indicator.textContent = `${idx + 1} / ${window._totalSlides}`;
     }
 
-    sireHtml = `
-      <div class="parent-card">
-        <div class="parent-title">🐕 부견 정보 (${sireName})</div>
-        ${sireSliderContent}
-      </div>
-    `;
-  }
+    const thumbs = document.querySelectorAll('#thumbNav .thumb-item');
+    thumbs.forEach((t, i) => t.classList.toggle('active', i === idx));
+  };
 
-  // 모견 미디어 갤러리 슬라이더 구축 (체크박스 노출 승인 및 자료가 있는 경우에만)
-  let damMedia = [];
-  if (p.showDamInProfile !== false && damData) {
-    if (damData.photo) damMedia.push({ type: 'image', src: damData.photo });
-    if (damData.media) {
-      Object.values(damData.media).forEach(m => {
-        if (m.src && !damMedia.some(item => item.src === m.src)) damMedia.push(m);
-      });
-    }
-  }
-
-  let damHtml = '';
-  if (damMedia.length > 0) {
-    const damSlides = damMedia.map((m, i) => `
-      <div class="slide-item" onclick="openLightbox('${m.src}', '${m.type==='video'?'video':'image'}')">
-        ${m.type==='video' ? `<video src="${m.src}" controls playsinline webkit-playsinline></video>` : `<img src="${m.src}">`}
-      </div>
-    `).join('');
-
-    damHtml = `
-      <div class="parent-card">
-        <div class="parent-title">🐕‍🦺 모견 정보 (${motherName})</div>
-        <div class="hero-slider" id="damSlider" style="aspect-ratio:4/3;height:auto;margin-top:8px;">
-          ${damMedia.length > 1 ? '<button class="slider-arrow arrow-prev" onclick="prevDamSlide(event)">&#9664;</button><button class="slider-arrow arrow-next" onclick="nextDamSlide(event)">&#9654;</button>' : ''}
-          <div class="slide-track" id="damSlideTrack">
-            ${damSlides}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  const status = p.status || '분양 가능';
-  let badgeClass = 'badge-avail';
-  if (status === '예약' || status === '사전 예약 중') badgeClass = 'badge-rsv';
-  if (status === '분양 완료') badgeClass = 'badge-sold';
-
-  const birthDateStr = lt.birthB || lt.birthA || '';
-  let birthFmt = birthDateStr ? birthDateStr.replace(/-/g, '.') : '정보 없음';
-
-  container.innerHTML = `
-    <div class="card">
-      ${sliderHtml}
-      <div class="puppy-header">
-        <div>
-          <div class="puppy-title">${fullTitle}</div>
-          <div class="puppy-sex ${p.sex==='female'?'sex-f':'sex-m'}">
-            ${p.sex==='female'?'♀ 암컷':p.sex==='male'?'♂ 수컷':'미정'}
-          </div>
-        </div>
-        <span class="badge ${badgeClass}">${status}</span>
-      </div>
-
-      <table class="info-table">
-        <tr>
-          <td class="td-key">🎂 출생일</td>
-          <td class="td-val">${birthFmt}</td>
-        </tr>
-      </table>
-    </div>
-
-    ${sireHtml}
-    ${damHtml}
-  `;
-
-  initSwipeEvents();
-}
-
-window.goToSlide = function(idx) {
-  if (idx < 0 || idx >= window._totalSlides) return;
-  window._currentSlide = idx;
-  const track = document.getElementById('slideTrack');
-  if (track) track.style.transform = `translateX(-${idx * 100}%)`;
-
-  for (let i = 0; i < window._totalSlides; i++) {
-    const thumb = document.getElementById(`thumb-${i}`);
-    if (thumb) thumb.className = `thumb-item ${i === idx ? 'active' : ''}`;
-  }
-};
-
-window.prevSlide = function(e) {
-  if (e) e.stopPropagation();
-  let target = window._currentSlide - 1;
-  if (target < 0) target = window._totalSlides - 1;
-  window.goToSlide(target);
-};
-
-window.nextSlide = function(e) {
-  if (e) e.stopPropagation();
-  let target = window._currentSlide + 1;
-  if (target >= window._totalSlides) target = 0;
-  window.goToSlide(target);
-};
+  window.prevSlide = function() { window.goToSlide(window._currentSlide - 1); };
+  window.nextSlide = function() { window.goToSlide(window._currentSlide + 1); };
 
 let currentSireSlide = 0;
 window.prevSireSlide = function(e) {
