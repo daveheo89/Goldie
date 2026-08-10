@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>골디쉼터 DB Base64 -> Storage 마이그레이션 도구</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brown: #6A3B18;
+      --gold: #D4AF37;
+      --gold-bg: #FDFBF7;
+      --border: #E8DCC8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #F1F5F9;
+      color: #334155;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border: 1px solid #CBD5E1;
+    }
+    h1 { font-size: 1.4rem; color: var(--brown); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    p { font-size: 0.9rem; color: #64748B; margin-bottom: 16px; }
+    
+    .warning-card {
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      color: #991B1B;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .status-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+    .stat-val { font-weight: 800; color: #0F172A; }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 16px;
+      background: #E2E8F0;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--brown), var(--gold));
+      transition: width 0.3s ease;
+    }
+
+    .btn-start {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--brown), var(--gold));
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 900;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(106, 59, 24, 0.25);
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .btn-start:hover { transform: translateY(-2px); }
+    .btn-start:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .log-box {
+      margin-top: 20px;
+      background: #0F172A;
+      color: #38BDF8;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 12px;
+      border-radius: 10px;
+      height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref as dbRef, get, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+      authDomain: "goldie-shelter-d6c81.firebaseapp.com",
+      databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+      projectId: "goldie-shelter-d6c81",
+      storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
+      messagingSenderId: "1071275996614",
+      appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
+
+    window.db = db;
+    window.dbRef = dbRef;
+    window.get = get;
+    window.update = update;
+    window.storage = storage;
+    window.storageRef = storageRef;
+    window.uploadString = uploadString;
+    window.getDownloadURL = getDownloadURL;
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 DB Base64 ➔ Storage URL 마이그레이션 도구</h1>
+    <p>기존 DB에 용량이 큰 base64 문자열로 저장되어 있는 사진들을 Firebase Storage에 자동 업로드하고, DB에는 경량 다운로드 URL만 남겨 로그인 및 데이터 조회 속도를 극대화합니다.</p>
+
+    <div class="warning-card">
+      ⚠️ <b>중요 알림</b>: 마이그레이션을 실행하기 전 Firebase Realtime Database 콘솔에서 반드시 데이터 <b>JSON 백업</b>을 미리 다운로드해 두세요.
+    </div>
+
+    <div class="status-card">
+      <div class="stat-row"><span>총 검사 대상 필드</span><span class="stat-val" id="st-total">0</span></div>
+      <div class="stat-row"><span>base64 변환 대상</span><span class="stat-val" id="st-target">0</span></div>
+      <div class="stat-row"><span>Storage 전환 완료</span><span class="stat-val" id="st-done" style="color:#10B981;">0</span></div>
+      <div class="stat-row"><span>실패/건너뜀</span><span class="stat-val" id="st-fail" style="color:#EF4444;">0</span></div>
+      
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+      <div style="font-size:11px; text-align:right; color:#64748B;" id="st-percent">0% 진행 중</div>
+    </div>
+
+    <button class="btn-start" id="start-btn" onclick="startMigration()">🚀 1회성 마이그레이션 시작하기</button>
+
+    <div class="log-box" id="log-box">[준비] '마이그레이션 시작하기' 버튼을 누르면 전체 DB 검사가 시작됩니다.
+</div>
+  </div>
+
+  <script>
+    function log(msg) {
+      const box = document.getElementById('log-box');
+      box.textContent += msg + '
+';
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function uploadBase64ToStorage(base64Data, path) {
+      const sRef = window.storageRef(window.storage, path);
+      await window.uploadString(sRef, base64Data, 'data_url');
+      return await window.getDownloadURL(sRef);
+    }
+
+    async function startMigration() {
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = '🔄 DB 스캔 및 Storage 업로드 진행 중...';
+      log('[시작] Firebase Realtime Database 스캔을 시작합니다...');
+
+      let totalScanned = 0;
+      let totalTargets = []; // { dbPath, base64Data, storagePath }
+      let doneCount = 0;
+      let failCount = 0;
+
+      try {
+        // 1. Females & Males 스캔
+        for (let sexPath of ['females', 'males']) {
+          const snapshot = await window.get(window.dbRef(window.db, sexPath));
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            for (let [dogKey, dog] of Object.entries(data)) {
+              totalScanned++;
+              if (dog.photo && dog.photo.startsWith('data:')) {
+                totalTargets.push({
+                  dbPath: `${sexPath}/${dogKey}/photo`,
+                  base64Data: dog.photo,
+                  storagePath: `${sexPath}/${dog.code || dogKey}/cover_${Date.now()}.jpg`
+                });
+              }
+              if (dog.media) {
+                for (let [mKey, mVal] of Object.entries(dog.media)) {
+                  totalScanned++;
+                  if (mVal.src && mVal.src.startsWith('data:')) {
+                    totalTargets.push({
+                      dbPath: `${sexPath}/${dogKey}/media/${mKey}/src`,
+                      base64Data: mVal.src,
+                      storagePath: `${sexPath}/${dog.code || dogKey}/media_${mKey}.jpg`
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // 2. Litters & Puppies 스캔
+        const littersSnap = await window.get(window.dbRef(window.db, 'litters'));
+        if (littersSnap.exists()) {
+          const litters = littersSnap.val();
+          for (let [ltKey, lt] of Object.entries(litters)) {
+            if (lt.puppies) {
+              for (let [pupKey, pup] of Object.entries(lt.puppies)) {
+                totalScanned++;
+                if (pup.photo && pup.photo.startsWith('data:')) {
+                  totalTargets.push({
+                    dbPath: `litters/${ltKey}/puppies/${pupKey}/photo`,
+                    base64Data: pup.photo,
+                    storagePath: `litters/${ltKey}/puppies/${pupKey}/cover_${Date.now()}.jpg`
+                  });
+                }
+                if (pup.media) {
+                  for (let [mKey, mVal] of Object.entries(pup.media)) {
+                    totalScanned++;
+                    if (mVal.src && mVal.src.startsWith('data:')) {
+                      totalTargets.push({
+                        dbPath: `litters/${ltKey}/puppies/${pupKey}/media/${mKey}/src`,
+                        base64Data: mVal.src,
+                        storagePath: `litters/${ltKey}/puppies/${pupKey}/${mKey}.jpg`
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Breeding Photos 스캔
+        const breedingSnap = await window.get(window.dbRef(window.db, 'breeding'));
+        if (breedingSnap.exists()) {
+          const breedingData = breedingSnap.val();
+          for (let [bKey, bVal] of Object.entries(breedingData)) {
+            if (bVal.photos) {
+              for (let [pKey, pVal] of Object.entries(bVal.photos)) {
+                totalScanned++;
+                if (pVal.src && pVal.src.startsWith('data:')) {
+                  totalTargets.push({
+                    dbPath: `breeding/${bKey}/photos/${pKey}/src`,
+                    base64Data: pVal.src,
+                    storagePath: `breeding/${bKey}/${pKey}.jpg`
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        document.getElementById('st-total').textContent = totalScanned;
+        document.getElementById('st-target').textContent = totalTargets.length;
+        log(`[스캔 완료] 총 ${totalScanned}개 필드 중 ${totalTargets.length}개의 base64 데이터가 감지되었습니다.`);
+
+        if (totalTargets.length === 0) {
+          log('✅ 마이그레이션할 base64 데이터가 없습니다. 모든 이미지가 이미 Storage URL 상태입니다!');
+          btn.textContent = '✅ 마이그레이션 완료 (변환할 항목 없음)';
+          return;
+        }
+
+        // 마이그레이션 실행
+        for (let i = 0; i < totalTargets.length; i++) {
+          const item = totalTargets[i];
+          try {
+            log(`[변환 중 ${i+1}/${totalTargets.length}] ${item.dbPath} ...`);
+            const url = await uploadBase64ToStorage(item.base64Data, item.storagePath);
+            
+            const updates = {};
+            updates[item.dbPath] = url;
+            await window.update(window.dbRef(window.db), updates);
+
+            doneCount++;
+            document.getElementById('st-done').textContent = doneCount;
+            log(`  ↳ ✅ 성공: Storage URL 적용 완료`);
+          } catch(err) {
+            failCount++;
+            document.getElementById('st-fail').textContent = failCount;
+            log(`  ↳ ❌ 오류 (${item.dbPath}): ${err.message}`);
+          }
+
+          const percent = Math.round(((i + 1) / totalTargets.length) * 100);
+          document.getElementById('progress-bar').style.width = percent + '%';
+          document.getElementById('st-percent').textContent = percent + '% 진행 중';
+        }
+
+        log(`
+🎉 [마이그레이션 최종 완료] 성공: ${doneCount}건 / 실패: ${failCount}건`);
+        btn.textContent = '🎉 마이그레이션 성공적으로 완료!';
+      } catch(err) {
+        log(`❌ 마이그레이션 실행 실패: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = '🔄 마이그레이션 재시도';
+      }
+    }
+  </script>
+</body>
+</html>
