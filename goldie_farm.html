@@ -9473,44 +9473,15 @@ window.closeDogModal=function(){document.getElementById('dog-modal').classList.r
 
 
 window.handleDogPhoto=async function(e){
-
-
-
   const file=e.target.files[0];if(!file)return;
-
-
-
   try {
-
-
-
     const compressed = await compressImage(file, 1024, 1024, 0.7);
-
-
-
     dogPendingPhoto = compressed;
-
-
-
     setPhotoPreview(dogPendingPhoto);
-
-
-
   } catch(err) {
-
-
-
     console.error('이미지 압축 실패:', err);
-
-
-
     showToast('⚠ 이미지 압축에 실패했습니다.');
-
-
-
-  
-  dogPendingMedia = [];
-  renderDogMediaGrid();
+  }
 };
 
 
