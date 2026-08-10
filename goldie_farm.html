@@ -10977,7 +10977,7 @@ function renderPuppyDetailContent(){
   }
 
   container.innerHTML = `
-    /* 미디어 갤러리 섹션 */
+    
     <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
       <div class="pd-section-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <span>📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</span>
@@ -11004,7 +11004,7 @@ function renderPuppyDetailContent(){
       </div>
     </div>
 
-    /* 기본 정보 섹션 */
+    
     <div class="pd-section">
       <div class="pd-section-title">📋 강아지 정보</div>
       <table class="pd-info-table">
@@ -11032,7 +11032,7 @@ function renderPuppyDetailContent(){
       </table>
     </div>
 
-    /* ⚙️ 공개 프로필 노출 설정 (부견/모견) */
+    
     <div class="pd-section" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; margin:12px 0; padding:12px;">
       <div class="pd-section-title" style="font-size:12px; color:#334155; margin-bottom:8px;">⚙️ 공개 분양 프로필(웹) 부/모견 노출 설정</div>
       <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -11047,7 +11047,7 @@ function renderPuppyDetailContent(){
       </div>
     </div>
 
-    /* 🐕 부견 프로필 사진 섹션 */
+    
     <div class="pd-section" style="border-top:1px solid var(--border);">
       <div class="pd-section-title">🐕 부견 (${esc(sireInfo.name)}) 프로필</div>
       ${sireInfo.photo ? 
@@ -11056,7 +11056,7 @@ function renderPuppyDetailContent(){
       }
     </div>
 
-    /* 🐕‍🦺 모견 프로필 사진 섹션 */
+    
     <div class="pd-section" style="border-top:1px solid var(--border);">
       <div class="pd-section-title">🐕‍🦺 모견 (${esc(motherInfo.name)}) 프로필</div>
       ${motherInfo.photo ? 
@@ -11065,7 +11065,7 @@ function renderPuppyDetailContent(){
       }
     </div>
 
-    /* 액션 버튼 섹션 */
+    
     <div class="pd-section" style="padding-top:0;">
       <button class="pd-profile-btn" onclick="openPublicPuppyProfileWeb('${pdLitterKey}','${pdPuppyId}')" style="background:linear-gradient(135deg,#C8931A 0%,#5C3D1E 100%); color:#fff; font-weight:800;">
         🌐 고화질 웹 프로필 링크 생성 & 카톡 전송
@@ -11268,9 +11268,9 @@ function compressImageFile(file, maxSide = 1200, quality = 0.82) {
 
   // ── 자견 상세정보 모달 내 미디어 ◀ ▶ 순서 변경 및 즉시 저장 ──
   window.nudgeDetailMedia = async function(litterKey, puppyId, idx, direction) {
-    const lt = litters.find(l => l._key === litterKey);
-    const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
-    if (!p) return;
+    const lt = (window.litters || []).find(l => l._key === litterKey);
+    if (!lt || !lt.puppies || !lt.puppies[puppyId]) return;
+    const p = lt.puppies[puppyId];
 
     let mediaList = getSortedMedia(p);
     const targetIdx = idx + direction;
@@ -11280,6 +11280,37 @@ function compressImageFile(file, maxSide = 1200, quality = 0.82) {
     mediaList.splice(targetIdx, 0, item);
 
     const reorderedMediaMap = {};
+    let firstImageSrc = null;
+
+    mediaList.forEach((m, i) => {
+      const k = m._key || `m_${Date.now()}_${i}`;
+      const clone = { ...m };
+      delete clone._key;
+      clone.order = i;
+      reorderedMediaMap[k] = clone;
+      if (!firstImageSrc && clone.type === 'image' && clone.src) {
+        firstImageSrc = clone.src;
+      }
+    });
+
+    // Update in-memory object immediately
+    p.media = reorderedMediaMap;
+    if (firstImageSrc) p.photo = firstImageSrc;
+    saveLocalCache('litters', window.litters || []);
+
+    const updates = { media: reorderedMediaMap };
+    if (firstImageSrc) updates.photo = firstImageSrc;
+
+    try {
+      await update(ref(db, `litters/${litterKey}/puppies/${puppyId}`), updates);
+      showToast('↕ 미디어 순서가 변경되었습니다.');
+      if (typeof renderPuppyDetailContent === 'function') renderPuppyDetailContent();
+      if (typeof renderPuppies === 'function') renderPuppies();
+    } catch(err) {
+      console.error('[Nudge Media Error]:', err);
+      showToast('⚠ 순서 변경 실패');
+    }
+  };
     let firstImageSrc = null;
 
     mediaList.forEach((m, i) => {
@@ -11314,7 +11345,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
     const files = Array.from(e.target.files);
     if (!files || !files.length) return;
 
-    const lt = litters.find(l => l._key === litterKey);
+    const lt = (window.litters || []).find(l => l._key === litterKey);
     const p = (lt && lt.puppies) ? lt.puppies[puppyId] : null;
     const existingList = getSortedMedia(p);
     let maxOrder = existingList.reduce((max, m) => Math.max(max, (m.order !== undefined && m.order !== null) ? m.order : 0), -1);
@@ -11344,27 +11375,43 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
         if (mediaType === 'image') {
           const compressed = await compressImageFile(f);
           const r = storageRef(storage, storagePath);
-          const task = uploadString(r, compressed, 'data_url');
-          await task;
+          await uploadString(r, compressed, 'data_url');
           storageUrl = await getDownloadURL(r);
         } else {
           const r = storageRef(storage, storagePath);
           const metadata = { contentType: f.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
-          const task = window.uploadBytesResumable(r, f, metadata);
 
-          await new Promise((resolve, reject) => {
-            task.on('state_changed', 
-              (snapshot) => {
-                const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
-              },
-              (err) => reject(err),
-              async () => {
-                storageUrl = await getDownloadURL(task.snapshot.ref);
-                resolve();
-              }
-            );
-          });
+          if (progressText) progressText.textContent = `🎥 영상 업로드 시작 중... (0%)`;
+
+          try {
+            const task = window.uploadBytesResumable(r, f, metadata);
+            let progressed = false;
+
+            await Promise.race([
+              new Promise((resolve, reject) => {
+                task.on('state_changed',
+                  (snapshot) => {
+                    progressed = true;
+                    const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                    if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
+                  },
+                  (err) => reject(err),
+                  async () => {
+                    storageUrl = await getDownloadURL(task.snapshot.ref);
+                    resolve();
+                  }
+                );
+              }),
+              new Promise((_, reject) => setTimeout(() => {
+                if (!progressed) reject(new Error('resumable_timeout'));
+              }, 3500))
+            ]);
+          } catch (resumableErr) {
+            console.warn('[Resumable Upload Fallback to uploadBytes]:', resumableErr);
+            if (progressText) progressText.textContent = `🎥 영상 직접 업로드 중... (잠시만 기다려주세요)`;
+            const result = await uploadBytes(r, f, metadata);
+            storageUrl = await getDownloadURL(result.ref);
+          }
         }
 
         const mediaItem = {
@@ -11374,6 +11421,11 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
           name: f.name,
           createdAt: Date.now()
         };
+
+        if (p) {
+          if (!p.media) p.media = {};
+          p.media[mediaKey] = mediaItem;
+        }
 
         await fbSet(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`, mediaItem);
       }
@@ -11390,149 +11442,5 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
       e.target.value = '';
     }
   };
-  window.removeDogMedia = function(idx) {
-    dogPendingMedia.splice(idx, 1);
-    renderDogMediaGrid();
-  };
-
-  
-  // ── 📱 모바일 터치 + PC 마우스 Pointer Events 기반 순서 변경 & Nudge 버튼 ──
-  let activePointerId = null;
-  let dragSrcIdx = null;
-  let longPressTimer = null;
-
-  window.nudgeMedia = function(idx, direction) {
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= editPuppyMediaArray.length) return;
-    const item = editPuppyMediaArray.splice(idx, 1)[0];
-    editPuppyMediaArray.splice(targetIdx, 0, item);
-    renderEditPuppyMediaReorderGrid();
-  };
-
-  window.renderEditPuppyMediaReorderGrid = function() {
-    const grid = document.getElementById('pm-media-reorder-grid');
-    if (!grid) return;
-    if (!editPuppyMediaArray || editPuppyMediaArray.length === 0) {
-      grid.innerHTML = '<div style="color:#94A3B8;font-size:11px;text-align:center;width:100%;padding:12px;">등록된 미디어가 없습니다. 하단에서 사진/영상을 추가해 주세요.</div>';
-      return;
-    }
-    grid.innerHTML = editPuppyMediaArray.map((m, idx) => {
-      const isVideo = m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')));
-      const thumb = isVideo
-        ? '<div style="width:100%;height:75px;background:linear-gradient(135deg,#1E40AF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border-radius:6px;color:#fff;">🎥</div>'
-        : '<img src="' + m.src + '" style="width:100%;height:75px;object-fit:cover;border-radius:6px;display:block;pointer-events:none;">';
-      
-      return `
-        <div class="pm-reorder-item" data-idx="${idx}" onpointerdown="handleMediaPointerDown(event, ${idx})" style="position:relative;border:2px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff;touch-action:none;user-select:none;cursor:grab;">
-          /* 1, 2, 3 순번 배지 */
-          <div style="position:absolute;top:3px;left:3px;background:rgba(15,23,42,0.85);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:10px;z-index:2;pointer-events:none;">${idx + 1}</div>
-          
-          /* 삭제 버튼 */
-          <button type="button" onclick="removeEditPuppyMedia(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(220,38,38,0.9);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;padding:0;">✕</button>
-          
-          ${thumb}
-
-          /* ◀ / ▶ 이동 폴백 버튼 */
-          <div style="position:absolute;bottom:3px;left:0;right:0;display:flex;justify-space-between;padding:0 3px;z-index:3;">
-            <button type="button" onclick="nudgeMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">◀</button>
-            <button type="button" onclick="nudgeMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:4px;width:22px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">▶</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  };
-
-  window.handleMediaPointerDown = function(e, idx) {
-    if (e.target.tagName === 'BUTTON') return;
-    dragSrcIdx = idx;
-    const itemEl = e.currentTarget;
-
-    longPressTimer = setTimeout(() => {
-      activePointerId = e.pointerId;
-      itemEl.setPointerCapture(e.pointerId);
-      itemEl.style.opacity = '0.4';
-      itemEl.style.borderColor = '#3B82F6';
-
-      itemEl.onpointermove = (ev) => {
-        ev.preventDefault();
-        const elementBelow = document.elementFromPoint(ev.clientX, ev.clientY);
-        if (!elementBelow) return;
-        const targetCell = elementBelow.closest('.pm-reorder-item');
-        if (targetCell) {
-          const targetIdx = parseInt(targetCell.getAttribute('data-idx'));
-          if (!isNaN(targetIdx) && targetIdx !== dragSrcIdx) {
-            const movedItem = editPuppyMediaArray.splice(dragSrcIdx, 1)[0];
-            editPuppyMediaArray.splice(targetIdx, 0, movedItem);
-            dragSrcIdx = targetIdx;
-            renderEditPuppyMediaReorderGrid();
-          }
-        }
-      };
-
-      itemEl.onpointerup = itemEl.onpointercancel = (ev) => {
-        clearTimeout(longPressTimer);
-        itemEl.onpointermove = null;
-        itemEl.onpointerup = null;
-        itemEl.onpointercancel = null;
-        if (activePointerId !== null) {
-          try { itemEl.releasePointerCapture(activePointerId); } catch(ex){}
-          activePointerId = null;
-        }
-        itemEl.style.opacity = '1';
-        itemEl.style.borderColor = '#CBD5E1';
-        renderEditPuppyMediaReorderGrid();
-      };
-    }, 150);
-
-    itemEl.onpointerleave = () => {
-      if (activePointerId === null) clearTimeout(longPressTimer);
-    };
-  };
-
-  window.removeEditPuppyMedia = function(idx) {
-    editPuppyMediaArray.splice(idx, 1);
-    renderEditPuppyMediaReorderGrid();
-  };
-
-
-
-  // ── 깃허브 마지막 수정 시간 표출 ──
-  async function fetchGitHubLastCommit() {
-    try {
-      const res = await fetch('https://api.github.com/repos/daveheo89/Goldie/commits?per_page=1');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data[0] && data[0].commit && data[0].commit.committer) {
-          const date = new Date(data[0].commit.committer.date);
-          const dateStr = `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
-          const el = document.getElementById('github-last-update');
-          if (el) el.innerHTML = `🕒 깃허브 마지막 수정: ${dateStr}`;
-        }
-      }
-    } catch(e) {}
-  }
-  setTimeout(fetchGitHubLastCommit, 3000);
-
-init();
-
-
-
-</script>
-
-
-
-
-<!-- 미디어 업로드 진행률 오버레이 -->
-<div id="upload-progress-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.75);backdrop-filter:blur(4px);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:'Noto Sans KR',sans-serif;">
-  <div style="font-size:3rem;margin-bottom:12px;animation:pulse 1.5s infinite;">🎥</div>
-  <div id="upload-progress-text" style="font-size:1.2rem;font-weight:900;letter-spacing:-0.5px;">🎥 영상 업로드 중... 0%</div>
-  <div style="font-size:0.85rem;color:#94A3B8;margin-top:6px;">잠시만 기다려주세요 (창을 닫지 마세요)</div>
-</div>
-
-</body>
-
-
-
-</html>
 
 
