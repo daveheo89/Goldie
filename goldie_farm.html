@@ -80,7 +80,18 @@
       }
     }
   }
-  window.attemptLogin = attemptLogin;
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var ls = document.getElementById('loading-screen');
+      if (ls) {
+        ls.classList.remove('active');
+        ls.style.display = 'none';
+      }
+    }, 1200);
+  });
+
+window.attemptLogin = attemptLogin;
 
 
 
@@ -250,7 +261,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(-
   gap: 16px;
 }
 #loading-screen.active {
-  display: flex !important;
+  display: flex;
 }
 #loading-screen .ls-icon{font-size:4rem;animation:bounce .8s infinite alternate;}
 
