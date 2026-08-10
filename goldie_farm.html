@@ -16448,6 +16448,83 @@ window.closeLightbox = function(){
 
 
 
+
+  // ── 모듈 외부 HTML onclick에서 호출하기 위한 window 노출 ──
+  window.copyPuppyProfileLink = async function(litterKey, puppyId) {
+    const url = 'https://daveheo89.github.io/Goldie/puppy_profile.html?litter=' + litterKey + '&puppy=' + puppyId;
+    try {
+      await navigator.clipboard.writeText(url);
+      window.toast && window.toast('공개 분양 프로필 링크가 복사되었습니다! 카카오톡/문자로 전송하세요.');
+    } catch(e) {
+      prompt('아래 링크를 복사하세요:', url);
+    }
+  };
+
+  let dogPendingMedia = [];
+  function renderDogMediaGrid() {
+    const grid = document.getElementById('dm-media-grid');
+    if (!grid) return;
+    if (dogPendingMedia.length === 0) {
+      grid.innerHTML = '<div style="color:#94A3B8;font-size:11px;text-align:center;width:100%;padding:8px;">추가된 미디어 없음</div>';
+      return;
+    }
+    grid.innerHTML = dogPendingMedia.map(function(item, idx) {
+      const thumb = item.type === 'video'
+        ? '<div style="width:100%;height:65px;background:linear-gradient(135deg,#1E40AF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:1.4rem;border-radius:5px;">🎥</div>'
+        : '<img src="' + item.previewSrc + '" style="width:100%;height:65px;object-fit:cover;border-radius:5px;display:block;">';
+      return '<div style="position:relative;border:2px solid #CBD5E1;border-radius:7px;overflow:hidden;background:#fff;">' +
+        thumb +
+        '<button onclick="window.removeDogMedia(' + idx + ')" style="position:absolute;top:1px;right:1px;background:rgba(220,38,38,0.85);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>' +
+        '</div>';
+    }).join('');
+  }
+  window.addDogMediaFiles = async function(e, mediaType) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setSyncing(true);
+    try {
+      for (const file of files) {
+        if (mediaType === 'image') {
+          const compressed = await compressImageFile(file);
+          dogPendingMedia.push({ type: 'image', file, previewSrc: compressed, compressed });
+        } else {
+          const previewUrl = URL.createObjectURL(file);
+          dogPendingMedia.push({ type: 'video', file, previewSrc: previewUrl });
+        }
+      }
+      renderDogMediaGrid();
+    } catch(err) {
+      alert('미디어 처리 실패: ' + err.message);
+    } finally {
+      setSyncing(false);
+      e.target.value = '';
+    }
+  };
+  window.removeDogMedia = function(idx) {
+    dogPendingMedia.splice(idx, 1);
+    renderDogMediaGrid();
+  };
+
+  window.pmDragStart = function(e, idx) {
+    pmDragSrcIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.style.opacity = '0.5';
+  };
+  window.pmDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+  window.pmDragEnd = function(e) { e.currentTarget.style.opacity = '1'; };
+  window.pmDrop = function(e, targetIdx) {
+    e.preventDefault();
+    if (pmDragSrcIdx === null || pmDragSrcIdx === targetIdx) return;
+    const dragged = editPuppyMediaArray.splice(pmDragSrcIdx, 1)[0];
+    editPuppyMediaArray.splice(targetIdx, 0, dragged);
+    pmDragSrcIdx = null;
+    renderEditPuppyMediaReorderGrid();
+  };
+  window.removeEditPuppyMedia = function(idx) {
+    editPuppyMediaArray.splice(idx, 1);
+    renderEditPuppyMediaReorderGrid();
+  };
+
 init();
 
 
