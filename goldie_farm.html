@@ -3539,6 +3539,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
   <script type="module">
+  let editPuppyLitterKey = null;
+  let editPuppyId = null;
 
 
 
@@ -6864,6 +6866,8 @@ let draggedEditMediaIdx = null;
 window.editPuppyLitterKey = null;
 window.editPuppyId = null;
 window.openEditPuppyModal = function(litterKey, puppyId) {
+  editPuppyLitterKey = litterKey;
+  editPuppyId = puppyId;
   window.editPuppyLitterKey = litterKey;
   window.editPuppyId = puppyId;
   const editPuppyLitterKey = litterKey;
