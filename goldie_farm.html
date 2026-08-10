@@ -4931,73 +4931,66 @@ async function init(){
 
 
 
-let currentTab = 'dogs';
-  window.currentTab = 'dogs';
+window.currentTab = 'dogs';
+
 window.showTab = function(tab) {
   window.currentTab = tab;
-  const currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-
-  const btn = document.querySelector(`.tab-btn[onclick*="${tab}"]`);
-  if (btn) btn.classList.add('active');
-
-  const content = document.getElementById(`tab-${tab}`);
-  if (content) content.style.display = 'block';
-
-  // (P2.d) 새끼 탭 진입 시 지연 구독 (중복 구독 방지)
-  if (tab === 'puppies') {
-    if (!window._littersSubscribed) {
-      window._littersSubscribed = true;
-      onValue(ref(db, 'litters'), snap => {
-        litters = [];
-        snap.forEach(child => { litters.push({ _key: child.key, ...child.val() }); });
-        saveLocalCache('litters', litters);
-        if (typeof window.renderPuppies === 'function') window.renderPuppies();
-      }, error => {
-        showFirebaseError(error);
-      });
-    } else {
-      if (typeof window.renderPuppies === 'function') window.renderPuppies();
+  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
+  
+  // 1. 탭 콘텐츠 가시성 전환 (.hidden 클래스 및 style.display 동시 제어)
+  tabIds.forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) {
+      if (t === tab) {
+        el.classList.remove('hidden');
+        el.style.display = 'block';
+      } else {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+      }
     }
-  } else if (tab === 'dogs') {
-    if (typeof window.renderDogs === 'function') window.renderDogs();
-  } else if (tab === 'breeding') {
-    if (typeof window.renderBreeding === 'function') window.renderBreeding();
-  } else if (tab === 'kennel') {
-    if (typeof window.renderKennels === 'function') window.renderKennels();
-  } else if (tab === 'delivery') {
-    if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
-  } else if (tab === 'treatment') {
-    if (typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+  });
+
+  // 2. 탭 상단 버튼 active 클래스 전환
+  const tabButtons = document.querySelectorAll('.tabs .tab');
+  tabButtons.forEach(btn => {
+    if (btn) {
+      const onclickAttr = btn.getAttribute('onclick') || '';
+      btn.classList.toggle('active', onclickAttr.includes(`'${tab}'`) || onclickAttr.includes(`"${tab}"`));
+    }
+  });
+
+  // 3. 탭별 데이터 렌더링 및 파이어베이스 구독
+  try {
+    if (tab === 'puppies') {
+      if (!window._littersSubscribed) {
+        window._littersSubscribed = true;
+        onValue(ref(db, 'litters'), snap => {
+          litters = [];
+          snap.forEach(child => { litters.push({ _key: child.key, ...child.val() }); });
+          saveLocalCache('litters', litters);
+          if (typeof window.renderPuppies === 'function') window.renderPuppies();
+        }, error => {
+          showFirebaseError(error);
+        });
+      } else {
+        if (typeof window.renderPuppies === 'function') window.renderPuppies();
+      }
+    } else if (tab === 'dogs') {
+      if (typeof window.renderDogs === 'function') window.renderDogs();
+    } else if (tab === 'breeding') {
+      if (typeof window.renderBreeding === 'function') window.renderBreeding();
+    } else if (tab === 'kennels' || tab === 'kennel') {
+      if (typeof window.renderKennels === 'function') window.renderKennels();
+    } else if (tab === 'delivery') {
+      if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+    } else if (tab === 'treatment') {
+      if (typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+    }
+  } catch(e) {
+    console.error('[Tab Switch Error]:', e);
   }
 };
-
-
-
-
-
-
-
-// ═══════════════════════════════════════
-
-
-
-//  개체 탭
-
-
-
-// ═══════════════════════════════════════
-
-
-
-function allDogs(){ const fList = (window.females && window.females.length) ? window.females : (females || []); const mList = (window.males && window.males.length) ? window.males : (males || []); return [...fList.map(d=>({...d,sex:'female'})), ...mList.map(d=>({...d,sex:'male'}))]; }
-
-
-
-
-
-
 
 let renderDogsDebounceTimer = null;
 function debouncedRenderDogs() {
