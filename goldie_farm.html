@@ -3335,7 +3335,22 @@ window.uploadVideoFileAndGetUrl = window.uploadVideoFileAndGetUrl || async funct
 
       <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
 
-
+      <!-- 추가 사진/영상 갤러리 -->
+      <div class="form-group">
+        <label style="font-size:12px;font-weight:800;">📸 추가 사진/영상 (여러 장 가능)</label>
+        <p style="font-size:11px;color:#64748B;margin-top:2px;margin-bottom:8px;">분양 프로필에서 슬라이드로 표시됩니다.</p>
+        <div id="dm-media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;min-height:40px;background:#F1F5F9;padding:6px;border-radius:8px;border:1px dashed #CBD5E1;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#F8FAFC;border:1.5px dashed #94A3B8;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#334155;">
+            📷 사진 추가
+            <input type="file" accept="image/*,image/heic,image/heif" multiple style="display:none;" onchange="addDogMediaFiles(event,'image')">
+          </label>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#FFFBEB;border:1.5px dashed #FCD34D;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#B45309;">
+            🎥 영상 추가
+            <input type="file" accept="video/*" multiple style="display:none;" onchange="addDogMediaFiles(event,'video')">
+          </label>
+        </div>
+      </div>
 
       <div class="modal-actions">
 
@@ -9493,10 +9508,9 @@ window.handleDogPhoto=async function(e){
 
 
 
-  }
-
-
-
+  
+  dogPendingMedia = [];
+  renderDogMediaGrid();
 };
 
 
@@ -9551,11 +9565,25 @@ window.saveDog=async function(){
 
       const path=dogSelectedSex==='female'?'females':'males';
 
+      const newRef = await fbPush(path, newDog);
+      const newKey = newRef ? newRef.key : null;
 
-
-      await fbPush(path,newDog);
-
-
+      // Upload any pending additional media
+      if (newKey && dogPendingMedia && dogPendingMedia.length > 0) {
+        for (const item of dogPendingMedia) {
+          const mk = 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+          try {
+            if (item.type === 'image') {
+              const url = await window.uploadImageAndGetUrl(item.compressed, path + '/' + newKey + '/' + mk + '.jpg');
+              await fbSet(path + '/' + newKey + '/media/' + mk, { type: 'image', src: url, createdAt: Date.now() });
+            } else if (item.type === 'video') {
+              const url = await window.uploadVideoFileAndGetUrl(item.file, path + '/' + newKey + '/' + mk + '.mp4');
+              await fbSet(path + '/' + newKey + '/media/' + mk, { type: 'video', src: url, name: item.file.name, createdAt: Date.now() });
+            }
+          } catch(me) { console.warn('Dog media upload error:', me); }
+        }
+        dogPendingMedia = [];
+      }
 
       showToast(`✅ ${code} 추가 완료!`);
 
@@ -9587,11 +9615,24 @@ window.saveDog=async function(){
 
       if(dogPendingPhoto!==null)updates.photo=dogPendingPhoto;
 
-
-
       await fbUpdate(`${path}/${dogEditCode}`,updates);
 
-
+      // Upload any pending additional media
+      if (dogPendingMedia && dogPendingMedia.length > 0) {
+        for (const item of dogPendingMedia) {
+          const mk = 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+          try {
+            if (item.type === 'image') {
+              const url = await window.uploadImageAndGetUrl(item.compressed, path + '/' + dogEditCode + '/' + mk + '.jpg');
+              await fbSet(path + '/' + dogEditCode + '/media/' + mk, { type: 'image', src: url, createdAt: Date.now() });
+            } else if (item.type === 'video') {
+              const url = await window.uploadVideoFileAndGetUrl(item.file, path + '/' + dogEditCode + '/' + mk + '.mp4');
+              await fbSet(path + '/' + dogEditCode + '/media/' + mk, { type: 'video', src: url, name: item.file.name, createdAt: Date.now() });
+            }
+          } catch(me) { console.warn('Dog media upload error:', me); }
+        }
+        dogPendingMedia = [];
+      }
 
       showToast(`✅ ${dog.code} 수정 완료!`);
 
@@ -11125,17 +11166,24 @@ window.savePuppy = async function() {
       reorderedMediaMap[k] = clone;
     });
 
+    // Upload cover photo to Storage if it is a new data URL
+    let finalCoverPhoto = puppyPendingPhoto || null;
+    if (finalCoverPhoto && finalCoverPhoto.startsWith('data:')) {
+      const coverPath = 'litters/' + puppyEditLitterKey + '/puppies/' + puppyEditPuppyId + '/cover.jpg';
+      finalCoverPhoto = await window.uploadImageAndGetUrl(finalCoverPhoto, coverPath);
+    }
+
     const updates = {
       name,
       sex,
       status,
       showSireInProfile,
       showDamInProfile,
-      photo: puppyPendingPhoto || null,
+      photo: finalCoverPhoto,
       media: reorderedMediaMap
     };
 
-    await fbUpdate(`litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}`, updates);
+    await fbUpdate('litters/' + puppyEditLitterKey + '/puppies/' + puppyEditPuppyId, updates);
     window.toast && window.toast('✅ 새끼 정보, 부모견 노출 설정 및 미디어 순서가 저장되었습니다!');
 
     closePuppyModal();
@@ -15231,7 +15279,7 @@ function renderPuppyDetailContent(){
       }
 
       return `
-      <div class="pd-media-cell" draggable="true" ondragstart="handlePuppyMediaDragStart(event, ${idx})" ondragover="handlePuppyMediaDragOver(event)" ondrop="handlePuppyMediaDrop(event, ${idx}, '${pdLitterKey}', '${pdPuppyId}')" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:grab;">
+      <div class="pd-media-cell" style="position:relative; background:#000; overflow:hidden; border-radius:10px; cursor:default;">
         ${videoTagHtml}
         <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.65); color:#fff; z-index:2; font-size:10px;">🎥 동영상 (${idx+1})</span>
         <button class="pd-media-kakao" title="카톡 영상 파일 전송" style="z-index:4;" onclick="event.stopPropagation(); shareVideoFileToKakao('${vidSrc}', '${p.name||pdPuppyId}', '${motherInfo.name}', '${sireInfo.name}')">💬 카톡 전송</button>
@@ -15239,7 +15287,7 @@ function renderPuppyDetailContent(){
       </div>`;
     } else {
       return `
-      <div class="pd-media-cell" draggable="true" ondragstart="handlePuppyMediaDragStart(event, ${idx})" ondragover="handlePuppyMediaDragOver(event)" ondrop="handlePuppyMediaDrop(event, ${idx}, '${pdLitterKey}', '${pdPuppyId}')" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')" style="cursor:grab;">
+      <div class="pd-media-cell" onclick="openLightbox('${m.src}', '${esc(m.label||'')}', 'image')" style="cursor:pointer;">
         <img src="${m.src}">
         <span class="pd-media-type-badge" style="background:rgba(0,0,0,0.6); color:#fff; z-index:2; font-size:10px;">📷 이미지 (${idx+1})</span>
         <button class="pd-media-dl" title="다운로드" onclick="event.stopPropagation(); downloadMedia('${m.src}', '${p.name||pdPuppyId}_photo.jpg')">💾</button>
@@ -15269,11 +15317,13 @@ function renderPuppyDetailContent(){
   container.innerHTML = `
     <!-- 미디어 갤러리 섹션 -->
     <div class="pd-section" style="background:var(--gold-bg);border-bottom:1px solid var(--border);">
-      <div class="pd-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="pd-section-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <span>📸 사진 & 🎥 영상 갤러리 (${mediaList.length}개)</span>
-        <button class="btn" style="font-size:11px; padding:4px 10px; background:var(--gold); color:#fff;" onclick="savePuppyMediaOrder('${pdLitterKey}', '${pdPuppyId}')">💾 순서 저장</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn" style="font-size:11px; padding:5px 12px; background:#6366F1; color:#fff; border-radius:8px;" onclick="openEditPuppyModal('${pdLitterKey}', '${pdPuppyId}')">✏️ 순서 변경 & 설정</button>
+          <button class="btn" style="font-size:11px; padding:5px 12px; background:#10B981; color:#fff; border-radius:8px;" onclick="copyPuppyProfileLink('${pdLitterKey}', '${pdPuppyId}')">🔗 링크 복사</button>
+        </div>
       </div>
-      <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">💡 미디어를 드래그하여 순서를 바꾼 후 [💾 순서 저장] 버튼을 누르세요.</p>
       <div class="pd-gallery">
         ${mediaCells}
         <div class="pd-media-add" title="기기 사진 업로드">
