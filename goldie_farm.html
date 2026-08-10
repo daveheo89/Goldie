@@ -3348,358 +3348,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </div>
       </div>
 
-      <div class="modal-actions">
-
-
-
-        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
-
-
-
-        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-  </div>
-
-
-
-
-
-
-
-  <!-- 출산 기록 추가 모달 -->
-
-
-
-  <div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
-
-
-
-    <div class="modal">
-
-
-
-      <div class="modal-header">
-
-
-
-        <h2 id="litter-modal-title">출산 기록 추가</h2>
-
-
-
-        <button class="modal-close" onclick="closeLitterModal()">✕</button>
-
-
-
-      </div>
-
-
-
-      <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
-
-
-
-      <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
-
-
-
-      <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
-
-
-
-      <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
-
-
-
-      <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
-
-
-
-      <div class="modal-actions" style="display:flex; gap:8px;">
-
-
-
-        <button class="btn btn-danger" id="lm-delete-btn" onclick="deleteLitter()" style="display:none; flex:1;">🗑️ 삭제</button>
-
-
-
-        <button class="btn btn-cancel" onclick="closeLitterModal()" style="flex:1;">취소</button>
-
-
-
-        <button class="btn" onclick="saveLitter()" style="flex:1;" id="lm-save-btn">✅ 저장</button>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-  </div>
-
-
-
-
-
-
-
-  <!-- 새끼 정보 수정 모달 -->
-
-
-
-    <!-- 새끼 정보 수정 모달 -->
-  <div class="modal-overlay" id="puppy-modal" onclick="handlePuppyModalOverlay(event)">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>새끼 정보 수정 & 미디어 관리</h2>
-        <button class="modal-close" onclick="closePuppyModal()">✕</button>
-      </div>
-
-      <div class="photo-upload-wrap" id="pm-photo-wrap">
-        <input type="file" accept="image/*,image/heic,image/heif" id="pm-photo-input" onchange="handlePuppyPhoto(event)">
-        <div class="pu-hint" id="pm-hint"><div class="ph-icon">📷</div><div>대표 사진 등록 (선택)</div></div>
-        <div class="pu-overlay" id="pm-overlay">📷 사진 변경</div>
-      </div>
-
-      <div class="form-group">
-        <label>이름</label>
-        <input type="text" id="pm-name" placeholder="예: 순심, 똘이">
-      </div>
-
-      <div class="form-group">
-        <label>성별</label>
-        <select id="pm-sex">
-          <option value="unknown">미정</option>
-          <option value="female">♀ 암컷</option>
-          <option value="male">♂ 수컷</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>분양 상태</label>
-        <select id="pm-status">
-          <option value="분양 전">분양 전</option>
-          <option value="예약">예약</option>
-          <option value="분양 완료">분양 완료</option>
-        </select>
-      </div>
-
-      <!-- ⚙️ 부/모견 공개 프로필 노출 설정 -->
-      <div class="form-group" style="background:#F8FAFC; border:1px solid #CBD5E1; padding:12px; border-radius:10px; margin-bottom:14px;">
-        <label style="font-size:12px; font-weight:800; color:#334155; margin-bottom:6px;">⚙️ 공개 분양 프로필(웹) 부/모견 노출 설정</label>
-        <div style="display:flex; gap:16px; margin-top:6px;">
-          <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-            <input type="checkbox" id="pm-show-sire"> 🐕 부견 노출
-          </label>
-          <label style="font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-            <input type="checkbox" id="pm-show-dam"> 🐕‍🦺 모견 노출
-          </label>
-        </div>
-      </div>
-
-      <!-- 📸 미디어 순서 변경 그리드 -->
-      <div class="form-group">
-        <label style="font-size:12px; font-weight:800;">📸 사진 & 🎥 영상 순서 변경 (드래그하여 이동)</label>
-        <p style="font-size:11px; color:#64748B; margin-top:2px; margin-bottom:8px;">💡 항목을 마우스/손가락으로 끌어서 원하는 위치에 놓으세요.</p>
-        <div id="pm-media-reorder-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; min-height:60px; background:#F1F5F9; padding:8px; border-radius:8px; border:1px dashed #CBD5E1;"></div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn btn-cancel" onclick="closePuppyModal()">취소</button>
-        <button class="btn" id="pm-save-btn" onclick="savePuppy()">✅ 설정 및 순서 저장</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 배송 일정 등록/수정 모달 -->
-
-
-
-  <div class="modal-overlay" id="delivery-modal" onclick="handleDeliveryModalOverlay(event)">
-
-
-
-    <div class="modal">
-
-
-
-      <div class="modal-header">
-
-
-
-        <h2 id="delivery-modal-title">배송 일정 등록</h2>
-
-
-
-        <button class="modal-close" onclick="closeDeliveryModal()">✕</button>
-
-
-
-      </div>
-
-
-
-      <div class="form-group">
-
-
-
-        <label>분양 계약건 <span class="req">*</span></label>
-
-
-
-        <select id="dev-contract">
-
-
-
-          <option value="">-- 계약 선택 --</option>
-
-
-
-        </select>
-
-
-
-      </div>
-
-
-
-      <div class="form-group">
-
-
-
-        <label>배송 예정 날짜 <span class="req">*</span></label>
-
-
-
-        <input type="date" id="dev-date">
-
-
-
-      </div>
-
-
-
-      <div class="form-group">
-
-
-
-        <label>배송 예정 시간 <span class="req">*</span></label>
-
-
-
-        <input type="time" id="dev-time">
-
-
-
-      </div>
-
-
-
-      <div class="form-group">
-
-
-
-        <label>배송 주소 <span class="req">*</span></label>
-
-
-
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-
-
-
-          <input id="dev-addr" placeholder="주소 검색 버튼을 눌러 입력" readonly style="flex:1">
-
-
-
-          <button type="button" class="btn-outline btn-sm" onclick="searchDeliveryAddress()" style="padding:8px 12px;white-space:nowrap;margin:0;font-size:12px;height:38px;">🔍 주소 검색</button>
-
-
-
-        </div>
-
-
-
-        <input id="dev-addr-detail" placeholder="상세 주소를 기입해주세요.">
-
-
-
-      </div>
-
-
-
-      <div class="form-group">
-
-
-
-        <label>비고 (메모)</label>
-
-
-
-        <textarea id="dev-memo" placeholder="배송 방식이나 특이사항 기재" style="width:100%;height:60px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
-
-
-
-      </div>
-
-
-
-      <div class="form-group" id="dev-status-group" style="display:none;">
-
-
-
-        <label>배송 상태</label>
-
-
-
-        <select id="dev-status">
-
-
-
-          <option value="예정">배송 예정</option>
-
-
-
-          <option value="완료">배송 완료</option>
-
-
-
-        </select>
-
-
-
-      </div>
-
-
-
-      <div class="modal-actions">
-
-
-
+      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn" id="dev-gcal-btn" onclick="openGoogleCalendarForDelivery()" style="background:#4285F4;color:#fff;flex:1;font-weight:900;">📅 구글 캘린더 등록</button>
         <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
-
-
-
         <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
-
-
-
-        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ 저장</button>
-
-
-
+        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ DB 저장</button>
       </div>
 
 
@@ -8689,6 +8342,78 @@ window.searchDeliveryAddress = function() {
 
 
 
+
+
+
+  // ── 계약 선택 시 계약자 정보 (주소, 날짜, 강아지, 비고) 양식 자동 채움 ──
+  window.handleContractSelectForDelivery = function(contractId) {
+    if (!contractId) return;
+    const c = (contracts || []).find(item => item._key === contractId);
+    if (!c) return;
+
+    if (c.delivery_date) {
+      document.getElementById('dev-date').value = c.delivery_date;
+    }
+    if (c.buyer_address || c.address) {
+      document.getElementById('dev-addr').value = c.buyer_address || c.address || '';
+    }
+    if (c.buyer_address_detail || c.address_detail) {
+      document.getElementById('dev-addr-detail').value = c.buyer_address_detail || c.address_detail || '';
+    }
+
+    const memoText = `[계약자: ${c.buyer_name || '미기입'} / ${c.buyer_phone || '연락처없음'}]\n[분양자견: ${c.dogname || '이름없음'} (${c.femaleCode || '모견'}x${c.maleCode || '부견'})]\n[계약비고: ${c.notes || '없음'}]`;
+    document.getElementById('dev-memo').value = memoText;
+    showToast(`📋 ${c.buyer_name || '계약자'}님의 주소 및 분양 정보가 자동 입력되었습니다.`);
+  };
+
+  // ── 구글 캘린더 연동 일정 새 탭 오픈 ──
+  window.openGoogleCalendarForDelivery = function() {
+    const contractId = document.getElementById('dev-contract').value;
+    const dateVal = document.getElementById('dev-date').value;
+    const timeVal = document.getElementById('dev-time').value || '12:00';
+    const addr = document.getElementById('dev-addr').value.trim();
+    const addrDetail = document.getElementById('dev-addr-detail').value.trim();
+    const memo = document.getElementById('dev-memo').value.trim();
+
+    if (!dateVal) {
+      showToast('배송 날짜를 먼저 선택해주세요.');
+      return;
+    }
+
+    const c = (contracts || []).find(item => item._key === contractId) || {};
+    const buyerName = c.buyer_name || '계약자';
+    const buyerPhone = c.buyer_phone || '';
+    const dogName = c.dogname || '골든리트리버';
+    const femaleCode = c.femaleCode || '모견';
+    const maleCode = c.maleCode || '부견';
+
+    const fullAddr = (addr + ' ' + addrDetail).trim();
+    const title = `[골디쉼터 배송] ${buyerName}님 자택 배송 (${dogName})`;
+
+    // 구글 캘린더 날짜/시간 포맷 (YYYYMMDDTHHmmSS)
+    const cleanDate = dateVal.replace(/-/g, '');
+    const cleanTime = timeVal.replace(/:/g, '') + '00';
+    
+    // 시작 시간
+    const startIso = `${cleanDate}T${cleanTime}`;
+
+    # 1시간 뒤 종료 시간 계산
+    const startDateObj = new Date(`${dateVal}T${timeVal}:00`);
+    const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
+    const endYear = endDateObj.getFullYear();
+    const endMonth = String(endDateObj.getMonth() + 1).padStart(2, '0');
+    const endDate = String(endDateObj.getDate()).padStart(2, '0');
+    const endHours = String(endDateObj.getHours()).padStart(2, '0');
+    const endMins = String(endDateObj.getMinutes()).padStart(2, '0');
+    const endIso = `${endYear}${endMonth}${endDate}T${endHours}${endMins}00`;
+
+    const details = `🐾 [골디쉼터 자택 배송 일정]\n- 계약자: ${buyerName} (${buyerPhone})\n- 분양 강아지: ${dogName} (모견: ${femaleCode} / 부견: ${maleCode})\n- 배송 주소: ${fullAddr}\n- 비고 메모: ${memo}`;
+
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startIso}/${endIso}&location=${encodeURIComponent(fullAddr)}&details=${encodeURIComponent(details)}`;
+
+    window.open(gcalUrl, '_blank');
+    showToast('📅 구글 캘린더 일정 등록 화면으로 이동합니다!');
+  };
 
 
 window.openAddDeliveryModal = function(dateStr) {
