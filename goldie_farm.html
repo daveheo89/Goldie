@@ -24,63 +24,24 @@
 
 
 <script>
-  if (sessionStorage.getItem('goldi_auth') === 'authenticated') {
-    document.documentElement.classList.add('authenticated');
-  } else {
-    document.documentElement.classList.remove('authenticated');
-    var ls = document.getElementById('loading-screen');
-    if (ls) { ls.style.display = 'none'; ls.classList.remove('active'); }
-  }
+  // 실제 로그인 판단은 모듈 안의 Firebase Auth(onAuthStateChanged)가 담당한다.
+  // 여기서는 그 결과가 오기 전까지 안전하게 "미인증" 상태로 화면을 유지한다.
+  document.documentElement.classList.remove('authenticated');
 
+  // 모듈 로딩 전에 사용자가 버튼을 눌러도 안전하도록 임시 함수 (모듈이 로드되면 덮어써짐)
   function attemptLogin() {
-    var pwInput = document.getElementById('login-password');
-    var pw = pwInput ? pwInput.value.trim() : '';
-    var err = document.getElementById('login-error');
-    var overlay = document.getElementById('login-overlay');
-    var main = document.getElementById('main-content');
-    var loader = document.getElementById('loading-screen');
-
-    if (pw === '5900') {
-      sessionStorage.setItem('goldi_auth', 'authenticated');
-      document.documentElement.classList.add('authenticated');
-      if (err) err.style.display = 'none';
-      if (overlay) overlay.style.display = 'none';
-      if (main) {
-        main.style.display = 'block';
-        main.style.opacity = '1';
+    var btn = document.querySelector('#login-overlay button');
+    if (btn) { btn.disabled = true; btn.textContent = '로그인 준비 중...'; }
+    setTimeout(function(){
+      if (typeof window.attemptLogin === 'function' && window.attemptLogin !== attemptLogin) {
+        window.attemptLogin();
+      } else if (btn) {
+        btn.disabled = false; btn.textContent = '인증하기';
       }
-      if (loader) loader.style.display = 'none';
-
-      var attempts = 0;
-      function tryRenderOnLogin() {
-        attempts++;
-        if (typeof window.renderDogs === 'function') {
-          try { window.renderDogs(); } catch(e){}
-          try {
-            var pupTab = document.getElementById('tab-puppies');
-            if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
-              window.renderPuppies();
-            }
-          } catch(e){}
-        } else if (attempts < 30) {
-          setTimeout(tryRenderOnLogin, 100);
-        }
-      }
-      tryRenderOnLogin();
-    } else {
-      if (err) err.style.display = 'block';
-      if (pwInput) {
-        pwInput.value = '';
-        pwInput.focus();
-      }
-      var card = overlay ? overlay.querySelector('.card') : null;
-      if (card) {
-        card.style.animation = 'none';
-        setTimeout(function() { card.style.animation = 'shake 0.4s ease'; }, 10);
-      }
-    }
+    }, 400);
   }
-  
+  window.attemptLogin = attemptLogin;
+
   document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
       var ls = document.getElementById('loading-screen');
@@ -90,53 +51,6 @@
       }
     }, 1200);
   });
-
-window.attemptLogin = attemptLogin;
-
-
-
-
-
-
-
-
-window.currentTab = 'dogs';
-window.showTab = function(tab) {
-  window.currentTab = tab;
-  var tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
-  
-  tabIds.forEach(function(t) {
-    var el = document.getElementById('tab-' + t);
-    if (el) {
-      if (t === tab) {
-        el.classList.remove('hidden');
-        el.style.display = 'block';
-      } else {
-        el.classList.add('hidden');
-        el.style.display = 'none';
-      }
-    }
-  });
-
-  var tabButtons = document.querySelectorAll('.tabs .tab');
-  tabButtons.forEach(function(btn) {
-    if (btn) {
-      var onclickAttr = btn.getAttribute('onclick') || '';
-      btn.classList.toggle('active', onclickAttr.indexOf("'" + tab + "'") !== -1 || onclickAttr.indexOf('"' + tab + '"') !== -1);
-    }
-  });
-
-  try {
-    if (tab === 'puppies' && typeof window.renderPuppies === 'function') window.renderPuppies();
-    if (tab === 'dogs' && typeof window.renderDogs === 'function') window.renderDogs();
-    if (tab === 'breeding' && typeof window.renderBreeding === 'function') window.renderBreeding();
-    if ((tab === 'kennels' || tab === 'kennel') && typeof window.renderKennels === 'function') window.renderKennels();
-    if (tab === 'delivery' && typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
-    if (tab === 'treatment' && typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
-  } catch(e) {
-    console.error('[Tab Switch Error]:', e);
-  }
-};
 
 </script>
 
@@ -1995,76 +1909,16 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-<!-- 🚀 초고속 인라인 부팅 (Firebase SDK 로드 전에 즉시 실행) -->
-
+<!-- 로딩화면 안전장치: 모듈의 Firebase Auth 처리가 끝날 때까지 대기, 너무 오래 걸리면 강제 해제 -->
 <script>
-
 (function(){
-
-  var isAuth = sessionStorage.getItem('goldi_auth') === 'authenticated';
-
-  if (!isAuth) {
-    var loader = document.getElementById('loading-screen');
-    if (loader) loader.style.display = 'none';
-    var login = document.getElementById('login-overlay');
-    if (login) login.style.display = 'flex';
-    return;
-  } // 미인증 상태면 기존 로그인 흐름 유지
-
-
-
-  // 이미 인증된 세션: 로그인 화면 제거 & 메인 화면 즉시 표시
-
-  document.addEventListener('DOMContentLoaded', function(){
-
-    var login = document.getElementById('login-overlay');
-
-    var main = document.getElementById('main-content');
-
-    var loader = document.getElementById('loading-screen');
-
-
-
-    if (login) login.style.display = 'none';
-
-    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
-
-
-
-    // 캐시 데이터가 있으면 로딩 화면도 즉시 제거 (0.01초 체감)
-
-    try {
-
-      var cf = localStorage.getItem('goldie_cache_females');
-
-      var cm = localStorage.getItem('goldie_cache_males');
-
-      if ((cf && JSON.parse(cf).length > 0) || (cm && JSON.parse(cm).length > 0)) {
-
-        if (loader) loader.style.display = 'none';
-
-      }
-
-    } catch(e) {}
-
-
-
-    // 캐시 없어도 최대 0.5초 후 로딩 화면 강제 제거
-
-    setTimeout(function(){
-
-      if (loader && loader.style.display !== 'none') {
-
-        loader.style.display = 'none';
-
-      }
-
-    }, 500);
-
-  });
-
+  var loader = document.getElementById("loading-screen");
+  if (loader) loader.classList.add("active");
+  setTimeout(function(){
+    var l = document.getElementById("loading-screen");
+    if (l && l.style.display !== "none") { l.style.display = "none"; l.classList.remove("active"); }
+  }, 3000);
 })();
-
 </script>
 
 
@@ -2163,15 +2017,13 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  <header>
-
-
-
-    <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
-
-
-
-    <p>골든리트리버 번식·견사 통합 관리</p>
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div>
+      <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
+      <p>골든리트리버 번식·견사 통합 관리</p>
+    </div>
+    <button onclick="window.adminSignOut && window.adminSignOut()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔒 로그아웃</button>
+  </header>
 
 
 
@@ -3632,6 +3484,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserSessionPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let editPuppyLitterKey = null;
 let editPuppyId = null;
@@ -3649,6 +3502,79 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
+
+// ── 🔐 실제 Firebase 로그인 (기존 "5900" 비교는 화면만 가리는 자물쇠였고
+//     데이터베이스 접근 자체는 막지 못했다. 이제 진짜 계정으로 로그인해야
+//     보안 규칙이 관리자와 외부인을 구분할 수 있다.) ──
+// 관리자 화면 로그인 전용 고정 계정 (실제 메일함이 아니어도 됨, Firebase에만 등록)
+const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
+
+// 같은 브라우저에서도 창을 닫으면 다시 로그인하도록(공유 PC 대비) 세션 단위로만 유지
+setPersistence(auth, browserSessionPersistence).catch(()=>{});
+
+window.attemptLogin = async function() {
+  const pwInput = document.getElementById('login-password');
+  const pw = pwInput ? pwInput.value.trim() : '';
+  const err = document.getElementById('login-error');
+  const btn = document.querySelector('#login-overlay button');
+  if (err) err.style.display = 'none';
+  if (!pw) return;
+  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+  try {
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
+    // 화면 전환은 onAuthStateChanged가 처리
+  } catch (e) {
+    console.warn('[관리자 로그인 실패]:', e.code || e.message);
+    if (err) { err.textContent = '⚠️ 비밀번호가 일치하지 않습니다.'; err.style.display = 'block'; }
+    if (pwInput) { pwInput.value = ''; pwInput.focus(); }
+    const overlay = document.getElementById('login-overlay');
+    const card = overlay ? overlay.querySelector('.card') : null;
+    if (card) {
+      card.style.animation = 'none';
+      setTimeout(() => { card.style.animation = 'shake 0.4s ease'; }, 10);
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '인증하기'; }
+  }
+};
+
+window.adminSignOut = async function() {
+  try { await signOut(auth); } catch(e) {}
+};
+
+onAuthStateChanged(auth, (user) => {
+  const overlay = document.getElementById('login-overlay');
+  const main = document.getElementById('main-content');
+  const loader = document.getElementById('loading-screen');
+
+  if (user) {
+    document.documentElement.classList.add('authenticated');
+    if (overlay) overlay.style.display = 'none';
+    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
+
+    let attempts = 0;
+    (function tryRenderOnLogin() {
+      attempts++;
+      if (typeof window.renderDogs === 'function') {
+        try { window.renderDogs(); } catch(e){}
+        try {
+          const pupTab = document.getElementById('tab-puppies');
+          if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
+            window.renderPuppies();
+          }
+        } catch(e){}
+      } else if (attempts < 30) {
+        setTimeout(tryRenderOnLogin, 100);
+      }
+    })();
+  } else {
+    document.documentElement.classList.remove('authenticated');
+    if (overlay) overlay.style.display = 'flex';
+    if (main) { main.style.display = 'none'; }
+    if (loader) { loader.style.display = 'none'; loader.classList.remove('active'); }
+  }
+});
 
 // ☁️ Firebase Storage 업로드 헬퍼
 async function uploadImageAndGetUrl(dataUrl, path) {
@@ -3788,247 +3714,6 @@ let litterEditKey=null;
 
 
 
-// ── 로그인 세션 보안 제어 ──
-
-
-
-window.attemptLogin = () => {
-
-
-
-  const pw = document.getElementById('login-password').value;
-
-
-
-  const err = document.getElementById('login-error');
-
-
-
-  const overlay = document.getElementById('login-overlay');
-
-
-
-  const main = document.getElementById('main-content');
-
-
-
-  
-
-
-
-  if (pw === '5900') {
-
-
-
-    sessionStorage.setItem('goldi_auth', 'authenticated');
-
-
-
-    err.style.display = 'none';
-
-
-
-    
-
-
-
-    // 부드러운 화면 전환 효과
-
-
-
-    overlay.style.transition = 'opacity 0.4s ease';
-
-
-
-    overlay.style.opacity = '0';
-
-
-
-    main.style.display = 'block';
-
-
-
-    setTimeout(() => {
-
-
-
-      main.style.opacity = '1';
-
-
-
-    }, 50);
-
-
-
-    
-
-
-
-    // ═══ 1.5초 강제 해제 부스터 ═══
-
-
-
-    setTimeout(() => {
-
-
-
-      const loadingEl = document.getElementById('loading-screen');
-
-
-
-      if (loadingEl && loadingEl.style.display !== 'none') {
-
-
-
-        loadingEl.style.display = 'none';
-
-
-
-        console.log('[Booster] 1.5초 강제 해제 작동');
-
-
-
-      }
-
-
-
-    }, 1500);
-
-
-
-    
-
-
-
-    setTimeout(() => {
-
-
-
-      overlay.remove();
-
-
-
-      document.documentElement.classList.add('authenticated');
-
-
-
-    }, 400);
-
-
-
-  } else {
-
-
-
-    err.style.display = 'block';
-
-
-
-    const pwInput = document.getElementById('login-password');
-
-
-
-    pwInput.value = '';
-
-
-
-    pwInput.focus();
-
-
-
-    
-
-
-
-    // 좌우 흔들기 애니메이션 부여
-
-
-
-    const card = overlay.querySelector('.card');
-
-
-
-    card.style.animation = 'none';
-
-
-
-    setTimeout(() => {
-
-
-
-      card.style.animation = 'shake 0.4s ease';
-
-
-
-    }, 10);
-
-
-
-  }
-
-
-
-};
-
-
-
-
-
-
-
-// 엔터 키 이벤트 바인딩 및 자동 포커스
-
-
-
-window.addEventListener('DOMContentLoaded', () => {
-
-
-
-  const pwInput = document.getElementById('login-password');
-
-
-
-  if (pwInput) {
-
-
-
-    pwInput.addEventListener('keydown', (e) => {
-
-
-
-      if (e.key === 'Enter') {
-
-
-
-        window.attemptLogin();
-
-
-
-      }
-
-
-
-    });
-
-
-
-    if (sessionStorage.getItem('goldi_auth') !== 'authenticated') {
-
-
-
-      setTimeout(() => pwInput.focus(), 100);
-
-
-
-    }
-
-
-
-  }
-
-
-
-});
 
 
 
