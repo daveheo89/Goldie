@@ -37,7 +37,7 @@
     .slide-item img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
     .slide-item video { width: 100%; height: 100%; object-fit: cover; }
     
-    .slider-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; background: rgba(15,23,42,0.6); color: #FFF; border: none; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; backdrop-filter: blur(4px); }
+    .slider-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: rgba(15,23,42,0.6); color: #FFF; border: none; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; backdrop-filter: blur(4px); }
     .slider-nav-btn.prev { left: 12px; }
     .slider-nav-btn.next { right: 12px; }
     .slider-counter { position: absolute; bottom: 12px; right: 12px; background: rgba(15,23,42,0.75); color: #FFF; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; z-index: 10; backdrop-filter: blur(4px); }
@@ -65,8 +65,14 @@
     /* Lightbox Modal */
     .lightbox-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; }
     .lightbox-modal.open { display: flex; opacity: 1; }
-    .lightbox-modal img { max-width: 95%; max-height: 90vh; object-fit: contain; }
-    .lightbox-close { position: absolute; top: 20px; right: 20px; color: #FFF; font-size: 28px; background: none; border: none; cursor: pointer; }
+    .lightbox-viewport { position: relative; width: 100%; height: 85vh; overflow: hidden; touch-action: pan-y; }
+    .lightbox-track { display: flex; width: 100%; height: 100%; transition: transform 0.25s ease; }
+    .lb-slide { flex: 0 0 100%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .lb-slide img, .lb-slide video { max-width: 95vw; max-height: 85vh; object-fit: contain; }
+    .lightbox-close { position: absolute; top: 20px; right: 20px; color: #FFF; font-size: 28px; background: rgba(255,255,255,0.12); border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; }
+    .lightbox-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: rgba(255,255,255,0.12); color: #FFF; border: none; border-radius: 50%; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; }
+    .lightbox-nav-btn.prev { left: 12px; }
+    .lightbox-nav-btn.next { right: 12px; }
 
     /* Bottom CTA Bar */
     .bottom-cta-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 12px 20px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border); display: flex; gap: 10px; z-index: 60; }
@@ -133,8 +139,13 @@
 
   <!-- Lightbox Modal -->
   <div class="lightbox-modal" id="lightbox-modal" onclick="closeLightbox()">
-    <button class="lightbox-close">✕</button>
-    <img id="lightbox-img" src="" alt="Enlarged Photo">
+    <button class="lightbox-close" onclick="event.stopPropagation(); closeLightbox()">✕</button>
+    <button class="lightbox-nav-btn prev" onclick="event.stopPropagation(); moveLightbox(-1)">◀</button>
+    <button class="lightbox-nav-btn next" onclick="event.stopPropagation(); moveLightbox(1)">▶</button>
+    <div class="lightbox-viewport" id="lightbox-viewport" onclick="event.stopPropagation()">
+      <div class="lightbox-track" id="lightbox-track"></div>
+    </div>
+    <div class="slider-counter" id="lightbox-counter" style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);"></div>
   </div>
 
   <!-- Firebase SDK -->
@@ -176,10 +187,7 @@
 
     function getSortedMedia(p) {
       const list = [];
-      if (p.photo) {
-        list.push({ type: 'image', src: p.photo, order: 0 });
-      }
-      if (p.media) {
+      if (p.media && Object.keys(p.media).length) {
         Object.entries(p.media).forEach(([k, v]) => {
           if (v && v.src) {
             list.push({
@@ -190,6 +198,8 @@
             });
           }
         });
+      } else if (p.photo) {
+        list.push({ type: 'image', src: p.photo, order: 0 });
       }
       return list.sort((a, b) => a.order - b.order);
     }
@@ -305,7 +315,7 @@
         if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')))) {
           item.innerHTML = `<video src="${m.src}" controls preload="metadata" playsinline></video>`;
         } else {
-          item.innerHTML = `<img src="${m.src}" alt="Puppy Photo" onclick="openLightbox('${m.src}')">`;
+          item.innerHTML = `<img src="${m.src}" alt="Puppy Photo" onclick="openLightboxGallery('main', ${idx})">`;
         }
 
         track.appendChild(item);
@@ -326,7 +336,7 @@
 
     window.moveMainSlide = function(dir) {
       if (!mainSlides.length) return;
-      currentMainIdx = Math.max(0, Math.min(mainSlides.length - 1, currentMainIdx + dir));
+      currentMainIdx = (currentMainIdx + dir + mainSlides.length) % mainSlides.length;
       updateMainSlidePosition();
     };
 
@@ -342,20 +352,23 @@
       document.getElementById('main-slider-counter').textContent = `${currentMainIdx + 1} / ${mainSlides.length}`;
     }
 
+    const parentMediaCache = { sire: [], dam: [] };
+
     function renderParentCard(roleTitle, codeTitle, dogData, roleKey) {
       const card = document.createElement('div');
       card.className = 'parent-card';
 
       const parentMedia = getSortedMedia(dogData || {});
+      parentMediaCache[roleKey] = parentMedia;
 
       let parentMediaHtml = '<div style="aspect-ratio:4/3; background:#F1F5F9; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:13px; font-weight:bold;">📷 대표 사진 준비 중</div>';
 
       if (parentMedia.length > 0) {
-        const pSlides = parentMedia.map(m => {
+        const pSlides = parentMedia.map((m, idx) => {
           if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')))) {
             return `<div class="slide-item"><video src="${m.src}" controls preload="metadata" playsinline></video></div>`;
           }
-          return `<div class="slide-item"><img src="${m.src}" alt="${roleTitle}" onclick="openLightbox('${m.src}')"></div>`;
+          return `<div class="slide-item"><img src="${m.src}" alt="${roleTitle}" onclick="openLightboxGallery('${roleKey}', ${idx})"></div>`;
         }).join('');
 
         parentMediaHtml = `
@@ -380,6 +393,19 @@
         ${parentMediaHtml}
       `;
 
+      if (parentMedia.length > 1) {
+        setTimeout(() => {
+          const slider = card.querySelector(`#parent-slider-${roleKey}`);
+          if (!slider) return;
+          let startX = 0;
+          slider.ontouchstart = (e) => { startX = e.touches[0].clientX; };
+          slider.ontouchend = (e) => {
+            const diff = startX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 40) moveParentSlide(roleKey, diff > 0 ? 1 : -1);
+          };
+        }, 0);
+      }
+
       return card;
     }
 
@@ -391,26 +417,80 @@
       const total = track.children.length;
       if (total <= 1) return;
 
-      parentIndices[roleKey] = Math.max(0, Math.min(total - 1, (parentIndices[roleKey] || 0) + dir));
+      parentIndices[roleKey] = (( (parentIndices[roleKey] || 0) + dir) % total + total) % total;
       track.style.transform = `translateX(-${parentIndices[roleKey] * 100}%)`;
 
       const counter = document.getElementById(`parent-counter-${roleKey}`);
       if (counter) counter.textContent = `${parentIndices[roleKey] + 1} / ${total}`;
     };
 
-    window.openLightbox = function(src) {
+    // ── 라이트박스: 탭한 사진이 속한 갤러리 전체를 확대화면에서 스와이프로 넘겨보기 ──
+    let lbGallery = [];
+    let lbIdx = 0;
+    let lbTouchStartX = 0;
+
+    function getLbGallery(source) {
+      if (source === 'main') return mainSlides;
+      return parentMediaCache[source] || [];
+    }
+
+    window.openLightboxGallery = function(source, idx) {
+      lbGallery = getLbGallery(source);
+      lbIdx = idx;
+      if (!lbGallery.length) return;
+      renderLightboxSlides();
       const modal = document.getElementById('lightbox-modal');
-      const img = document.getElementById('lightbox-img');
-      if (modal && img) {
-        img.src = src;
-        modal.classList.add('open');
+      if (modal) modal.classList.add('open');
+    };
+
+    function renderLightboxSlides() {
+      const track = document.getElementById('lightbox-track');
+      if (!track) return;
+      track.innerHTML = lbGallery.map(m => {
+        if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')))) {
+          return `<div class="lb-slide"><video src="${m.src}" controls preload="metadata" playsinline></video></div>`;
+        }
+        return `<div class="lb-slide"><img src="${m.src}" alt=""></div>`;
+      }).join('');
+      updateLightboxPosition();
+    }
+
+    function updateLightboxPosition() {
+      const track = document.getElementById('lightbox-track');
+      if (track) track.style.transform = `translateX(-${lbIdx * 100}%)`;
+      document.querySelectorAll('#lightbox-track video').forEach(v => v.pause());
+      const counter = document.getElementById('lightbox-counter');
+      if (counter) {
+        if (lbGallery.length > 1) {
+          counter.textContent = `${lbIdx + 1} / ${lbGallery.length}`;
+          counter.style.display = 'block';
+        } else {
+          counter.style.display = 'none';
+        }
       }
+    }
+
+    window.moveLightbox = function(dir) {
+      if (!lbGallery.length) return;
+      lbIdx = ((lbIdx + dir) % lbGallery.length + lbGallery.length) % lbGallery.length;
+      updateLightboxPosition();
     };
 
     window.closeLightbox = function() {
       const modal = document.getElementById('lightbox-modal');
       if (modal) modal.classList.remove('open');
+      document.querySelectorAll('#lightbox-track video').forEach(v => v.pause());
     };
+
+    (function attachLightboxSwipe() {
+      const vp = document.getElementById('lightbox-viewport');
+      if (!vp) return;
+      vp.addEventListener('touchstart', (e) => { lbTouchStartX = e.touches[0].clientX; }, { passive: true });
+      vp.addEventListener('touchend', (e) => {
+        const diff = lbTouchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 40) moveLightbox(diff > 0 ? 1 : -1);
+      }, { passive: true });
+    })();
 
     window.shareProfile = function() {
       if (navigator.share) {
