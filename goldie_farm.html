@@ -11364,34 +11364,6 @@ function compressImageFile(file, maxSide = 1200, quality = 0.82) {
       showToast('⚠ 순서 변경 실패');
     }
   };
-    let firstImageSrc = null;
-
-    mediaList.forEach((m, i) => {
-      const k = m._key || `m_${Date.now()}_${i}`;
-      const clone = { ...m };
-      delete clone._key;
-      clone.order = i;
-      reorderedMediaMap[k] = clone;
-      if (!firstImageSrc && clone.type === 'image' && clone.src) {
-        firstImageSrc = clone.src;
-      }
-    });
-
-    const updates = { media: reorderedMediaMap };
-    if (firstImageSrc) updates.photo = firstImageSrc;
-
-    setSyncing(true);
-    try {
-      await fbUpdate(`litters/${litterKey}/puppies/${puppyId}`, updates);
-      showToast('↕️ 미디어 순서가 즉시 변경되었습니다!');
-      if (typeof renderPuppyDetailContent === 'function') renderPuppyDetailContent();
-      if (typeof renderPuppies === 'function') renderPuppies();
-    } catch(err) {
-      showToast('⚠ 순서 변경 실패: ' + err.message);
-    } finally {
-      setSyncing(false);
-    }
-  };
 
 
 window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
@@ -11497,3 +11469,15 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
   };
 
 
+
+</script>
+
+<!-- 미디어 업로드 진행률 오버레이 -->
+<div id="upload-progress-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:'Noto Sans KR',sans-serif;">
+  <div style="font-size:3rem;margin-bottom:12px;">🎥</div>
+  <div id="upload-progress-text" style="font-size:1.2rem;font-weight:900;">업로드 중... 0%</div>
+  <div style="font-size:0.85rem;color:#94A3B8;margin-top:6px;">잠시만 기다려주세요 (창을 닫지 마세요)</div>
+</div>
+
+</body>
+</html>
