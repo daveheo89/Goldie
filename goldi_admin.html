@@ -149,27 +149,24 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 </div>
 <script>
 function doLogin(){
-  var pw=document.getElementById('authPw').value;
-  if(pw==='5900'){
-    sessionStorage.setItem('goldi_admin_auth','ok');
-    document.getElementById('authGate').style.display='none';
-    document.getElementById('adminWrap').style.display='block';
-  } else {
-    document.getElementById('authErr').textContent='비밀번호가 틀렸습니다.';
-    document.getElementById('authPw').value='';
-    document.getElementById('authPw').focus();
-  }
+  var btn = document.querySelector('#authGate button');
+  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+  setTimeout(function(){
+    if (typeof window.doLogin === 'function' && window.doLogin !== doLogin) {
+      window.doLogin();
+    } else if (btn) { btn.disabled = false; btn.textContent = '로그인'; }
+  }, 300);
 }
-if(sessionStorage.getItem('goldi_admin_auth')==='ok'){
-  document.getElementById('authGate').style.display='none';
-} else {
-  window.addEventListener('DOMContentLoaded',function(){document.getElementById('authPw').focus();});
-}
+window.doLogin = doLogin;
+window.addEventListener('DOMContentLoaded', function(){
+  var pw = document.getElementById('authPw');
+  if (pw) pw.focus();
+});
 </script>
 
 <div id="adminWrap" style="display:none;">
-<script>if(sessionStorage.getItem('goldi_admin_auth')==='ok'){document.getElementById('adminWrap').style.display='block';}</script>
 <header style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+
   <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
   <a href="https://daveheo89.github.io/Goldie/goldie_farm.html" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none; white-space:nowrap; font-weight:700;">🏡 농장 관리 웹앱 바로가기 ↗</a>
 </header>
@@ -285,6 +282,7 @@ if(sessionStorage.getItem('goldi_admin_auth')==='ok'){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserSessionPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const FB = {
   apiKey:"AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
@@ -297,6 +295,42 @@ const FB = {
 };
 const app = initializeApp(FB);
 const db  = getDatabase(app);
+const auth = getAuth(app);
+
+// ── 🔐 실제 Firebase 로그인 (goldie_farm.html과 동일 계정 사용) ──
+const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
+setPersistence(auth, browserSessionPersistence).catch(()=>{});
+
+window.doLogin = async function() {
+  const pwInput = document.getElementById('authPw');
+  const pw = pwInput ? pwInput.value : '';
+  const errEl = document.getElementById('authErr');
+  if (errEl) errEl.textContent = '';
+  if (!pw) return;
+  try {
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
+  } catch (e) {
+    console.warn('[관리자 로그인 실패]:', e.code || e.message);
+    if (errEl) errEl.textContent = '비밀번호가 틀렸습니다.';
+    if (pwInput) { pwInput.value = ''; pwInput.focus(); }
+  }
+};
+
+window.adminSignOut = async function() {
+  try { await signOut(auth); } catch(e) {}
+};
+
+onAuthStateChanged(auth, (user) => {
+  const gate = document.getElementById('authGate');
+  const wrap = document.getElementById('adminWrap');
+  if (user) {
+    if (gate) gate.style.display = 'none';
+    if (wrap) wrap.style.display = 'block';
+  } else {
+    if (gate) gate.style.display = 'flex';
+    if (wrap) wrap.style.display = 'none';
+  }
+});
 
 window._litters={};
 window._contracts={};
@@ -357,8 +391,8 @@ try {
       renderManageList();
       updateStats();
     }
-    if (cContracts) renderDB();
-    renderCalendarEvents();
+    if (cContracts && typeof window.renderDB === 'function') window.renderDB();
+    if (typeof window.renderCalendarEvents === 'function') window.renderCalendarEvents();
   }
 } catch (e) {
   console.warn("LocalStorage cache read warning:", e);
