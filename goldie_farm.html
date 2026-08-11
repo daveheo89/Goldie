@@ -10927,6 +10927,82 @@ window.toggleParentVisibility = async function(litterKey, puppyId, parentType, i
 };
 
 
+// ── 새끼 상세정보 갤러리: 삭제 / 다운로드 / 카톡 영상 전송 ──
+window.deletePuppyMedia = async function(litterKey, puppyId, mediaKey) {
+  if (!confirm('이 사진/영상을 삭제할까요?')) return;
+  setSyncing(true);
+  try {
+    await fbRemove(`litters/${litterKey}/puppies/${puppyId}/media/${mediaKey}`);
+
+    // 대표 사진(photo)이 방금 삭제한 것이었다면, 남은 사진 중 첫 번째로 재동기화
+    const lt = (litters || []).find(l => l._key === litterKey);
+    const p = lt && lt.puppies && lt.puppies[puppyId];
+    if (p) {
+      const remaining = getSortedMedia(p).filter(m => m._key !== mediaKey);
+      const firstImg = remaining.find(m => m.type === 'image' && m.src);
+      await fbUpdate(`litters/${litterKey}/puppies/${puppyId}`, { photo: firstImg ? firstImg.src : null });
+    }
+
+    showToast('🗑️ 삭제됐습니다.');
+    if (typeof renderPuppyDetailContent === 'function') renderPuppyDetailContent();
+    if (typeof renderPuppies === 'function') renderPuppies();
+  } catch (err) {
+    console.error('미디어 삭제 실패:', err);
+    showToast('⚠ 삭제 실패: ' + err.message);
+  } finally {
+    setSyncing(false);
+  }
+};
+
+window.downloadMedia = function(src, filename) {
+  try {
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = filename || 'download.jpg';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    console.error('다운로드 실패:', err);
+    showToast('⚠ 다운로드 실패: ' + err.message);
+  }
+};
+
+window.shareVideoFileToKakao = async function(videoSrc, puppyName, motherName, sireName) {
+  try {
+    if (navigator.share) {
+      try {
+        const res = await fetch(videoSrc);
+        const blob = await res.blob();
+        const fileName = `${puppyName || '강아지'}_영상.mp4`;
+        const file = new File([blob], fileName, { type: blob.type || 'video/mp4' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `[골디쉼터] ${puppyName || ''} 영상`,
+            text: `${motherName || ''} × ${sireName || ''} — ${puppyName || ''} 영상입니다.`
+          });
+          return;
+        }
+        await navigator.share({
+          title: `[골디쉼터] ${puppyName || ''} 영상`,
+          text: `${motherName || ''} × ${sireName || ''} — ${puppyName || ''} 영상 링크입니다.`,
+          url: videoSrc
+        });
+        return;
+      } catch (shareErr) {
+        if (shareErr && shareErr.name === 'AbortError') return;
+      }
+    }
+    await navigator.clipboard.writeText(videoSrc);
+    showToast('📋 영상 링크가 복사됐어요! 카톡에 붙여넣어 전송하세요.');
+  } catch (err) {
+    console.error('카톡 전송 실패:', err);
+    try { prompt('아래 영상 주소를 복사하세요:', videoSrc); } catch(_) {}
+  }
+};
+
 function renderPuppyDetailContent(){
   const container = document.getElementById('pd-content');
   if(!container) return;
