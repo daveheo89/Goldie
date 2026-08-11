@@ -707,7 +707,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.litter-header{background:linear-gradient(135deg,#5B3E8A,var(--puppy));padding:12px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.litter-header{background:linear-gradient(135deg,#5B3E8A,var(--puppy));padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;cursor:pointer;}
 
 
 
@@ -727,15 +727,15 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.vax-chip{flex:1;min-width:90px;border-radius:9px;padding:7px 10px;border:2px solid var(--border);text-align:center;background:var(--gold-pale);}
+.vax-chip{flex:1;min-width:96px;border-radius:10px;padding:9px 10px;border:2px solid var(--border);text-align:center;background:var(--gold-pale);}
 
 
 
-.vax-chip .vc-label{font-size:.62rem;color:var(--text-muted);margin-bottom:2px;}
+.vax-chip .vc-label{font-size:.72rem;color:var(--text-muted);margin-bottom:3px;font-weight:700;}
 
 
 
-.vax-chip .vc-date{font-size:.82rem;font-weight:900;color:var(--brown);}
+.vax-chip .vc-date{font-size:.92rem;font-weight:900;color:var(--brown);}
 
 
 
@@ -763,11 +763,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.litter-puppies,.puppy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:8px;margin-top:10px;}
+.litter-puppies,.puppy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:12px;}
 
 
 
-.puppy-card{background:var(--puppy-bg);border-radius:10px;padding:8px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
+.puppy-card{background:var(--puppy-bg);border-radius:10px;padding:9px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
 
 
 
@@ -811,19 +811,39 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-.puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:5px;}
+.puppy-card .p-photo{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;display:block;margin-bottom:6px;}
 
 
 
-.puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:5px;}
+.puppy-card .p-placeholder{width:100%;aspect-ratio:1;border-radius:7px;background:#E8DFF8;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:6px;}
 
 
 
-.puppy-card .p-name{font-size:.7rem;font-weight:700;color:var(--puppy);}
+.puppy-card .p-name{font-size:.85rem;font-weight:800;color:var(--puppy);}
 
 
 
-.puppy-card .p-sex{font-size:.6rem;color:var(--text-muted);}
+.puppy-card .p-sex{font-size:.72rem;color:var(--text-muted);font-weight:600;}
+
+.litter-title-wrap{display:flex;align-items:center;gap:8px;color:#fff;font-size:1.02rem;font-weight:900;letter-spacing:-.2px;}
+
+.litter-title-wrap strong{color:#fff;}
+
+.litter-toggle-icon{color:#FCE8B5;font-size:.85rem;}
+
+.litter-count{color:#F4E6FF;font-size:.85rem;font-weight:700;}
+
+.litter-dates{display:flex;flex-wrap:wrap;gap:4px 12px;color:#FCE8B5;font-size:.85rem;font-weight:700;}
+
+.litter-header .btn-outline{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.7);color:#fff;}
+
+.litter-header .btn-outline:hover{background:#fff;color:var(--puppy);}
+
+.puppy-card .p-status{font-size:.7rem!important;font-weight:800!important;color:var(--puppy);margin-top:3px;}
+
+.puppy-card.reserved .p-status{color:#D35400;}
+
+.puppy-card.sold .p-status{color:#888;}
 
 
 
@@ -3377,11 +3397,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </div>
       </div>
 
-      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn" id="dev-gcal-btn" onclick="openGoogleCalendarForDelivery()" style="background:#4285F4;color:#fff;flex:1;font-weight:900;">📅 구글 캘린더 등록</button>
-        <button class="btn btn-danger" id="dev-del-btn" onclick="deleteDelivery()" style="display:none;flex:1;">🗑️ 삭제</button>
-        <button class="btn btn-cancel" onclick="closeDeliveryModal()" style="flex:1;">취소</button>
-        <button class="btn" id="dev-save-btn" onclick="saveDelivery()" style="flex:1;">✅ DB 저장</button>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
+        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
       </div>
 
 
@@ -3474,8 +3492,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         <div id="pm-media-reorder-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; min-height:60px; background:#F1F5F9; padding:8px; border-radius:8px; border:1px dashed #CBD5E1;"></div>
       </div>
             <div class="modal-actions">
-        <button class="btn btn-cancel" onclick="closeDogModal()">취소</button>
-        <button class="btn" id="dm-save-btn" onclick="saveDog()">✅ 저장</button>
+        <button class="btn btn-cancel" onclick="closePuppyModal()">취소</button>
+        <button class="btn" id="pm-save-btn" onclick="savePuppy()">✅ 저장</button>
       </div>
     </div>
   </div>
@@ -6886,6 +6904,8 @@ window.openEditPuppyModal = function(litterKey, puppyId) {
 
 
   // ── 미디어 순서 재정렬 그리드 (Pointer Events 모바일/데스크톱 터치 드래그 지원) ──
+  let __mediaDragState = null;
+
   window.renderEditPuppyMediaReorderGrid = function() {
     const grid = document.getElementById('pm-media-reorder-grid');
     if (!grid) return;
@@ -6899,41 +6919,98 @@ window.openEditPuppyModal = function(litterKey, puppyId) {
     editPuppyMediaArray.forEach((item, idx) => {
       const cell = document.createElement('div');
       cell.className = 'reorder-cell';
-      cell.style.cssText = 'position:relative; background:#0F172A; border-radius:8px; overflow:hidden; aspect-ratio:1; touch-action:none; cursor:grab; border:2px solid #334155; display:flex; align-items:center; justify-content:center;';
+      cell.dataset.idx = idx;
+      cell.style.cssText = 'position:relative; background:#0F172A; border-radius:8px; overflow:hidden; aspect-ratio:1; touch-action:none; user-select:none; cursor:grab; border:2px solid #334155; display:flex; align-items:center; justify-content:center; transition:transform .12s ease, box-shadow .12s ease;';
 
       let mediaHtml = '';
       if (item.type === 'video' || (item.src && (item.src.includes('.mp4') || item.src.includes('.mov')))) {
-        mediaHtml = `<video src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;" preload="metadata" playsinline></video><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2;">🎥 동영상</span>`;
+        mediaHtml = `<video src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;" preload="metadata" playsinline></video><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2; pointer-events:none;">🎥 동영상</span>`;
       } else {
-        mediaHtml = `<img src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2;">📷 ${idx + 1}</span>`;
+        mediaHtml = `<img src="${item.src}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"><span style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; z-index:2; pointer-events:none;">📷 ${idx + 1}</span>`;
       }
 
       cell.innerHTML = `
         ${mediaHtml}
-        <button type="button" class="reorder-del-btn" onclick="event.stopPropagation(); removeMediaFromEditArray(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(225,29,72,0.9); color:#fff; border:none; width:20px; height:20px; border-radius:50%; font-size:11px; font-weight:bold; cursor:pointer; z-index:4; display:flex; align-items:center; justify-content:center;">✕</button>
-        /* ◀ ▶ 1칸 위치 이동 버튼 (justify-content: space-between 수정 완료) */
-        <div style="position:absolute; bottom:4px; left:4px; right:4px; display:flex; justify-content:space-between; gap:4px; z-index:4;" onclick="event.stopPropagation();">
-          <button type="button" onclick="nudgeEditMedia(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">◀</button>
-          <button type="button" onclick="nudgeEditMedia(${idx}, 1)" ${idx === editPuppyMediaArray.length - 1 ? 'disabled style="opacity:0.3;"' : ''} style="background:rgba(15,23,42,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">▶</button>
-        </div>
+        <button type="button" class="reorder-del-btn" onclick="event.stopPropagation(); removeMediaFromEditArray(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(225,29,72,0.9); color:#fff; border:none; width:22px; height:22px; border-radius:50%; font-size:11px; font-weight:bold; cursor:pointer; z-index:4; display:flex; align-items:center; justify-content:center;">✕</button>
+        <div style="position:absolute; bottom:4px; left:4px; right:4px; text-align:center; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; padding:2px 0; border-radius:4px; z-index:2; pointer-events:none;">↕ 꾹 눌러서 끌기</div>
       `;
 
-      cell.onpointerdown = (e) => handleMediaPointerDown(e, idx);
+      cell.addEventListener('pointerdown', __onMediaDragStart);
       grid.appendChild(cell);
     });
   };
 
+  function __onMediaDragStart(e) {
+    if (e.target.closest('button')) return; // 삭제 버튼 클릭은 드래그로 취급하지 않음
+    const cell = e.currentTarget;
+    __mediaDragState = {
+      pointerId: e.pointerId,
+      currentIdx: parseInt(cell.dataset.idx, 10),
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    };
+    document.addEventListener('pointermove', __onMediaDragMove);
+    document.addEventListener('pointerup', __onMediaDragEnd);
+    document.addEventListener('pointercancel', __onMediaDragEnd);
+  }
+
+  function __markDragging(idx) {
+    const grid = document.getElementById('pm-media-reorder-grid');
+    const cell = grid && grid.querySelector(`[data-idx="${idx}"]`);
+    if (cell) {
+      cell.style.transform = 'scale(1.06)';
+      cell.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
+      cell.style.cursor = 'grabbing';
+      cell.style.zIndex = '5';
+    }
+  }
+
+  function __onMediaDragMove(e) {
+    if (!__mediaDragState || e.pointerId !== __mediaDragState.pointerId) return;
+    const dx = Math.abs(e.clientX - __mediaDragState.startX);
+    const dy = Math.abs(e.clientY - __mediaDragState.startY);
+
+    if (!__mediaDragState.moved) {
+      if (dx < 6 && dy < 6) return; // 살짝 흔들린 정도는 드래그로 취급 안 함(오터치 방지)
+      __mediaDragState.moved = true;
+      __markDragging(__mediaDragState.currentIdx);
+    }
+    e.preventDefault();
+
+    const grid = document.getElementById('pm-media-reorder-grid');
+    if (!grid) return;
+    const elAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+    const targetCell = elAtPoint && elAtPoint.closest('.reorder-cell');
+    if (!targetCell || !grid.contains(targetCell)) return;
+
+    const targetIdx = parseInt(targetCell.dataset.idx, 10);
+    const fromIdx = __mediaDragState.currentIdx;
+    if (targetIdx === fromIdx || Number.isNaN(targetIdx)) return;
+
+    const item = editPuppyMediaArray.splice(fromIdx, 1)[0];
+    editPuppyMediaArray.splice(targetIdx, 0, item);
+    __mediaDragState.currentIdx = targetIdx;
+
+    renderEditPuppyMediaReorderGrid();
+    __markDragging(targetIdx);
+  }
+
+  function __onMediaDragEnd(e) {
+    if (!__mediaDragState || e.pointerId !== __mediaDragState.pointerId) return;
+    document.removeEventListener('pointermove', __onMediaDragMove);
+    document.removeEventListener('pointerup', __onMediaDragEnd);
+    document.removeEventListener('pointercancel', __onMediaDragEnd);
+    if (__mediaDragState.moved) {
+      renderEditPuppyMediaReorderGrid();
+      showToast('↕️ 순서가 변경됐어요. 저장 버튼을 눌러 확정하세요.');
+    }
+    __mediaDragState = null;
+  }
+
   window.removeMediaFromEditArray = function(idx) {
     if (idx < 0 || idx >= editPuppyMediaArray.length) return;
     editPuppyMediaArray.splice(idx, 1);
-    renderEditPuppyMediaReorderGrid();
-  };
-
-  window.nudgeEditMedia = function(idx, direction) {
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= editPuppyMediaArray.length) return;
-    const item = editPuppyMediaArray.splice(idx, 1)[0];
-    editPuppyMediaArray.splice(targetIdx, 0, item);
     renderEditPuppyMediaReorderGrid();
   };
 
@@ -11474,9 +11551,9 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
       for (const f of files) {
         if (f.size > 100 * 1024 * 1024) {
           const mb = Math.round(f.size / 1024 / 1024);
-          if (!confirm(`영상 용량이 커서 (${mb}MB) 업로드가 오래 걸릴 수 있습니다. 계속할까요?`)) {
-            continue;
-          }
+          // 모바일 브라우저(카톡 인앱 등)에서 confirm()이 무시/차단되어
+          // 조용히 멈추는 문제가 있어 확인창 대신 안내만 하고 자동으로 진행한다.
+          showToast(`🎥 영상 용량이 커서(${mb}MB) 업로드가 오래 걸릴 수 있어요. 잠시만 기다려주세요.`);
         }
 
         maxOrder++;
