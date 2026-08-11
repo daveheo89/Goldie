@@ -3700,6 +3700,9 @@ let dogEditCode=null;
 
 
 let dogPendingPhoto=null;
+let dogPendingMedia=[];
+let dogExistingMedia=[];
+let dogMediaToDelete=new Set();
 
 
 
@@ -4453,6 +4456,18 @@ window.closeVaxPopup = function() {
 
 function startListeners(){
 
+  // 재연결 시 동일 데이터로 다시 렌더링되어 화면이 깜빡이는 것을 방지하는 헬퍼
+  // (모바일에서 다른 앱 갔다가 돌아오면 Firebase 리스너가 재동기화되며
+  //  같은 데이터로 콜백이 다시 실행되는데, 그때마다 그리드를 통째로
+  //  지우고 다시 그리면 사진이 재로딩되며 깜빡인다. 실제로 값이 바뀐 경우에만 다시 그린다.)
+  const __lastRawJSON = window.__lastRawJSON || (window.__lastRawJSON = {});
+  function changedSince(key, val) {
+    const json = JSON.stringify(val);
+    if (__lastRawJSON[key] === json) return false;
+    __lastRawJSON[key] = json;
+    return true;
+  }
+
 
 
   // 모견
@@ -4461,51 +4476,33 @@ function startListeners(){
 
   onValue(ref(db,'females'), snap=>{
 
+    const __rawFemales = snap.val();
 
+    const __femalesChanged = changedSince('females', __rawFemales);
 
     females=[];
 
-
-
     snap.forEach(child=>{females.push({_key:child.key,...child.val()});});
 
+    if (__femalesChanged) {
 
+      renderDogs();
 
-    renderDogs();
+      if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
 
+      fillTreatmentSelects();
 
-
-    if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
-
-
-
-    fillTreatmentSelects();
-
-
-
-    
-
-
+    }
 
     saveLocalCache('females', females);
 
-
-
     isFemalesLoaded = true;
-
-
 
     hideLoaderIfReady();
 
-
-
   }, error => {
 
-
-
     showFirebaseError(error);
-
-
 
   });
 
@@ -4517,47 +4514,31 @@ function startListeners(){
 
   onValue(ref(db,'males'), snap=>{
 
+    const __rawMales = snap.val();
 
+    const __malesChanged = changedSince('males', __rawMales);
 
     males=[];
 
-
-
     snap.forEach(child=>{males.push({_key:child.key,...child.val()});});
 
+    if (__malesChanged) {
 
+      renderDogs();
 
-    renderDogs();
+      fillTreatmentSelects();
 
-
-
-    fillTreatmentSelects();
-
-
-
-    
-
-
+    }
 
     saveLocalCache('males', males);
 
-
-
     isMalesLoaded = true;
-
-
 
     hideLoaderIfReady();
 
-
-
   }, error => {
 
-
-
     showFirebaseError(error);
-
-
 
   });
 
@@ -4605,39 +4586,29 @@ function startListeners(){
 
   onValue(ref(db,'litters'), snap=>{
 
+    const __rawLitters = snap.val();
 
+    const __littersChanged = changedSince('litters', __rawLitters);
 
     litters=[];
 
-
-
     snap.forEach(child=>{litters.push({_key:child.key,...child.val()});});
 
+    if (__littersChanged) {
 
+      if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
 
-    if(!document.getElementById('tab-puppies').classList.contains('hidden'))renderPuppies();
+      checkVaxAlerts();
 
+      fillTreatmentSelects();
 
-
-    checkVaxAlerts();
-
-
-
-    fillTreatmentSelects();
-
-
+    }
 
     saveLocalCache('litters', litters);
 
-
-
   }, error => {
 
-
-
     showFirebaseError(error);
-
-
 
   });
 
@@ -5310,6 +5281,9 @@ window.openAddDog=function(sex){
 
   dogModalMode='add'; dogEditCode=null; dogPendingPhoto=null; dogSelectedSex=sex;
 
+  dogPendingMedia=[]; dogExistingMedia=[]; dogMediaToDelete=new Set();
+  if (typeof renderDogMediaGrid === 'function') renderDogMediaGrid();
+
 
 
   document.getElementById('dog-modal-title').textContent=sex==='female'?'🐕‍🦺 모견 추가':'🐕 부견 추가';
@@ -5361,6 +5335,10 @@ window.openEditDog=function(key){
 
 
   dogModalMode='edit'; dogEditCode=key; dogPendingPhoto=null; dogSelectedSex=dog.sex;
+
+  dogPendingMedia=[]; dogMediaToDelete=new Set();
+  dogExistingMedia = getSortedMedia(dog);
+  if (typeof renderDogMediaGrid === 'function') renderDogMediaGrid();
 
 
 
@@ -5448,6 +5426,67 @@ window.handleDogPhoto=async function(e){
   }
 };
 
+// ── 개체(모견/부견) 다중 사진/영상 그리드 ──
+window.renderDogMediaGrid = function() {
+  const grid = document.getElementById('dm-media-grid');
+  if (!grid) return;
+  const existingCells = dogExistingMedia
+    .filter(m => !dogMediaToDelete.has(m._key))
+    .map(m => {
+      const isVideo = m.type === 'video';
+      const thumb = isVideo
+        ? '<div style="width:100%;height:74px;background:linear-gradient(135deg,#1E40AF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#fff;border-radius:6px;">🎥</div>'
+        : `<img src="${m.src}" style="width:100%;height:74px;object-fit:cover;border-radius:6px;display:block;">`;
+      return `<div style="position:relative;border:2px solid #CBD5E1;border-radius:7px;overflow:hidden;background:#fff;">
+        ${thumb}
+        <button type="button" onclick="removeExistingDogMedia('${m._key}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,0.85);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button>
+      </div>`;
+    }).join('');
+  const pendingCells = dogPendingMedia.map((item, idx) => {
+    const thumb = item.type === 'video'
+      ? '<div style="width:100%;height:74px;background:linear-gradient(135deg,#B45309,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#fff;border-radius:6px;">🎥 신규</div>'
+      : `<img src="${item.previewSrc}" style="width:100%;height:74px;object-fit:cover;border-radius:6px;display:block;">`;
+    return `<div style="position:relative;border:2px solid #10B981;border-radius:7px;overflow:hidden;background:#fff;">
+      ${thumb}
+      <button type="button" onclick="removeDogMedia(${idx})" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,0.85);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button>
+    </div>`;
+  }).join('');
+  const all = existingCells + pendingCells;
+  grid.innerHTML = all || '<div style="color:#94A3B8;font-size:11px;text-align:center;width:100%;padding:8px;">등록된 추가 사진/영상이 없습니다.</div>';
+};
+
+window.addDogMediaFiles = async function(e, type) {
+  const files = Array.from(e.target.files);
+  if (!files.length) { e.target.value=''; return; }
+  try {
+    for (const file of files) {
+      if (type === 'image') {
+        const compressed = await compressImageFile(file);
+        dogPendingMedia.push({ type: 'image', file, previewSrc: compressed, compressed });
+      } else {
+        const previewUrl = URL.createObjectURL(file);
+        dogPendingMedia.push({ type: 'video', file, previewSrc: previewUrl });
+      }
+    }
+    renderDogMediaGrid();
+  } catch(err) {
+    console.error('개체 미디어 처리 실패:', err);
+    showToast('⚠ 미디어 처리에 실패했습니다.');
+  } finally {
+    e.target.value = '';
+  }
+};
+
+window.removeDogMedia = function(idx) {
+  dogPendingMedia.splice(idx, 1);
+  renderDogMediaGrid();
+};
+
+window.removeExistingDogMedia = function(key) {
+  dogMediaToDelete.add(key);
+  renderDogMediaGrid();
+};
+
 
 
 
@@ -5458,24 +5497,30 @@ window.saveDog = async function() {
   const code = (document.getElementById('dm-code') ? document.getElementById('dm-code').value : '').trim();
   if (!code) { showToast('개체 번호/코드를 입력해주세요.'); return; }
 
-  // (P3.a) path 선언을 함수 앞부분으로 이동하여 ReferenceError 방지
+  // path 선언을 함수 앞부분에 둬서 ReferenceError 방지
   const path = dogSelectedSex === 'female' ? 'females' : 'males';
 
   const kennel = document.getElementById('dm-kennel') ? document.getElementById('dm-kennel').value : '';
   const birth = document.getElementById('dm-birth') ? document.getElementById('dm-birth').value : '';
 
-  let coverUrl = '';
-  if (dogPhotoFile) {
-    const coverPath = `${path}/${code}/cover_${Date.now()}`;
-    coverUrl = await uploadImageAndGetUrl(dogPhotoFile, coverPath);
-  }
-
+  const saveBtn = document.getElementById('dm-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
   setSyncing(true);
+
   try {
-    if (dogEditKey) {
+    // 1. 대표 사진 업로드 (dogPendingPhoto는 handleDogPhoto에서 이미 압축된 data URL)
+    let coverUrl = '';
+    if (dogPendingPhoto) {
+      const coverPath = `${path}/${dogEditCode || code}/cover_${Date.now()}.jpg`;
+      coverUrl = await uploadImageAndGetUrl(dogPendingPhoto, coverPath);
+    }
+
+    let targetKey = dogEditCode;
+
+    if (dogModalMode === 'edit' && dogEditCode) {
       const updates = { code, kennel, birth };
       if (coverUrl) updates.photo = coverUrl;
-      await fbUpdate(`${path}/${dogEditKey}`, updates);
+      await fbUpdate(`${path}/${dogEditCode}`, updates);
       showToast('🐕 개체 정보가 수정되었습니다.');
     } else {
       const newDog = {
@@ -5485,16 +5530,65 @@ window.saveDog = async function() {
         photo: coverUrl || '',
         created_at: new Date().toISOString()
       };
-      // (P3.b) fbPush는 key 문자열 직접 반환
-      const newKey = await fbPush(path, newDog);
+      targetKey = await fbPush(path, newDog);
       showToast('🐕 새 개체가 등록되었습니다.');
     }
+
+    // 2. 삭제 표시된 기존 미디어 제거 (수정 모드에서만 존재)
+    for (const delKey of dogMediaToDelete) {
+      try { await fbRemove(`${path}/${targetKey}/media/${delKey}`); }
+      catch (e) { console.warn('개체 미디어 삭제 실패:', delKey, e); }
+    }
+
+    // 3. 새로 추가된 사진/영상 업로드 (order 이어붙이기)
+    if (dogPendingMedia.length && targetKey) {
+      const remainingExisting = dogExistingMedia.filter(m => !dogMediaToDelete.has(m._key));
+      let maxOrder = remainingExisting.reduce((max, m) => Math.max(max, (m.order ?? 0)), -1);
+
+      for (const item of dogPendingMedia) {
+        maxOrder++;
+        const mediaKey = `m_${Date.now()}_${Math.random().toString(36).substr(2,5)}`;
+        let storageUrl = '';
+
+        if (item.type === 'image') {
+          const storagePath = `${path}/${targetKey}/${mediaKey}.jpg`;
+          storageUrl = await uploadImageAndGetUrl(item.compressed, storagePath);
+        } else {
+          const ext = (item.file.name.split('.').pop() || 'mp4').toLowerCase();
+          const storagePath = `${path}/${targetKey}/${mediaKey}.${ext}`;
+          const r = storageRef(storage, storagePath);
+          const metadata = { contentType: item.file.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
+          try {
+            const result = await uploadBytes(r, item.file, metadata);
+            storageUrl = await getDownloadURL(result.ref);
+          } catch (uErr) {
+            console.error('개체 영상 업로드 실패:', uErr);
+            continue;
+          }
+        }
+
+        await fbSet(`${path}/${targetKey}/media/${mediaKey}`, {
+          type: item.type,
+          src: storageUrl,
+          order: maxOrder,
+          name: item.file.name,
+          createdAt: Date.now()
+        });
+      }
+    }
+
+    dogPendingMedia = [];
+    dogExistingMedia = [];
+    dogMediaToDelete = new Set();
+
     closeDogModal();
     if (typeof renderDogs === 'function') renderDogs();
   } catch (err) {
+    console.error('개체 저장 실패:', err);
     showToast('⚠ 저장 실패: ' + err.message);
   } finally {
     setSyncing(false);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '✅ 저장'; }
   }
 };
 
@@ -6845,28 +6939,22 @@ window.openEditPuppyModal = function(litterKey, puppyId) {
 
 
 window.savePuppy = async function() {
-    const name = document.getElementById('edit-p-name').value.trim();
-    const sex = document.getElementById('edit-p-sex').value;
-    const color = document.getElementById('edit-p-color').value.trim();
-    const price = document.getElementById('edit-p-price').value.trim();
-    const status = document.getElementById('edit-p-status').value;
-    const notes = document.getElementById('edit-p-notes').value.trim();
-    const showSire = document.getElementById('edit-p-showSire').checked;
-    const showDam = document.getElementById('edit-p-showDam').checked;
+    const name = document.getElementById('pm-name').value.trim();
+    const sex = document.getElementById('pm-sex').value;
+    const status = document.getElementById('pm-status').value;
+    const showSireInProfile = document.getElementById('pm-show-sire').checked;
+    const showDamInProfile = document.getElementById('pm-show-dam').checked;
 
-    if (!puppyEditLitterKey || !puppyEditPuppyId) return;
+    if (!editPuppyLitterKey || !editPuppyId) return;
     setSyncing(true);
 
     try {
       const updates = {
         name: name || null,
         sex,
-        color: color || null,
-        price: price || null,
         status,
-        notes: notes || null,
-        showSire,
-        showDam
+        showSireInProfile,
+        showDamInProfile
       };
 
       // 1. Reorder media map with explicit order field
@@ -6891,7 +6979,7 @@ window.savePuppy = async function() {
       if (puppyPendingPhoto) {
         let finalCover = puppyPendingPhoto;
         if (finalCover.startsWith('data:')) {
-          const coverPath = `litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}/cover.jpg`;
+          const coverPath = `litters/${editPuppyLitterKey}/puppies/${editPuppyId}/cover.jpg`;
           finalCover = await window.uploadImageAndGetUrl(finalCover, coverPath);
         }
         updates.photo = finalCover;
@@ -6899,7 +6987,7 @@ window.savePuppy = async function() {
         updates.photo = firstImageSrc;
       }
 
-      await fbUpdate(`litters/${puppyEditLitterKey}/puppies/${puppyEditPuppyId}`, updates);
+      await fbUpdate(`litters/${editPuppyLitterKey}/puppies/${editPuppyId}`, updates);
       
       document.getElementById('puppy-modal').classList.remove('open');
       showToast('💾 순서 및 설정이 성공적으로 저장되었습니다!');
@@ -6935,11 +7023,16 @@ window.savePuppy = async function() {
 
 function checkVaxAlerts(){
 
+  const __vaxOverlay = document.getElementById('vax-popup-overlay');
+
+  if (__vaxOverlay && !__vaxOverlay.classList.contains('hidden')) return; // 이미 떠있으면 중복 재실행 방지 (깜빡임 방지)
+
   const todayStr = today();
 
   const hideUntil = localStorage.getItem('goldie_hide_vax_popup_date');
 
   if (hideUntil === todayStr) return; // 오늘 하루 안 보기 체크 시 팝업 방지
+
 
 
 
@@ -11408,27 +11501,38 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
 
           try {
             const task = window.uploadBytesResumable(r, f, metadata);
-            let progressed = false;
+            let lastProgressAt = Date.now();
+            const STALL_MS = 8000;   // 8초간 진행 업데이트가 없으면 정지로 간주
+            const HARD_CAP_MS = 180000; // 아무리 길어도 최대 3분 넘기지 않음
 
-            await Promise.race([
-              new Promise((resolve, reject) => {
-                task.on('state_changed',
-                  (snapshot) => {
-                    progressed = true;
-                    const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                    if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
-                  },
-                  (err) => reject(err),
-                  async () => {
-                    storageUrl = await getDownloadURL(task.snapshot.ref);
-                    resolve();
-                  }
-                );
-              }),
-              new Promise((_, reject) => setTimeout(() => {
-                if (!progressed) reject(new Error('resumable_timeout'));
-              }, 3500))
-            ]);
+            await new Promise((resolve, reject) => {
+              let settled = false;
+              const finish = (fn) => (...args) => { if (!settled) { settled = true; clearInterval(stallTimer); clearTimeout(hardCap); fn(...args); } };
+
+              const stallTimer = setInterval(() => {
+                if (Date.now() - lastProgressAt > STALL_MS) {
+                  try { task.cancel(); } catch(e){}
+                  finish(reject)(new Error('upload_stalled'));
+                }
+              }, 1000);
+              const hardCap = setTimeout(() => {
+                try { task.cancel(); } catch(e){}
+                finish(reject)(new Error('upload_hard_timeout'));
+              }, HARD_CAP_MS);
+
+              task.on('state_changed',
+                (snapshot) => {
+                  lastProgressAt = Date.now();
+                  const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                  if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
+                },
+                finish(reject),
+                finish(async () => {
+                  storageUrl = await getDownloadURL(task.snapshot.ref);
+                  resolve();
+                })
+              );
+            });
           } catch (resumableErr) {
             console.warn('[Resumable Upload Fallback to uploadBytes]:', resumableErr);
             if (progressText) progressText.textContent = `🎥 영상 직접 업로드 중... (잠시만 기다려주세요)`;
