@@ -2070,7 +2070,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
     <div class="tab" onclick="showTab('treatment')">🩺 치료</div>
 
-
+    <div class="tab" onclick="showTab('pedigree')">🧬 혈통</div>
 
   </div>
 
@@ -2174,23 +2174,15 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
       <div class="form-card">
 
+        <div class="form-group"><label>모견</label><select id="b-female" onchange="checkBreedingCompat()"></select></div>
 
+        <div class="form-group"><label>부견</label><select id="b-male" onchange="checkBreedingCompat()"></select></div>
 
-        <div class="form-group"><label>모견</label><select id="b-female"></select></div>
-
-
-
-        <div class="form-group"><label>부견</label><select id="b-male"></select></div>
-
-
+        <div id="b-compat-warning"></div>
 
         <div class="form-group"><label>교배일</label><input type="date" id="b-date"></div>
 
-
-
         <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
-
-
 
       </div>
 
@@ -3108,6 +3100,16 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+
+
+    <!-- ð§¬ ííµ ê´ë¦¬ í­ -->
+    <div id="tab-pedigree" class="hidden">
+      <div class="sec-title">ð§¬ ííµ ê´ë¦¬ â 3ë ì´ë´ ê·¼ì¹ ê²ì¬</div>
+      <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">ê°ì²´ë¥¼ ì ííë©´ 3ë ê³ë³´ëì, ë°ë ì±ë³ ê°ì²´ë¤ê³¼ì êµë°° ê°ë¥ ì¬ë¶ë¥¼ íë²ì íì¸í  ì ììµëë¤.</p>
+      <div class="dog-grid" id="pedigree-dog-grid"></div>
+      <div id="pedigree-detail" style="margin-top:16px;"></div>
+    </div>
+
   </div>
 
 
@@ -3231,6 +3233,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
       <div class="form-group"><label>생년월일</label><input type="date" id="dm-birth"></div>
+
+      <div class="form-group"><label>부견 (모르면 비워두세요)</label><select id="dm-sire"></select></div>
+
+      <div class="form-group"><label>모견 (모르면 비워두세요)</label><select id="dm-dam"></select></div>
 
       <!-- 추가 사진/영상 갤러리 -->
       <div class="form-group">
@@ -4693,7 +4699,7 @@ window.currentTab = 'dogs';
 
 window.showTab = function(tab) {
   window.currentTab = tab;
-  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment'];
+  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment', 'pedigree'];
   
   // 1. 탭 콘텐츠 가시성 전환 (.hidden 클래스 및 style.display 동시 제어)
   tabIds.forEach(t => {
@@ -4732,6 +4738,8 @@ window.showTab = function(tab) {
       if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
     } else if (tab === 'treatment') {
       if (typeof window.initTreatmentTab === 'function') window.initTreatmentTab();
+    } else if (tab === 'pedigree') {
+      if (typeof window.renderPedigreeTab === 'function') window.renderPedigreeTab();
     }
   } catch(e) {
     console.error('[Tab Switch Error]:', e);
@@ -4744,7 +4752,250 @@ function allDogs() {
   const mList = (window.males && window.males.length) ? window.males : (males || []);
   return [...fList.map(d => ({ ...d, sex: 'female' })), ...mList.map(d => ({ ...d, sex: 'male' }))];
 }
+
+// ════════ 🧬 혈통 관리 — 부모견 선택 UI + 근친 판정 엔진 ════════
+
+// 개체 등록/수정 모달의 부견/모견 select를 채움 (excludeKey는 자기 자신을 목록에서 빼기 위함)
+function populateParentSelects(sireKey, damKey, excludeKey) {
+  const dogs = allDogs();
+  const sireOptions = dogs.filter(d => d.sex === 'male' && d._key !== excludeKey);
+  const damOptions = dogs.filter(d => d.sex === 'female' && d._key !== excludeKey);
+
+  const sireSel = document.getElementById('dm-sire');
+  const damSel = document.getElementById('dm-dam');
+  if (sireSel) {
+    sireSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
+      sireOptions.map(d => `<option value="${d._key}" ${d._key === sireKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}</option>`).join('');
+  }
+  if (damSel) {
+    damSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
+      damOptions.map(d => `<option value="${d._key}" ${d._key === damKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}</option>`).join('');
+  }
+}
+
+// key로 개체를 빠르게 찾기 위한 맵
+function buildDogsByKeyMap() {
+  const map = {};
+  allDogs().forEach(d => { map[d._key] = d; });
+  return map;
+}
+
+// key로부터 시작해서 depth대(1~maxDepth) 조상들의 key -> 최소depth 맵을 만듦 (본인 제외)
+function ancestorMap(key, maxDepth, dogsByKey) {
+  const result = new Map();
+  const visiting = new Set(); // 순환참조 방지
+  function recurse(k, depth) {
+    if (!k || depth > maxDepth || visiting.has(k)) return;
+    visiting.add(k);
+    const dog = dogsByKey[k];
+    if (dog) {
+      if (dog.sire_key) {
+        if (!result.has(dog.sire_key) || result.get(dog.sire_key) > depth) result.set(dog.sire_key, depth);
+        recurse(dog.sire_key, depth + 1);
+      }
+      if (dog.dam_key) {
+        if (!result.has(dog.dam_key) || result.get(dog.dam_key) > depth) result.set(dog.dam_key, depth);
+        recurse(dog.dam_key, depth + 1);
+      }
+    }
+    visiting.delete(k);
+  }
+  recurse(key, 1);
+  return result;
+}
+
+// maxDepth 이내에 부모 정보가 비어있는 조상이 있는지 (판정 불가 여부 확인용)
+function hasUnknownWithinDepth(key, maxDepth, dogsByKey) {
+  const visited = new Set();
+  let found = false;
+  function recurse(k, depth) {
+    if (found || !k || visited.has(k + ':' + depth)) return;
+    visited.add(k + ':' + depth);
+    const dog = dogsByKey[k];
+    if (!dog) return;
+    if (depth < maxDepth) {
+      if (!dog.sire_key) { found = true; return; }
+      if (!dog.dam_key) { found = true; return; }
+    }
+    if (depth < maxDepth) {
+      if (dog.sire_key) recurse(dog.sire_key, depth + 1);
+      if (dog.dam_key) recurse(dog.dam_key, depth + 1);
+    }
+  }
+  recurse(key, 0);
+  return found;
+}
+
+// 두 개체(부견키/모견키)의 교배 근친 판정: 3대(부모/조부모/증조부모) 이내 공통 조상 검사
+function checkInbreeding(sireKey, damKey, maxDepth) {
+  maxDepth = maxDepth || 3;
+  if (!sireKey || !damKey) return { status: 'yellow', common: [], reason: '부견 또는 모견 정보 없음' };
+  if (sireKey === damKey) return { status: 'red', common: [], reason: '동일 개체' };
+
+  const dogsByKey = buildDogsByKeyMap();
+  const sireAnc = ancestorMap(sireKey, maxDepth, dogsByKey);
+  const damAnc = ancestorMap(damKey, maxDepth, dogsByKey);
+
+  // 부모-자식 관계(한쪽이 다른 쪽의 조상인 경우)
+  if (sireAnc.has(damKey)) return { status: 'red', common: [{ key: damKey, sireDepth: 0, damDepth: 0 }], reason: '모견이 부견의 직계 조상' };
+  if (damAnc.has(sireKey)) return { status: 'red', common: [{ key: sireKey, sireDepth: 0, damDepth: 0 }], reason: '부견이 모견의 직계 조상' };
+
+  const common = [];
+  sireAnc.forEach((sDepth, k) => {
+    if (damAnc.has(k)) common.push({ key: k, sireDepth: sDepth, damDepth: damAnc.get(k) });
+  });
+  if (common.length) return { status: 'red', common };
+
+  const incomplete = hasUnknownWithinDepth(sireKey, maxDepth, dogsByKey) || hasUnknownWithinDepth(damKey, maxDepth, dogsByKey);
+  if (incomplete) return { status: 'yellow', common: [] };
+
+  return { status: 'green', common: [] };
+}
+
 window.allDogs = allDogs;
+
+// ── 🧬 혈통 관리 탭 렌더링 ──
+window._pedigreeSelectedKey = null;
+
+window.renderPedigreeTab = function() {
+  const grid = document.getElementById('pedigree-dog-grid');
+  if (!grid) return;
+  const dogs = allDogs();
+  grid.innerHTML = dogs.map(dog => {
+    const photoEl = dog.photo
+      ? `<img class="dog-photo" loading="lazy" decoding="async" src="${dog.photo}" alt="${esc(dog.code)}">`
+      : `<div class="dog-photo-placeholder">${dog.sex === 'female' ? '🐕‍🦺' : '🐕'}</div>`;
+    return `<div class="dog-card ${dog.sex}${window._pedigreeSelectedKey === dog._key ? ' selected' : ''}" onclick="selectPedigreeDog('${dog._key}')">
+      ${photoEl}
+      <div class="dog-card-body">
+        <div class="code">${esc(dog.code)}</div>
+        <div class="kennel-tag">${esc(dog.kennel || '')}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (window._pedigreeSelectedKey) {
+    window.renderPedigreeDetail(window._pedigreeSelectedKey);
+  } else {
+    document.getElementById('pedigree-detail').innerHTML = `<div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">개체를 선택하면 3대 계보도와 교배 가능 여부가 여기 표시됩니다.</div>`;
+  }
+};
+
+window.selectPedigreeDog = function(key) {
+  window._pedigreeSelectedKey = key;
+  window.renderPedigreeTab();
+};
+
+function dogLabel(dog) {
+  if (!dog) return '미상';
+  return `${esc(dog.code)}${dog.name ? ' (' + esc(dog.name) + ')' : ''}`;
+}
+
+// 3대 계보 트리 HTML (본인 → 부/모 → 조부모 → 증조부모)
+function buildPedigreeTreeHtml(key, dogsByKey) {
+  function cell(k, label) {
+    const dog = k ? dogsByKey[k] : null;
+    const text = dog ? dogLabel(dog) : '미상';
+    return `<div style="border:1.5px solid ${dog ? (dog.sex === 'female' ? 'var(--female)' : 'var(--male)') : '#CBD5E1'}; border-radius:8px; padding:6px 8px; font-size:11px; font-weight:700; text-align:center; background:${dog ? '#fff' : '#F8FAFC'}; color:${dog ? 'inherit' : '#94A3B8'};">
+      <div style="font-size:9px; color:#94A3B8; font-weight:600; margin-bottom:2px;">${label}</div>${text}
+    </div>`;
+  }
+
+  const self = dogsByKey[key];
+  const sireKey = self ? self.sire_key : null;
+  const damKey = self ? self.dam_key : null;
+  const sire = sireKey ? dogsByKey[sireKey] : null;
+  const dam = damKey ? dogsByKey[damKey] : null;
+
+  const sireSireKey = sire ? sire.sire_key : null;
+  const sireDamKey = sire ? sire.dam_key : null;
+  const damSireKey = dam ? dam.sire_key : null;
+  const damDamKey = dam ? dam.dam_key : null;
+
+  const ggKeys = [
+    sireSireKey ? dogsByKey[sireSireKey]?.sire_key : null,
+    sireSireKey ? dogsByKey[sireSireKey]?.dam_key : null,
+    sireDamKey ? dogsByKey[sireDamKey]?.sire_key : null,
+    sireDamKey ? dogsByKey[sireDamKey]?.dam_key : null,
+    damSireKey ? dogsByKey[damSireKey]?.sire_key : null,
+    damSireKey ? dogsByKey[damSireKey]?.dam_key : null,
+    damDamKey ? dogsByKey[damDamKey]?.sire_key : null,
+    damDamKey ? dogsByKey[damDamKey]?.dam_key : null,
+  ];
+  const ggLabels = ['증조부','증조모','증조부','증조모','증조부','증조모','증조부','증조모'];
+
+  const filledCount = [self, sireKey && sire, damKey && dam, sireSireKey && dogsByKey[sireSireKey], sireDamKey && dogsByKey[sireDamKey], damSireKey && dogsByKey[damSireKey], damDamKey && dogsByKey[damDamKey]]
+    .filter(Boolean).length + ggKeys.filter(Boolean).length;
+  const total = 15; // 본인1 + 부모2 + 조부모4 + 증조부모8
+
+  return `
+    <div style="font-size:11px; color:#64748B; font-weight:700; margin-bottom:8px;">혈통 정보 완성도: ${filledCount}/${total}칸</div>
+    <div style="font-size:12px; font-weight:800; margin-bottom:8px;">${dogLabel(self)}</div>
+    <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:4px;">
+      ${ggKeys.map((k, i) => `<div>${cell(k, ggLabels[i])}</div>`).join('')}
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px;">
+      <div>${cell(sireSireKey, '조부(부계)')}</div>
+      <div>${cell(sireDamKey, '조모(부계)')}</div>
+      <div>${cell(damSireKey, '조부(모계)')}</div>
+      <div>${cell(damDamKey, '조모(모계)')}</div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px;">
+      <div>${cell(sireKey, '부견')}</div>
+      <div>${cell(damKey, '모견')}</div>
+    </div>
+  `;
+}
+
+// 선택된 개체 상세: 3대 계보 + 반대성별 전체와의 교배가능여부 리스트
+window.renderPedigreeDetail = function(key) {
+  const el = document.getElementById('pedigree-detail');
+  if (!el) return;
+  const dogsByKey = buildDogsByKeyMap();
+  const dog = dogsByKey[key];
+  if (!dog) { el.innerHTML = ''; return; }
+
+  const oppositeSex = dog.sex === 'female' ? 'male' : 'female';
+  const candidates = allDogs().filter(d => d.sex === oppositeSex);
+  const results = candidates.map(c => {
+    const sireKey = dog.sex === 'male' ? dog._key : c._key;
+    const damKey = dog.sex === 'female' ? dog._key : c._key;
+    const r = checkInbreeding(sireKey, damKey, 3);
+    return { candidate: c, result: r };
+  }).sort((a, b) => {
+    const order = { green: 0, yellow: 1, red: 2 };
+    return order[a.result.status] - order[b.result.status];
+  });
+
+  const badgeStyle = { green: 'background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;', yellow: 'background:#FEF9E7; color:#B7950B; border:1px solid #F7DC6F;', red: 'background:#FDEDEC; color:#E74C3C; border:1px solid #F5B7B1;' };
+  const badgeText = { green: '🟢 교배 가능', yellow: '🟡 확인 불가(정보부족)', red: '🔴 교배 불가' };
+
+  const compatRows = results.map(({ candidate, result }) => {
+    let reasonText = '';
+    if (result.status === 'red') {
+      if (result.reason) reasonText = result.reason;
+      else if (result.common.length) reasonText = '공통 조상: ' + result.common.map(c => dogLabel(dogsByKey[c.key])).join(', ');
+    }
+    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;">
+      <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}</div>
+      <div style="text-align:right;">
+        <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${badgeText[result.status]}</span>
+        ${reasonText ? `<div style="font-size:10px; color:#E74C3C; margin-top:2px;">${esc(reasonText)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="sec-title" style="margin-top:0;">${dogLabel(dog)} — 3대 계보도</div>
+    <div class="form-card" style="margin-bottom:16px;">
+      ${buildPedigreeTreeHtml(key, dogsByKey)}
+    </div>
+    <div class="sec-title">${dog.sex === 'female' ? '🐕 교배 가능한 부견 목록' : '🐕‍🦺 교배 가능한 모견 목록'} (${candidates.length}두)</div>
+    <div class="form-card" style="padding:0; overflow:hidden;">
+      ${compatRows || '<div style="padding:16px; font-size:12px; color:#94A3B8;">등록된 반대 성별 개체가 없습니다.</div>'}
+    </div>
+  `;
+};
 
 function debouncedRenderDogs() {
   if (renderDogsDebounceTimer) clearTimeout(renderDogsDebounceTimer);
@@ -5039,9 +5290,10 @@ window.openAddDog=function(sex){
 
   document.getElementById('dm-kennel').innerHTML=KENNELS.map(k=>`<option>${k}</option>`).join('');
 
-
+  populateParentSelects(null, null, dogEditCode);
 
   resetPhotoWrap(null);
+
 
 
 
@@ -5095,7 +5347,7 @@ window.openEditDog=function(key){
 
   document.getElementById('dm-kennel').innerHTML=KENNELS.map(k=>`<option${k===dog.kennel?' selected':''}>${k}</option>`).join('');
 
-
+  populateParentSelects(dog.sire_key||null, dog.dam_key||null, key);
 
   resetPhotoWrap(dog.photo||null);
 
@@ -5317,6 +5569,11 @@ window.saveDog = async function() {
 
   const kennel = document.getElementById('dm-kennel') ? document.getElementById('dm-kennel').value : '';
   const birth = document.getElementById('dm-birth') ? document.getElementById('dm-birth').value : '';
+  const sireKey = document.getElementById('dm-sire') ? document.getElementById('dm-sire').value : '';
+  const damKey = document.getElementById('dm-dam') ? document.getElementById('dm-dam').value : '';
+  const dogsByKeyForSave = buildDogsByKeyMap();
+  const sireCode = sireKey && dogsByKeyForSave[sireKey] ? dogsByKeyForSave[sireKey].code : '';
+  const damCode = damKey && dogsByKeyForSave[damKey] ? dogsByKeyForSave[damKey].code : '';
 
   const saveBtn = document.getElementById('dm-save-btn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
@@ -5328,12 +5585,15 @@ window.saveDog = async function() {
     if (dogPendingPhoto) {
       const coverPath = `${path}/${dogEditCode || code}/cover_${Date.now()}.jpg`;
       coverUrl = await uploadImageAndGetUrl(dogPendingPhoto, coverPath);
+    } else if (dogModalMode !== 'edit' && window._promotePhotoUrl) {
+      // 새끼 → 개체 승격 시: 이미 Storage에 있는 새끼 사진 URL을 그대로 재사용 (재업로드 안 함)
+      coverUrl = window._promotePhotoUrl;
     }
 
     let targetKey = dogEditCode;
 
     if (dogModalMode === 'edit' && dogEditCode) {
-      const updates = { code, kennel, birth };
+      const updates = { code, kennel, birth, sire_key: sireKey || null, sire_code: sireCode, dam_key: damKey || null, dam_code: damCode };
       if (coverUrl) updates.photo = coverUrl;
       await fbUpdate(`${path}/${dogEditCode}`, updates);
       showToast('🐕 개체 정보가 수정되었습니다.');
@@ -5342,11 +5602,29 @@ window.saveDog = async function() {
         code,
         kennel,
         birth,
+        sire_key: sireKey || null,
+        sire_code: sireCode,
+        dam_key: damKey || null,
+        dam_code: damCode,
         photo: coverUrl || '',
         created_at: new Date().toISOString()
       };
+      if (window._promoteSource) {
+        newDog.from_litter = true;
+        newDog.origin_litter_id = window._promoteSource.litterKey;
+        newDog.origin_puppy_id = window._promoteSource.puppyId;
+      }
       targetKey = await fbPush(path, newDog);
       showToast('🐕 새 개체가 등록되었습니다.');
+
+      // 승격 출처인 경우, 새끼 기록에도 승격되었음을 표시
+      if (window._promoteSource) {
+        try {
+          await fbSet(`litters/${window._promoteSource.litterKey}/puppies/${window._promoteSource.puppyId}/promoted_to`, targetKey);
+        } catch (e) { console.warn('승격 표시 실패:', e); }
+        window._promoteSource = null;
+        window._promotePhotoUrl = null;
+      }
     }
 
     // 2. 삭제 표시된 기존 미디어 제거 (수정 모드에서만 존재)
@@ -5902,37 +6180,51 @@ window.saveBreedingMemo=async function(bKey,val){
 
 
 
+// 교배 등록 화면에서 모견/부견 선택 시 실시간 근친 경고 표시
+window.checkBreedingCompat = function() {
+  const el = document.getElementById('b-compat-warning');
+  if (!el) return;
+  const fKey = document.getElementById('b-female').value;
+  const mKey = document.getElementById('b-male').value;
+  if (!fKey || !mKey) { el.innerHTML = ''; return; }
+
+  const compat = checkInbreeding(mKey, fKey, 3);
+  const dogsByKey = buildDogsByKeyMap();
+
+  if (compat.status === 'red') {
+    let detail = compat.reason || ('공통 조상: ' + compat.common.map(c => dogLabel(dogsByKey[c.key])).join(', '));
+    el.innerHTML = `<div style="background:#FDEDEC; border:1px solid #F5B7B1; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🔴 교배 불가 — 3대 이내 근친 관계입니다. (${esc(detail)})</div>`;
+  } else if (compat.status === 'yellow') {
+    el.innerHTML = `<div style="background:#FEF9E7; border:1px solid #F7DC6F; color:#B7950B; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다.</div>`;
+  } else {
+    el.innerHTML = `<div style="background:#E8F8EF; border:1px solid #A8DDB9; color:#27AE60; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟢 3대 이내 공통 조상이 확인되지 않았습니다.</div>`;
+  }
+};
+
 window.registerBreeding=async function(){
-
-
 
   const fKey=document.getElementById('b-female').value;
 
-
-
   const mKey=document.getElementById('b-male').value;
-
-
 
   const mDate=document.getElementById('b-date').value;
 
-
-
   if(!mDate){showToast('교배일을 입력해주세요');return;}
-
-
 
   const fDog=females.find(f=>f._key===fKey);
 
-
-
   const mDog=males.find(m=>m._key===mKey);
-
-
 
   if(!fDog||!mDog)return;
 
-
+  if (fKey && mKey) {
+    const compat = checkInbreeding(mKey, fKey, 3);
+    if (compat.status === 'red') {
+      if (!confirm('⚠️ 3대 이내 근친 관계가 확인되었습니다. 그래도 교배를 등록하시겠습니까?')) return;
+    } else if (compat.status === 'yellow') {
+      if (!confirm('🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다. 그래도 교배를 등록하시겠습니까?')) return;
+    }
+  }
 
   const due=addDays(mDate,GESTATION);
 
@@ -10851,6 +11143,30 @@ function getSireInfo(maleCode){
 
 
 
+// 🐾 새끼 → 번식견(개체) 승격: litter의 부/모견 정보를 자동으로 채운 상태로 개체 등록 모달을 염
+window.promotePuppyToDog = function(litterKey, puppyId) {
+  const lt = (litters || []).find(l => l._key === litterKey);
+  if (!lt) { alert('출산 기록을 찾을 수 없습니다.'); return; }
+  const p = (lt.puppies || {})[puppyId];
+  if (!p) { alert('강아지 정보를 찾을 수 없습니다.'); return; }
+  if (!p.sex || p.sex === 'unknown') { alert('성별이 미정인 강아지는 승격할 수 없습니다. 먼저 성별을 지정해주세요.'); return; }
+  if (p.promoted_to) { alert('이미 번식견으로 승격된 강아지입니다.'); return; }
+  if (!confirm(`${p.name || '이 강아지'}(을)를 ${p.sex === 'female' ? '모견' : '부견'}으로 승격하시겠습니까?\n부모견 정보와 사진이 자동으로 채워집니다.`)) return;
+
+  const damDog = females.find(f => f.code === lt.femaleCode);
+  const sireDog = males.find(m => m.code === lt.maleCode);
+
+  window._promoteSource = { litterKey, puppyId };
+  window._promotePhotoUrl = p.photo || null;
+
+  closePuppyDetail();
+  openAddDog(p.sex);
+  document.getElementById('dog-modal-title').textContent = `${p.sex === 'female' ? '🐕‍🦺 모견' : '🐕 부견'} 승격 등록 — ${p.name || ''}`;
+  document.getElementById('dm-birth').value = lt.birthB || lt.birthA || today();
+  populateParentSelects(sireDog ? sireDog._key : null, damDog ? damDog._key : null, null);
+  if (p.photo) resetPhotoWrap(p.photo);
+};
+
 function getMotherInfo(femaleCode){
 
   const dog = females.find(f => f.code === femaleCode);
@@ -11109,6 +11425,10 @@ function renderPuppyDetailContent(){
         </label>
       </div>
       <button class="btn" id="pd-settings-save-btn" onclick="saveDetailSettings('${pdLitterKey}','${pdPuppyId}')">💾 정보 저장</button>
+      ${p.promoted_to
+        ? `<div style="margin-top:10px; font-size:12px; font-weight:700; color:#27AE60;">✅ 번식견으로 승격됨</div>`
+        : `<button class="btn" style="margin-top:10px; background:#7C3AED;" onclick="promotePuppyToDog('${pdLitterKey}','${pdPuppyId}')">⬆️ 번식견으로 승격 (부모견 자동입력)</button>`
+      }
     </div>
 
     
