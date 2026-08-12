@@ -325,6 +325,7 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     if (gate) gate.style.display = 'none';
     if (wrap) wrap.style.display = 'block';
+    if (typeof window.startAdminCalendarListeners === 'function') window.startAdminCalendarListeners();
   } else {
     if (gate) gate.style.display = 'flex';
     if (wrap) wrap.style.display = 'none';
@@ -1143,25 +1144,44 @@ window._calFilter = 'all';
 
 import { push as fbPush, remove as fbRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
-onValue(ref(db, 'schedules'), snap => {
-  const val = snap.val() || {};
-  window._schedules = val;
-  try { localStorage.setItem('goldi_cache_schedules', JSON.stringify(val)); } catch(e){}
-  renderCalendarEvents();
-});
-onValue(ref(db, 'deliveries'), snap => {
-  const val = snap.val() || {};
-  window._deliveries = val;
-  try { localStorage.setItem('goldi_cache_deliveries', JSON.stringify(val)); } catch(e){}
-  renderCalendarEvents();
-});
-onValue(ref(db, 'reservations'), snap => {
-  const val = snap.val() || {};
-  window._reservations = val;
-  try { localStorage.setItem('goldi_cache_reservations', JSON.stringify(val)); } catch(e){}
-  renderCalendarEvents();
-});
+// schedules/deliveries/reservations는 관리자 전용 읽기 경로라서, 인증이 채 끝나기 전에 구독하면
+// permission-denied로 리스너가 끊겨버려 그 뒤로 영영 데이터가 안 뜨는 문제가 있었음.
+// 그래서 로그인 인증이 확정된 뒤(아래 onAuthStateChanged)에만 시작하도록 분리.
+let __adminCalendarListenersStarted = false;
+function startAdminCalendarListeners() {
+  if (__adminCalendarListenersStarted) return;
+  __adminCalendarListenersStarted = true;
+
+  // Firebase Realtime DB Subscriptions for Google Calendar Sync Categories
+  onValue(ref(db, 'schedules'), snap => {
+    const val = snap.val() || {};
+    window._schedules = val;
+    try { localStorage.setItem('goldi_cache_schedules', JSON.stringify(val)); } catch(e){}
+    renderCalendarEvents();
+  }, error => {
+    console.error('[schedules 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 일정 데이터 연결 오류: ' + (error.code || error.message));
+  });
+  onValue(ref(db, 'deliveries'), snap => {
+    const val = snap.val() || {};
+    window._deliveries = val;
+    try { localStorage.setItem('goldi_cache_deliveries', JSON.stringify(val)); } catch(e){}
+    renderCalendarEvents();
+  }, error => {
+    console.error('[deliveries 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 배송 데이터 연결 오류: ' + (error.code || error.message));
+  });
+  onValue(ref(db, 'reservations'), snap => {
+    const val = snap.val() || {};
+    window._reservations = val;
+    try { localStorage.setItem('goldi_cache_reservations', JSON.stringify(val)); } catch(e){}
+    renderCalendarEvents();
+  }, error => {
+    console.error('[reservations 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 예약 데이터 연결 오류: ' + (error.code || error.message));
+  });
+}
+window.startAdminCalendarListeners = startAdminCalendarListeners;
 
 
 // Google Calendar 1-Click URL Generator
