@@ -2185,7 +2185,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
         <div id="b-compat-warning"></div>
 
-        <div class="form-group"><label>교배일</label><input type="date" id="b-date"></div>
+        <div class="form-group">
+          <label>교배일 (발정기 중 교배한 날짜를 모두 입력, 최대 5회)</label>
+          <div id="b-date-list"></div>
+          <button type="button" class="btn-outline btn-sm" onclick="addBreedingDateInput()" style="margin-top:4px;">＋ 교배일 추가</button>
+        </div>
+        <div id="b-due-preview" style="font-size:12px; color:#64748B; font-weight:700; margin:-4px 0 10px;"></div>
 
         <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
 
@@ -3606,6 +3611,8 @@ onAuthStateChanged(auth, (user) => {
     if (overlay) overlay.style.display = 'none';
     if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
 
+    maybeStartListeners();
+
     let attempts = 0;
     (function tryRenderOnLogin() {
       attempts++;
@@ -4254,6 +4261,15 @@ window.closeVaxPopup = function() {
 };
 
 
+let __listenersStarted = false;
+function maybeStartListeners() {
+  if (__listenersStarted) return;
+  if (!auth.currentUser) return; // 인증 확정 전에 관리자 전용 경로(breeding/moveLog/deliveries/treatments/schedules/reservations)를
+                                   // 구독하면 permission-denied로 리스너가 끊겨버려서, 인증 확인 후에만 시작
+  __listenersStarted = true;
+  startListeners();
+}
+
 function startListeners(){
 
   // 재연결 시 동일 데이터로 다시 렌더링되어 화면이 깜빡이는 것을 방지하는 헬퍼
@@ -4682,11 +4698,12 @@ async function init(){
 
 
 
-    // 2. 백그라운드 데이터 실시간 리스너 동기화 시작
+    // 2. 백그라운드 데이터 실시간 리스너 동기화 시작 (인증이 이미 확정된 세션이면 바로 시작,
+    //    보통은 아래 onAuthStateChanged가 인증 확인 후 시작함)
 
 
 
-    startListeners();
+    maybeStartListeners();
 
 
 
@@ -6043,15 +6060,15 @@ function renderBreeding(){
 
 
 
-  document.getElementById('b-female').innerHTML=females.map(f=>`<option value="${f._key}">${f.code} (${f.kennel})</option>`).join('');
+  document.getElementById('b-female').innerHTML=allDogs().filter(d=>d.sex==='female').map(f=>`<option value="${f._key}">${f.code} (${f.kennel})</option>`).join('');
 
 
 
-  document.getElementById('b-male').innerHTML=males.map(m=>`<option value="${m._key}">${m.code} (${m.kennel})</option>`).join('');
+  document.getElementById('b-male').innerHTML=allDogs().filter(d=>d.sex==='male').map(m=>`<option value="${m._key}">${m.code} (${m.kennel})</option>`).join('');
 
 
 
-  document.getElementById('b-date').value=today();
+  resetBreedingDateInputs();
 
 
 
@@ -6127,7 +6144,7 @@ function renderBreeding(){
 
 
 
-        <div class="bc-info">교배일: ${fmtDate(b.matingDate)} &nbsp;|&nbsp; 출산 예정: ${fmtDate(b.dueDate)}</div>
+        <div class="bc-info">교배일: ${(b.matingDates && b.matingDates.length > 1) ? b.matingDates.map(d => fmtDate(d)).join(', ') : fmtDate(b.matingDate)} &nbsp;|&nbsp; 출산 예정: ${fmtDate(b.dueDate)}${(b.dueDateEarliest && b.dueDateLatest) ? ` (${fmtDate(b.dueDateEarliest)}~${fmtDate(b.dueDateLatest)})` : ''}</div>
 
 
 
@@ -6442,6 +6459,65 @@ window.saveBreedingMemo=async function(bKey,val){
 
 
 // 교배 등록 화면에서 모견/부견 선택 시 실시간 근친 경고 표시
+// ── 다회차 교배일 입력 (발정기 중 여러 번 교배, 최대 5회) ──
+const MAX_BREEDING_DATES = 5;
+
+window.addBreedingDateInput = function(prefillValue) {
+  const list = document.getElementById('b-date-list');
+  if (!list) return;
+  const inputs = list.querySelectorAll('.b-date-input');
+  if (inputs.length >= MAX_BREEDING_DATES) { showToast(`교배일은 최대 ${MAX_BREEDING_DATES}회까지만 등록할 수 있어요.`); return; }
+  const isFirst = inputs.length === 0;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:6px;';
+  row.innerHTML = `<input type="date" class="b-date-input" value="${prefillValue || ''}" onchange="updateBreedingDuePreview()" style="flex:1;">` +
+    (isFirst ? '' : `<button type="button" class="btn-outline btn-sm" onclick="removeBreedingDateInput(this)" style="padding:6px 10px; margin:0;">✕</button>`);
+  list.appendChild(row);
+  updateBreedingDuePreview();
+};
+
+window.removeBreedingDateInput = function(btn) {
+  btn.parentElement.remove();
+  updateBreedingDuePreview();
+};
+
+window.resetBreedingDateInputs = function() {
+  const list = document.getElementById('b-date-list');
+  if (!list) return;
+  list.innerHTML = '';
+  addBreedingDateInput(today());
+};
+
+function getBreedingDates() {
+  return Array.from(document.querySelectorAll('#b-date-list .b-date-input'))
+    .map(i => i.value).filter(Boolean).sort();
+}
+
+// 대형견/골든리트리버 평균 재태기간(약 63일, 범위 61~65일)은 여러 문헌·AKC·수의학 자료에서
+// 공통적으로 확인됨. 정자는 자궁 내에서 3~5일 생존 가능해 교배일 중 하루만으로는 배란일을
+// 특정하기 어렵기 때문에, 발정기 중 기록된 여러 교배일의 "평균(가운데) 날짜"를 배란 추정
+// 기준으로 삼아 63일을 더하는 방식을 사용 (프로게스테론 검사로 배란일을 직접 확인하는 것이
+// 가장 정확하지만, 검사를 안 하는 경우 이 방식이 널리 쓰이는 실용적 대안).
+function calcBreedingDue(dates) {
+  if (!dates || !dates.length) return null;
+  const times = dates.map(d => new Date(d).getTime());
+  const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+  const avgDate = new Date(avgTime).toISOString().slice(0, 10);
+  const dueDate = addDays(avgDate, GESTATION);
+  const earliestDue = addDays(avgDate, 61);
+  const latestDue = addDays(avgDate, 65);
+  return { avgDate, dueDate, earliestDue, latestDue };
+}
+
+window.updateBreedingDuePreview = function() {
+  const preview = document.getElementById('b-due-preview');
+  if (!preview) return;
+  const dates = getBreedingDates();
+  if (!dates.length) { preview.textContent = ''; return; }
+  const calc = calcBreedingDue(dates);
+  preview.innerHTML = `📅 예상 출산예정일: <b>${fmtDate(calc.dueDate)}</b> (관찰 구간 ${fmtDate(calc.earliestDue)} ~ ${fmtDate(calc.latestDue)}, 교배 ${dates.length}회 평균 기준)`;
+};
+
 window.checkBreedingCompat = function() {
   const el = document.getElementById('b-compat-warning');
   if (!el) return;
@@ -6468,9 +6544,9 @@ window.registerBreeding=async function(){
 
   const mKey=document.getElementById('b-male').value;
 
-  const mDate=document.getElementById('b-date').value;
+  const matingDates=getBreedingDates();
 
-  if(!mDate){showToast('교배일을 입력해주세요');return;}
+  if(!matingDates.length){showToast('교배일을 최소 1개 입력해주세요');return;}
 
   const fDog=females.find(f=>f._key===fKey);
 
@@ -6487,21 +6563,22 @@ window.registerBreeding=async function(){
     }
   }
 
-  const due=addDays(mDate,GESTATION);
+  const calc=calcBreedingDue(matingDates);
+  const due=calc.dueDate;
 
 
 
-  await fbPush('breeding',{femaleCode:fDog.code,maleCode:mDog.code,matingDate:mDate,dueDate:due,memo:''});
+  await fbPush('breeding',{femaleCode:fDog.code,maleCode:mDog.code,matingDate:matingDates[0],matingDates:matingDates,avgMatingDate:calc.avgDate,dueDate:due,dueDateEarliest:calc.earliestDue,dueDateLatest:calc.latestDue,memo:''});
 
 
 
-  await fbUpdate(`females/${fKey}`,{breeding:mDate,dueDate:due,mateCode:mDog.code});
+  await fbUpdate(`females/${fKey}`,{breeding:matingDates[0],dueDate:due,mateCode:mDog.code});
 
 
 
-  showToast(`✅ ${fDog.code} 출산 예정일: ${fmtDate(due)}`);
+  showToast(`✅ ${fDog.code} 출산 예정일: ${fmtDate(due)} (교배 ${matingDates.length}회 평균 기준)`);
 
-
+  resetBreedingDateInputs();
 
 };
 
