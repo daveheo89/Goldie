@@ -2114,7 +2114,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
       <div class="dog-grid" id="male-grid"></div>
 
-
+      <div style="text-align:center; margin:14px 0;">
+        <a href="javascript:void(0)" onclick="toggleArchivedDogsView()" id="archived-toggle-link" style="font-size:12px; color:#94A3B8; text-decoration:underline;">🗂 이전 개체들 (<span id="archived-count">0</span>)</a>
+      </div>
+      <div id="archived-dogs-section" class="hidden"></div>
 
       <div class="detail-panel" id="dog-detail"></div>
 
@@ -3105,9 +3108,51 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     <!-- 🧬 혈통 관리 탭 -->
     <div id="tab-pedigree" class="hidden">
       <div class="sec-title">🧬 혈통 관리 — 3대 이내 근친 검사</div>
-      <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">개체를 선택하면 3대 계보도와, 반대 성별 개체들과의 교배 가능 여부를 한번에 확인할 수 있습니다.</p>
-      <div class="dog-grid" id="pedigree-dog-grid"></div>
+      <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">모견 또는 부견을 펼쳐서 개체를 선택하면 3대 계보도와, 반대 성별 개체들과의 교배 가능 여부를 확인할 수 있습니다.</p>
+
+      <div class="sec-title" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="togglePedigreeGroup('female')">
+        <span>🐕‍🦺 모견 <span class="badge" id="pedigree-female-count">0</span></span>
+        <span id="pedigree-female-arrow" style="font-size:11px; color:#94A3B8;">▶</span>
+      </div>
+      <div class="dog-grid hidden" id="pedigree-female-grid"></div>
+
+      <div class="sec-title" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="togglePedigreeGroup('male')">
+        <span>🐕 부견 <span class="badge" id="pedigree-male-count">0</span></span>
+        <span id="pedigree-male-arrow" style="font-size:11px; color:#94A3B8;">▶</span>
+      </div>
+      <div class="dog-grid hidden" id="pedigree-male-grid"></div>
+
       <div id="pedigree-detail" style="margin-top:16px;"></div>
+    </div>
+
+    <!-- 계보도 조상 선택 모달 -->
+    <div class="modal-overlay" id="ancestor-picker-modal" onclick="handleAncestorPickerOverlay(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 id="ancestor-picker-title">조상견 선택</h2>
+          <button class="modal-close" onclick="closeAncestorPicker()">✕</button>
+        </div>
+        <div id="ancestor-picker-list" style="max-height:50vh; overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- 개체 보관 처리 모달 -->
+    <div class="modal-overlay" id="archive-dog-modal" onclick="handleArchiveDogModalOverlay(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>🗂 개체 보관 처리</h2>
+          <button class="modal-close" onclick="closeArchiveDogModal()">✕</button>
+        </div>
+        <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">완전히 삭제되지 않고 "이전 개체들"로 이동합니다. 언제든 복원할 수 있어요.</p>
+        <div class="form-group">
+          <label>이동(보관) 사유 메모</label>
+          <textarea id="archive-reason-input" placeholder="예: 노령으로 은퇴, 질병으로 폐사, 분양 등" style="width:100%;height:70px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-cancel" onclick="closeArchiveDogModal()" style="flex:1;">취소</button>
+          <button class="btn btn-danger" onclick="confirmArchiveDog()" style="flex:1;">🗂 보관 처리</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -4243,6 +4288,8 @@ function startListeners(){
 
       if(document.getElementById('tab-kennels')&&!document.getElementById('tab-kennels').classList.contains('hidden'))renderKennels();
 
+      if(document.getElementById('tab-pedigree')&&!document.getElementById('tab-pedigree').classList.contains('hidden')&&typeof window.renderPedigreeTab==='function')window.renderPedigreeTab();
+
       fillTreatmentSelects();
 
     }
@@ -4280,6 +4327,8 @@ function startListeners(){
     if (__malesChanged) {
 
       renderDogs();
+
+      if(document.getElementById('tab-pedigree')&&!document.getElementById('tab-pedigree').classList.contains('hidden')&&typeof window.renderPedigreeTab==='function')window.renderPedigreeTab();
 
       fillTreatmentSelects();
 
@@ -4747,36 +4796,40 @@ window.showTab = function(tab) {
 };
 
 let renderDogsDebounceTimer = null;
-function allDogs() {
+// includeArchived=true면 보관 처리된 개체도 포함 (계보도 조상 조회, 부모견 선택지 등에서 사용)
+function allDogs(includeArchived) {
   const fList = (window.females && window.females.length) ? window.females : (females || []);
   const mList = (window.males && window.males.length) ? window.males : (males || []);
-  return [...fList.map(d => ({ ...d, sex: 'female' })), ...mList.map(d => ({ ...d, sex: 'male' }))];
+  let list = [...fList.map(d => ({ ...d, sex: 'female' })), ...mList.map(d => ({ ...d, sex: 'male' }))];
+  if (!includeArchived) list = list.filter(d => !d.archived);
+  return list;
 }
 
 // ════════ 🧬 혈통 관리 — 부모견 선택 UI + 근친 판정 엔진 ════════
 
 // 개체 등록/수정 모달의 부견/모견 select를 채움 (excludeKey는 자기 자신을 목록에서 빼기 위함)
 function populateParentSelects(sireKey, damKey, excludeKey) {
-  const dogs = allDogs();
+  const dogs = allDogs(true); // 보관된 개체도 조상으로 지정 가능해야 하므로 포함
   const sireOptions = dogs.filter(d => d.sex === 'male' && d._key !== excludeKey);
   const damOptions = dogs.filter(d => d.sex === 'female' && d._key !== excludeKey);
+  const tag = d => d.archived ? ' (보관됨)' : '';
 
   const sireSel = document.getElementById('dm-sire');
   const damSel = document.getElementById('dm-dam');
   if (sireSel) {
     sireSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
-      sireOptions.map(d => `<option value="${d._key}" ${d._key === sireKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}</option>`).join('');
+      sireOptions.map(d => `<option value="${d._key}" ${d._key === sireKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}${tag(d)}</option>`).join('');
   }
   if (damSel) {
     damSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
-      damOptions.map(d => `<option value="${d._key}" ${d._key === damKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}</option>`).join('');
+      damOptions.map(d => `<option value="${d._key}" ${d._key === damKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}${tag(d)}</option>`).join('');
   }
 }
 
-// key로 개체를 빠르게 찾기 위한 맵
+// key로 개체를 빠르게 찾기 위한 맵 (보관된 개체도 포함 — 조상 계보 정보가 끊기면 안 되므로)
 function buildDogsByKeyMap() {
   const map = {};
-  allDogs().forEach(d => { map[d._key] = d; });
+  allDogs(true).forEach(d => { map[d._key] = d; });
   return map;
 }
 
@@ -4854,13 +4907,14 @@ function checkInbreeding(sireKey, damKey, maxDepth) {
 
 window.allDogs = allDogs;
 
-// ── 🧬 혈통 관리 탭 렌더링 ──
+// ── 🧬 혈통 관리 탭 렌더링 (성능: 진입 시 사진 그리드를 즉시 그리지 않고, 모견/부견을 펼쳤을 때만 렌더링) ──
 window._pedigreeSelectedKey = null;
+window._pedigreeExpanded = { female: false, male: false };
 
-window.renderPedigreeTab = function() {
-  const grid = document.getElementById('pedigree-dog-grid');
+function renderPedigreeGenderGrid(sex) {
+  const grid = document.getElementById(`pedigree-${sex}-grid`);
   if (!grid) return;
-  const dogs = allDogs();
+  const dogs = allDogs().filter(d => d.sex === sex);
   grid.innerHTML = dogs.map(dog => {
     const photoEl = dog.photo
       ? `<img class="dog-photo" loading="lazy" decoding="async" src="${dog.photo}" alt="${esc(dog.code)}">`
@@ -4873,17 +4927,51 @@ window.renderPedigreeTab = function() {
       </div>
     </div>`;
   }).join('');
+}
+
+window.togglePedigreeGroup = function(sex) {
+  window._pedigreeExpanded[sex] = !window._pedigreeExpanded[sex];
+  const grid = document.getElementById(`pedigree-${sex}-grid`);
+  const arrow = document.getElementById(`pedigree-${sex}-arrow`);
+  if (window._pedigreeExpanded[sex]) {
+    grid.classList.remove('hidden');
+    arrow.textContent = '▼';
+    renderPedigreeGenderGrid(sex); // 펼칠 때만 실제로 사진을 그림 (지연 렌더링)
+  } else {
+    grid.classList.add('hidden');
+    arrow.textContent = '▶';
+  }
+};
+
+window.renderPedigreeTab = function() {
+  const fCountEl = document.getElementById('pedigree-female-count');
+  const mCountEl = document.getElementById('pedigree-male-count');
+  if (!fCountEl || !mCountEl) return;
+  fCountEl.textContent = allDogs().filter(d => d.sex === 'female').length;
+  mCountEl.textContent = allDogs().filter(d => d.sex === 'male').length;
+
+  // 이미 펼쳐져 있던 그룹만 다시 그림 (데이터 변경 시 자동 동기화)
+  if (window._pedigreeExpanded.female) renderPedigreeGenderGrid('female');
+  if (window._pedigreeExpanded.male) renderPedigreeGenderGrid('male');
 
   if (window._pedigreeSelectedKey) {
     window.renderPedigreeDetail(window._pedigreeSelectedKey);
   } else {
-    document.getElementById('pedigree-detail').innerHTML = `<div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">개체를 선택하면 3대 계보도와 교배 가능 여부가 여기 표시됩니다.</div>`;
+    document.getElementById('pedigree-detail').innerHTML = `<div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">모견 또는 부견을 펼쳐서 개체를 선택하면 3대 계보도와 교배 가능 여부가 여기 표시됩니다.</div>`;
   }
 };
 
 window.selectPedigreeDog = function(key) {
   window._pedigreeSelectedKey = key;
-  window.renderPedigreeTab();
+  const dog = allDogs(true).find(d => d._key === key);
+  if (dog && !window._pedigreeExpanded[dog.sex]) {
+    window._pedigreeExpanded[dog.sex] = true;
+    document.getElementById(`pedigree-${dog.sex}-grid`).classList.remove('hidden');
+    document.getElementById(`pedigree-${dog.sex}-arrow`).textContent = '▼';
+  }
+  if (window._pedigreeExpanded.female) renderPedigreeGenderGrid('female');
+  if (window._pedigreeExpanded.male) renderPedigreeGenderGrid('male');
+  window.renderPedigreeDetail(key);
 };
 
 function dogLabel(dog) {
@@ -4892,12 +4980,15 @@ function dogLabel(dog) {
 }
 
 // 3대 계보 트리 HTML (본인 → 부/모 → 조부모 → 증조부모)
+// 각 칸은 "그 칸의 소유 개체(owner)"가 실존할 때만 클릭해서 지정/변경 가능 (예: 증조부를 지정하려면 먼저 조부가 지정돼 있어야 함)
 function buildPedigreeTreeHtml(key, dogsByKey) {
-  function cell(k, label) {
+  function cell(k, label, ownerKey, ownerSex, slot) {
     const dog = k ? dogsByKey[k] : null;
     const text = dog ? dogLabel(dog) : '미상';
-    return `<div style="border:1.5px solid ${dog ? (dog.sex === 'female' ? 'var(--female)' : 'var(--male)') : '#CBD5E1'}; border-radius:8px; padding:6px 8px; font-size:11px; font-weight:700; text-align:center; background:${dog ? '#fff' : '#F8FAFC'}; color:${dog ? 'inherit' : '#94A3B8'};">
-      <div style="font-size:9px; color:#94A3B8; font-weight:600; margin-bottom:2px;">${label}</div>${text}
+    const editable = !!ownerKey;
+    const clickAttr = editable ? ` onclick="openAncestorPicker('${ownerKey}','${ownerSex}','${slot}','${label}')"` : '';
+    return `<div${clickAttr} title="${editable ? '클릭해서 지정/변경' : '먼저 상위 조상을 지정하세요'}" style="border:1.5px solid ${dog ? (dog.sex === 'female' ? 'var(--female)' : 'var(--male)') : '#CBD5E1'}; border-radius:8px; padding:6px 8px; font-size:11px; font-weight:700; text-align:center; background:${dog ? '#fff' : '#F8FAFC'}; color:${dog ? 'inherit' : '#94A3B8'}; ${editable ? 'cursor:pointer;' : ''}">
+      <div style="font-size:9px; color:#94A3B8; font-weight:600; margin-bottom:2px;">${label}${editable ? ' ✎' : ''}</div>${text}
     </div>`;
   }
 
@@ -4912,40 +5003,80 @@ function buildPedigreeTreeHtml(key, dogsByKey) {
   const damSireKey = dam ? dam.sire_key : null;
   const damDamKey = dam ? dam.dam_key : null;
 
-  const ggKeys = [
-    sireSireKey ? dogsByKey[sireSireKey]?.sire_key : null,
-    sireSireKey ? dogsByKey[sireSireKey]?.dam_key : null,
-    sireDamKey ? dogsByKey[sireDamKey]?.sire_key : null,
-    sireDamKey ? dogsByKey[sireDamKey]?.dam_key : null,
-    damSireKey ? dogsByKey[damSireKey]?.sire_key : null,
-    damSireKey ? dogsByKey[damSireKey]?.dam_key : null,
-    damDamKey ? dogsByKey[damDamKey]?.sire_key : null,
-    damDamKey ? dogsByKey[damDamKey]?.dam_key : null,
+  // 증조부모 8칸: 각 칸의 owner는 해당 조부모(sireSire/sireDam/damSire/damDam)
+  const ggDefs = [
+    { k: sireSireKey ? dogsByKey[sireSireKey]?.sire_key : null, label: '증조부', ownerKey: sireSireKey, ownerSex: 'male',   slot: 'sire_key' },
+    { k: sireSireKey ? dogsByKey[sireSireKey]?.dam_key  : null, label: '증조모', ownerKey: sireSireKey, ownerSex: 'male',   slot: 'dam_key'  },
+    { k: sireDamKey  ? dogsByKey[sireDamKey]?.sire_key  : null, label: '증조부', ownerKey: sireDamKey,  ownerSex: 'female', slot: 'sire_key' },
+    { k: sireDamKey  ? dogsByKey[sireDamKey]?.dam_key   : null, label: '증조모', ownerKey: sireDamKey,  ownerSex: 'female', slot: 'dam_key'  },
+    { k: damSireKey  ? dogsByKey[damSireKey]?.sire_key  : null, label: '증조부', ownerKey: damSireKey,  ownerSex: 'male',   slot: 'sire_key' },
+    { k: damSireKey  ? dogsByKey[damSireKey]?.dam_key   : null, label: '증조모', ownerKey: damSireKey,  ownerSex: 'male',   slot: 'dam_key'  },
+    { k: damDamKey   ? dogsByKey[damDamKey]?.sire_key   : null, label: '증조부', ownerKey: damDamKey,   ownerSex: 'female', slot: 'sire_key' },
+    { k: damDamKey   ? dogsByKey[damDamKey]?.dam_key    : null, label: '증조모', ownerKey: damDamKey,   ownerSex: 'female', slot: 'dam_key'  },
   ];
-  const ggLabels = ['증조부','증조모','증조부','증조모','증조부','증조모','증조부','증조모'];
 
   const filledCount = [self, sireKey && sire, damKey && dam, sireSireKey && dogsByKey[sireSireKey], sireDamKey && dogsByKey[sireDamKey], damSireKey && dogsByKey[damSireKey], damDamKey && dogsByKey[damDamKey]]
-    .filter(Boolean).length + ggKeys.filter(Boolean).length;
+    .filter(Boolean).length + ggDefs.filter(g => g.k).length;
   const total = 15; // 본인1 + 부모2 + 조부모4 + 증조부모8
 
   return `
-    <div style="font-size:11px; color:#64748B; font-weight:700; margin-bottom:8px;">혈통 정보 완성도: ${filledCount}/${total}칸</div>
+    <div style="font-size:11px; color:#64748B; font-weight:700; margin-bottom:8px;">혈통 정보 완성도: ${filledCount}/${total}칸 <span style="color:#B7950B;">(✎ 칸은 클릭해서 지정할 수 있어요)</span></div>
     <div style="font-size:12px; font-weight:800; margin-bottom:8px;">${dogLabel(self)}</div>
     <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:4px;">
-      ${ggKeys.map((k, i) => `<div>${cell(k, ggLabels[i])}</div>`).join('')}
+      ${ggDefs.map(g => `<div>${cell(g.k, g.label, g.ownerKey, g.ownerSex, g.slot)}</div>`).join('')}
     </div>
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px;">
-      <div>${cell(sireSireKey, '조부(부계)')}</div>
-      <div>${cell(sireDamKey, '조모(부계)')}</div>
-      <div>${cell(damSireKey, '조부(모계)')}</div>
-      <div>${cell(damDamKey, '조모(모계)')}</div>
+      <div>${cell(sireSireKey, '조부(부계)', sireKey, 'male', 'sire_key')}</div>
+      <div>${cell(sireDamKey, '조모(부계)', sireKey, 'male', 'dam_key')}</div>
+      <div>${cell(damSireKey, '조부(모계)', damKey, 'female', 'sire_key')}</div>
+      <div>${cell(damDamKey, '조모(모계)', damKey, 'female', 'dam_key')}</div>
     </div>
     <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px;">
-      <div>${cell(sireKey, '부견')}</div>
-      <div>${cell(damKey, '모견')}</div>
+      <div>${cell(sireKey, '부견', key, self ? self.sex : null, 'sire_key')}</div>
+      <div>${cell(damKey, '모견', key, self ? self.sex : null, 'dam_key')}</div>
     </div>
   `;
 }
+
+// ── 계보도 조상 지정 피커 ──
+window._ancestorPickerState = null;
+
+window.openAncestorPicker = function(ownerKey, ownerSex, slot, label) {
+  const targetSex = slot === 'sire_key' ? 'male' : 'female';
+  window._ancestorPickerState = { ownerKey, ownerSex, slot };
+  document.getElementById('ancestor-picker-title').textContent = `${label} 선택`;
+  const owner = allDogs(true).find(d => d._key === ownerKey);
+  const currentVal = owner ? owner[slot] : null;
+  const options = allDogs(true).filter(d => d.sex === targetSex && d._key !== ownerKey);
+  const listEl = document.getElementById('ancestor-picker-list');
+  listEl.innerHTML = `
+    <div onclick="pickAncestor(null)" style="padding:10px 12px; border-bottom:1px solid #F1F5F9; cursor:pointer; font-size:13px; ${!currentVal ? 'font-weight:800; color:var(--brown);' : 'color:#94A3B8;'}">-- 미상 (비우기) --</div>
+    ${options.map(d => `<div onclick="pickAncestor('${d._key}')" style="padding:10px 12px; border-bottom:1px solid #F1F5F9; cursor:pointer; font-size:13px; ${currentVal === d._key ? 'font-weight:800; color:var(--brown); background:var(--gold-pale);' : ''}">${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${d.archived ? ' <span style="color:#94A3B8; font-size:11px;">(보관됨)</span>' : ''}</div>`).join('') || '<div style="padding:16px; text-align:center; color:#94A3B8; font-size:12px;">등록된 개체가 없습니다.</div>'}
+  `;
+  document.getElementById('ancestor-picker-modal').classList.add('open');
+};
+
+window.pickAncestor = async function(selectedKey) {
+  const state = window._ancestorPickerState;
+  if (!state) return;
+  if (selectedKey === state.ownerKey) { showToast('⚠️ 자기 자신은 조상으로 지정할 수 없어요.'); return; }
+  const path = (state.ownerSex === 'female' ? 'females' : 'males') + '/' + state.ownerKey;
+  try {
+    await fbUpdate(path, { [state.slot]: selectedKey || null });
+    showToast('✅ 계보 정보가 저장됐어요.');
+  } finally {
+    closeAncestorPicker();
+  }
+};
+
+window.closeAncestorPicker = function() {
+  document.getElementById('ancestor-picker-modal').classList.remove('open');
+  window._ancestorPickerState = null;
+};
+
+window.handleAncestorPickerOverlay = function(e) {
+  if (e.target === document.getElementById('ancestor-picker-modal')) closeAncestorPicker();
+};
 
 // 선택된 개체 상세: 3대 계보 + 반대성별 전체와의 교배가능여부 리스트
 window.renderPedigreeDetail = function(key) {
@@ -5111,7 +5242,8 @@ function renderDogsActual(){
 
   });
 
-
+  const archivedCountEl = document.getElementById('archived-count');
+  if (archivedCountEl) archivedCountEl.textContent = allDogs(true).filter(d => d.archived).length;
 
 }
 
@@ -5125,7 +5257,7 @@ function selectDog(key){
 
 
 
-  const dog=allDogs().find(d=>d._key===key);
+  const dog=allDogs(true).find(d=>d._key===key); // 보관된 개체도 상세보기는 가능해야 함
 
 
 
@@ -5193,11 +5325,16 @@ function selectDog(key){
 
 
 
-      <div style="flex:1;"><div style="font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:4px;">${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code}</div></div>
+      <div style="flex:1;"><div style="font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:4px;">${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code}</div>${dog.archived?`<div style="font-size:11px; color:#E67E22; font-weight:700;">🗂 보관됨${dog.archived_date?' · '+fmtDate(dog.archived_date):''}${dog.archived_reason?' · '+esc(dog.archived_reason):''}</div>`:''}</div>
 
 
 
-      <button class="btn-outline" onclick="openEditDog('${dog._key}')">✏️ 수정</button>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button class="btn-outline" onclick="openEditDog('${dog._key}')">✏️ 수정</button>
+        ${dog.archived
+          ? `<button class="btn-outline" onclick="restoreDog('${dog._key}','${dog.sex}')">↩ 복원</button>`
+          : `<button class="btn-outline" onclick="openArchiveDogModal('${dog._key}')">🗂 보관</button>`}
+      </div>
 
 
 
@@ -5247,7 +5384,87 @@ function selectDog(key){
 
 }
 
+// ═══════════════════════════════════════
+//  개체 보관 처리 (소프트 삭제) / 이전 개체들
+// ═══════════════════════════════════════
 
+window._archivedDogsVisible = false;
+
+window.toggleArchivedDogsView = function() {
+  window._archivedDogsVisible = !window._archivedDogsVisible;
+  const sec = document.getElementById('archived-dogs-section');
+  const link = document.getElementById('archived-toggle-link');
+  if (window._archivedDogsVisible) {
+    sec.classList.remove('hidden');
+    renderArchivedDogsSection();
+    link.innerHTML = '▲ 이전 개체들 닫기';
+  } else {
+    sec.classList.add('hidden');
+    link.innerHTML = `🗂 이전 개체들 (<span id="archived-count">${allDogs(true).filter(d => d.archived).length}</span>)`;
+  }
+};
+
+function renderArchivedDogsSection() {
+  const sec = document.getElementById('archived-dogs-section');
+  if (!sec) return;
+  const archived = allDogs(true).filter(d => d.archived);
+  if (!archived.length) {
+    sec.innerHTML = `<div style="padding:16px; text-align:center; color:#94A3B8; font-size:12px;">보관된 개체가 없습니다.</div>`;
+    return;
+  }
+  sec.innerHTML = `
+    <div class="form-card" style="padding:0; overflow:hidden;">
+      ${archived.map(d => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #F1F5F9; gap:8px;">
+          <div style="flex:1; cursor:pointer;" onclick="selectDog('${d._key}')">
+            <div style="font-size:13px; font-weight:700;">${d.sex === 'female' ? '🐕‍🦺' : '🐕'} ${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}</div>
+            <div style="font-size:11px; color:#94A3B8; margin-top:2px;">${d.archived_date ? fmtDate(d.archived_date) + ' · ' : ''}${d.archived_reason ? esc(d.archived_reason) : '사유 없음'}</div>
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0; white-space:nowrap;" onclick="event.stopPropagation(); restoreDog('${d._key}','${d.sex}')">↩ 복원</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+window.restoreDog = async function(key, sex) {
+  if (!confirm('이 개체를 다시 활성 목록으로 복원할까요?')) return;
+  const path = (sex === 'female' ? 'females' : 'males') + '/' + key;
+  await fbUpdate(path, { archived: false, archived_reason: null, archived_date: null });
+  showToast('↩ 복원되었습니다.');
+  if (window._archivedDogsVisible) renderArchivedDogsSection();
+};
+
+let _archiveDogTargetKey = null;
+let _archiveDogTargetSex = null;
+
+window.openArchiveDogModal = function(key) {
+  const dog = allDogs(true).find(d => d._key === key);
+  if (!dog) return;
+  _archiveDogTargetKey = key;
+  _archiveDogTargetSex = dog.sex;
+  document.getElementById('archive-reason-input').value = '';
+  document.getElementById('archive-dog-modal').classList.add('open');
+};
+
+window.closeArchiveDogModal = function() {
+  document.getElementById('archive-dog-modal').classList.remove('open');
+  _archiveDogTargetKey = null;
+  _archiveDogTargetSex = null;
+};
+
+window.handleArchiveDogModalOverlay = function(e) {
+  if (e.target === document.getElementById('archive-dog-modal')) closeArchiveDogModal();
+};
+
+window.confirmArchiveDog = async function() {
+  if (!_archiveDogTargetKey) return;
+  const reason = document.getElementById('archive-reason-input').value.trim();
+  const path = (_archiveDogTargetSex === 'female' ? 'females' : 'males') + '/' + _archiveDogTargetKey;
+  await fbUpdate(path, { archived: true, archived_reason: reason || null, archived_date: today() });
+  showToast('🗂 보관 처리됐어요. "이전 개체들"에서 확인할 수 있어요.');
+  closeArchiveDogModal();
+};
 
 
 
