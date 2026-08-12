@@ -664,22 +664,21 @@ window.contractStatus = c => {
   return { label: '🟡 잔금 대기중', color: '#E67E22' };
 };
 
-window.deleteGhostContract = async (id) => {
-  if (!confirm('정보가 없는 이 계약 항목을 완전히 삭제하시겠습니까? (되돌릴 수 없습니다)')) return;
-  await fbRemove(ref(db, `contracts/${id}`));
-  toast('삭제되었습니다.');
+window._analyticsDate = new Date();
+window.changeAnalyticsMonth = offset => {
+  window._analyticsDate.setMonth(window._analyticsDate.getMonth() + offset);
+  window.renderContractAnalytics();
 };
 
 window.renderContractAnalytics = () => {
   const el = document.getElementById('dbAnalytics');
   if (!el) return;
   const rawAll = Object.entries(window._contracts || {});
-  const ghosts = rawAll.filter(([, c]) => window.isGhostContract(c));
-  const all = rawAll.filter(([, c]) => !window.isGhostContract(c)); // 이하 모든 집계는 고스트 제외
+  const all = rawAll.filter(([, c]) => !window.isGhostContract(c)); // 정보 누락 계약은 전부 집계에서 제외
 
-  const now = new Date();
-  const ym = now.toISOString().slice(0, 7);
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const base = window._analyticsDate;
+  const ym = base.toISOString().slice(0, 7);
+  const prevDate = new Date(base.getFullYear(), base.getMonth() - 1, 1);
   const prevYm = prevDate.toISOString().slice(0, 7);
 
   const monthList = all.filter(([, c]) => (c.contract_date || '').startsWith(ym));
@@ -698,7 +697,7 @@ window.renderContractAnalytics = () => {
   };
   const pctColor = (cur, prev) => (cur > prev ? '#27AE60' : (cur < prev ? '#E74C3C' : 'var(--gray)'));
 
-  const avgPrice = all.length ? Math.round(all.reduce((s, [, c]) => s + (Number(c.price) || 0), 0) / all.length) : 0;
+  const monthAvgPrice = monthCount ? Math.round(monthRevenue / monthCount) : 0;
 
   const unpaid = all.filter(([, c]) => !c.balance_paid);
   const unpaidTotal = unpaid.reduce((s, [, c]) => s + Math.max((Number(c.price) || 0) - (Number(c.deposit) || 0), 0), 0);
@@ -706,27 +705,35 @@ window.renderContractAnalytics = () => {
   const completionRate = all.length ? Math.round((paidCount / all.length) * 100) : 0;
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  const navHtml = `
+    <div class="cal-nav" style="margin-bottom:10px;">
+      <button class="btn btn-gray btn-sm" onclick="changeAnalyticsMonth(-1)">◀</button>
+      <div class="cal-nav-center"><h2>${base.getFullYear()}년 ${base.getMonth() + 1}월 통계</h2></div>
+      <button class="btn btn-gray btn-sm" onclick="changeAnalyticsMonth(1)">▶</button>
+    </div>
+  `;
+
   const cardsHtml = `
     <div class="fgrid" style="grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px;">
       <div class="card" style="text-align:center; padding:12px;">
-        <div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 계약건수</div>
+        <div style="font-size:11px; color:var(--gray); font-weight:700;">계약건수</div>
         <div style="font-size:20px; font-weight:800; color:var(--br);">${monthCount}건</div>
         <div style="font-size:11px; font-weight:700; color:${pctColor(monthCount, prevCount)};">전월대비 ${pct(monthCount, prevCount)}</div>
       </div>
       <div class="card" style="text-align:center; padding:12px;">
-        <div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 매출</div>
+        <div style="font-size:11px; color:var(--gray); font-weight:700;">매출</div>
         <div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(monthRevenue)}</div>
         <div style="font-size:11px; font-weight:700; color:${pctColor(monthRevenue, prevRevenue)};">전월대비 ${pct(monthRevenue, prevRevenue)}</div>
       </div>
       <div class="card" style="text-align:center; padding:12px;">
         <div style="font-size:11px; color:var(--gray); font-weight:700;">평균 분양가</div>
-        <div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(avgPrice)}</div>
-        <div style="font-size:11px; color:var(--gray);">전체 ${all.length}건 기준</div>
+        <div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(monthAvgPrice)}</div>
+        <div style="font-size:11px; color:var(--gray);">이 달 ${monthCount}건 기준</div>
       </div>
     </div>
     <div class="fgrid" style="grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;">
-      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">잔금 미수금</div><div style="font-size:20px; font-weight:800; color:#E74C3C;">${numFmt(unpaidTotal)}</div></div>
-      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">완납률</div><div style="font-size:20px; font-weight:800; color:#27AE60;">${completionRate}%</div></div>
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">잔금 미수금 (전체)</div><div style="font-size:20px; font-weight:800; color:#E74C3C;">${numFmt(unpaidTotal)}</div></div>
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">완납률 (전체)</div><div style="font-size:20px; font-weight:800; color:#27AE60;">${completionRate}%</div></div>
     </div>
   `;
 
@@ -753,24 +760,7 @@ window.renderContractAnalytics = () => {
     `;
   }
 
-  let ghostHtml = '';
-  if (ghosts.length) {
-    const rows = ghosts.map(([id, c]) => `
-      <tr>
-        <td style="font-family:monospace; font-size:11px;">${id}</td>
-        <td>${fmt(c.contract_date) || '—'}</td>
-        <td><button class="btn btn-gray btn-sm" style="color:var(--red);" onclick="deleteGhostContract('${id}')">삭제</button></td>
-      </tr>`).join('');
-    ghostHtml = `
-      <div class="stitle">⚠️ 정보 누락 계약 (${ghosts.length}건) — 확인 후 삭제해주세요</div>
-      <div class="card" style="padding:0; overflow:hidden; margin-bottom:14px; border-color:#F5CBA7;">
-        <table class="tbl"><thead><tr><th>Firebase 키</th><th>계약일(있으면)</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table>
-      </div>
-    `;
-  }
-
-  el.innerHTML = cardsHtml + unpaidHtml + ghostHtml;
+  el.innerHTML = navHtml + cardsHtml + unpaidHtml;
 };
 
 // 계약 예정 캘린더 — 계약체결일(📝) + 잔금(배송)예정일(💰, 완납되면 자동소멸)
@@ -842,11 +832,11 @@ window.showDbCalDay = dateStr => {
   const events = (window._dbCalEvents || []).filter(e => e.date === dateStr);
   if (!events.length) return;
   const rows = events.map(e => `
-    <div class="detail-row">
+    <div class="detail-row" style="cursor:pointer;" onclick="showDetail('${e.id}')">
       <span class="detail-key">${e.kind === 'sign' ? '📝 계약체결' : '💰 잔금예정'}</span>
-      <span class="detail-val">${e.buyer}${e.dogname ? ` (${e.dogname})` : ''}</span>
+      <span class="detail-val" style="text-decoration:underline; color:var(--br);">${e.buyer}${e.dogname ? ` (${e.dogname})` : ''}</span>
     </div>`).join('');
-  document.getElementById('modalBody').innerHTML = `<div class="stitle" style="margin-top:0;">${fmt(dateStr)} 일정</div>` + rows;
+  document.getElementById('modalBody').innerHTML = `<div class="stitle" style="margin-top:0;">${fmt(dateStr)} 일정 (눌러서 상세보기)</div>` + rows;
   document.getElementById('detailModal').classList.add('open');
 };
 
@@ -943,7 +933,9 @@ window.showDetail=id=>{
     <div class="btn-row" style="margin-top:14px; gap:8px; flex-wrap:wrap;">
       <button class="btn btn-sm ${depositPaid?'btn-gray':'btn-gold'}" onclick="toggleDepositPaid('${id}')">${depositPaid?'계약금 미납으로 변경':'💰 계약금 완납 처리'}</button>
       <button class="btn btn-sm ${balancePaid?'btn-gray':'btn-gold'}" onclick="toggleBalancePaid('${id}')">${balancePaid?'잔금 미납으로 변경':'💰 잔금 완납 처리'}</button>
+      <button class="btn btn-br btn-sm" onclick="toggleContractPdf('${id}')">📄 계약서 PDF 보기</button>
     </div>
+    <div id="pdfPreviewWrap" data-open="0"></div>
   `;
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + btns;
@@ -951,6 +943,24 @@ window.showDetail=id=>{
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
+// 계약 상세보기 하단 계약서 PDF 미리보기 토글
+window.toggleContractPdf = (id) => {
+  const c = window._contracts[id]; if (!c) return;
+  const wrap = document.getElementById('pdfPreviewWrap');
+  if (!wrap) return;
+  if (wrap.dataset.open === '1') {
+    wrap.innerHTML = '';
+    wrap.dataset.open = '0';
+    return;
+  }
+  if (!c.pdf_document) {
+    wrap.innerHTML = '<div style="font-size:12px; color:var(--gray); padding:10px 0;">등록된 계약서 PDF가 없습니다.</div>';
+  } else {
+    const src = c.pdf_document.startsWith('data:') ? c.pdf_document : `data:application/pdf;base64,${c.pdf_document}`;
+    wrap.innerHTML = `<iframe src="${src}" style="width:100%; height:500px; border:1px solid var(--gray-l); border-radius:8px; margin-top:10px;"></iframe>`;
+  }
+  wrap.dataset.open = '1';
+};
 
 // ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
 window._schedules = {};
