@@ -168,7 +168,9 @@ window.addEventListener('DOMContentLoaded', function(){
 <div id="adminWrap" style="display:none;">
 <header style="display:flex; justify-content:space-between; align-items:center; width:100%;">
 
-  <div class="logo">🐾 골디쉼터 <span>관리자</span></div>
+  <div class="logo">🐾 골디쉼터 <span>관리자</span>
+    <div id="deploy-time-info" style="font-size:11px; color:rgba(255,255,255,.65); font-weight:400; margin-top:2px;">🕐 최신 배포 확인 중...</div>
+  </div>
   <a href="https://daveheo89.github.io/Goldie/goldie_farm.html" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none; white-space:nowrap; font-weight:700;">🏡 농장 관리 웹앱 바로가기 ↗</a>
 </header>
 
@@ -295,6 +297,25 @@ const FB = {
 const app = initializeApp(FB);
 const db  = getDatabase(app);
 const auth = getAuth(app);
+
+// ── GitHub 최신 배포(커밋) 시각 조회 — Firebase 로그인과 무관하게 페이지 로드 즉시 확인 ──
+async function loadLastDeployTime(filePath, elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const res = await fetch(`https://api.github.com/repos/daveheo89/Goldie/commits?path=${encodeURIComponent(filePath)}&per_page=1`);
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const data = await res.json();
+    if (!data || !data[0] || !data[0].commit) throw new Error('커밋 정보 없음');
+    const dateStr = data[0].commit.committer?.date || data[0].commit.author?.date;
+    const kst = new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+    el.textContent = `🕐 최신 배포: ${kst} (GitHub 기준)`;
+  } catch (e) {
+    el.textContent = '🕐 최신 배포 시간 확인 불가';
+    console.warn('[배포 시간 조회 실패]:', e);
+  }
+}
+loadLastDeployTime('goldi_admin.html', 'deploy-time-info');
 
 // ── 🔐 실제 Firebase 로그인 (goldie_farm.html과 동일 계정 사용) ──
 const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
