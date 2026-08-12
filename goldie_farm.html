@@ -2033,13 +2033,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  
-    <div id="github-last-update" style="font-size:11px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:4px 10px;border-radius:20px;border:1px solid rgba(212,175,55,0.3);font-weight:700;display:inline-flex;align-items:center;gap:4px;margin-left:auto;">
-      🕒 마지막 업데이트: 2026-08-11 08:33
-    </div>
-
-</header>
-
 
 
 
@@ -4308,18 +4301,20 @@ window.closeVaxPopup = function() {
 };
 
 
-// females/males/litters/contracts는 공개 읽기 경로라 로그인과 무관하게 즉시 구독 시작 (startPublicListeners, init()에서 무조건 호출)
-// breeding/moveLog/deliveries/treatments는 관리자 전용 읽기 경로라, 인증 확정 전에 구독하면
-// permission-denied로 리스너가 끊겨버림 — 그래서 로그인 확정 후에만 시작 (아래 maybeStartListeners)
-let __adminListenersStarted = false;
+// 이 페이지는 로그인 전엔 login-overlay가 화면 전체를 덮고 있어서, 데이터를 로그인 전에
+// 미리 불러와도 사용자에게 보이는 이득이 없음. 그래서 어떤 경로가 공개/관리자 전용인지
+// 따로 구분하지 않고, 모든 리스너를 로그인 인증이 확정된 뒤에만 한 번에 시작한다.
+// (일부 경로만 먼저 시작했다가 인증 확정 전에 권한 거부로 리스너가 영구히 끊기는 사고가
+//  반복돼서, 아예 이 문제 자체가 생길 수 없게 통합함.)
+let __listenersStarted = false;
 function maybeStartListeners() {
-  if (__adminListenersStarted) return;
+  if (__listenersStarted) return;
   if (!auth.currentUser) return;
-  __adminListenersStarted = true;
-  startAdminListeners();
+  __listenersStarted = true;
+  startAllListeners();
 }
 
-function startPublicListeners(){
+function startAllListeners(){
 
   // 재연결 시 동일 데이터로 다시 렌더링되어 화면이 깜빡이는 것을 방지하는 헬퍼
   // (모바일에서 다른 앱 갔다가 돌아오면 Firebase 리스너가 재동기화되며
@@ -4488,18 +4483,6 @@ function startPublicListeners(){
 
 
   });
-}
-
-function startAdminListeners(){
-
-  // (관리자 전용 리스너에서도 동일한 변경 감지 헬퍼 필요 — 공개 리스너와 독립된 함수라 별도 정의)
-  const __lastRawJSON = window.__lastRawJSON || (window.__lastRawJSON = {});
-  function changedSince(key, val) {
-    const json = JSON.stringify(val);
-    if (__lastRawJSON[key] === json) return false;
-    __lastRawJSON[key] = json;
-    return true;
-  }
 
   // 교배
 
@@ -4764,10 +4747,10 @@ async function init(){
 
 
     // 2. 백그라운드 데이터 실시간 리스너 동기화 시작
-    //    공개 경로(females/males/litters/contracts)는 로그인과 무관하게 즉시 시작 (속도 최우선)
-    //    관리자 전용 경로는 인증이 이미 확정된 세션일 때만 여기서 시작 (보통은 onAuthStateChanged가 처리)
+    //    로그인 화면이 전체를 덮고 있어 로그인 전엔 어차피 아무것도 안 보이므로,
+    //    모든 경로를 인증 확정 후 한 번에 시작 (보통은 onAuthStateChanged가 처리하고,
+    //    여기는 init()이 인증 확정보다 늦게 실행되는 드문 경우를 위한 안전장치)
 
-    startPublicListeners();
     maybeStartListeners();
 
 
