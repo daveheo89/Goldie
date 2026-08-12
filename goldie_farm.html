@@ -618,6 +618,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 .litter-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;border-left:5px solid var(--puppy);}
+.litter-card.litter-highlight{animation:litterHighlightPulse 1.8s ease-out;}
+@keyframes litterHighlightPulse{0%{box-shadow:0 0 0 4px rgba(230,126,34,.55);}100%{box-shadow:var(--shadow);}}
 
 
 
@@ -4974,6 +4976,42 @@ window.selectPedigreeDog = function(key) {
   window.renderPedigreeDetail(key);
 };
 
+// 모견: femaleCode 매칭 출산 이력 / 부견: maleCode 매칭 교배(종견) 참여 이력
+function getBirthStats(dog) {
+  const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
+  const codeField = dog.sex === 'female' ? 'femaleCode' : 'maleCode';
+  const matched = targetLitters.filter(l => l[codeField] === dog.code);
+  const totalPuppies = matched.reduce((sum, l) => sum + (l.puppies ? Object.keys(l.puppies).length : 0), 0);
+  const dates = matched.map(l => l.birthB || l.birthA).filter(Boolean).sort();
+  const lastDate = dates.length ? dates[dates.length - 1] : null;
+  return { matched, count: matched.length, totalPuppies, lastDate };
+}
+
+// 🍼 출산/종견 활동 이력 섹션 HTML
+function buildBirthHistoryHtml(dog, matched) {
+  const isFemale = dog.sex === 'female';
+  const title = isFemale ? '🍼 출산 이력' : '🍼 종견 활동 이력';
+  const sorted = [...matched].sort((a, b) => (b.birthB || b.birthA || '').localeCompare(a.birthB || a.birthA || ''));
+  const rows = sorted.map(l => {
+    const count = l.puppies ? Object.keys(l.puppies).length : 0;
+    const partnerCode = isFemale ? l.maleCode : l.femaleCode;
+    const dateText = l.birthB ? `${fmtDate(l.birthA)} · ${fmtDate(l.birthB)}` : fmtDate(l.birthA);
+    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #F1F5F9; gap:8px;">
+      <div>
+        <div style="font-size:13px; font-weight:700;">${dateText}</div>
+        <div style="font-size:11px; color:#94A3B8; margin-top:2px;">${isFemale ? '부견' : '모견'}: ${esc(partnerCode || '-')} · ${count}마리</div>
+      </div>
+      <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0; white-space:nowrap;" onclick="goToLitterFromPedigree('${l._key}')">새끼 탭에서 보기</button>
+    </div>`;
+  }).join('');
+  return `
+    <div class="sec-title">${title} (${sorted.length}건)</div>
+    <div class="form-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
+      ${rows || `<div style="padding:16px; text-align:center; color:#94A3B8; font-size:12px;">${isFemale ? '출산' : '종견 활동'} 기록이 없습니다.</div>`}
+    </div>
+  `;
+}
+
 function dogLabel(dog) {
   if (!dog) return '미상';
   return `${esc(dog.code)}${dog.name ? ' (' + esc(dog.name) + ')' : ''}`;
@@ -4981,7 +5019,8 @@ function dogLabel(dog) {
 
 // 3대 계보 트리 HTML (본인 → 부/모 → 조부모 → 증조부모)
 // 각 칸은 "그 칸의 소유 개체(owner)"가 실존할 때만 클릭해서 지정/변경 가능 (예: 증조부를 지정하려면 먼저 조부가 지정돼 있어야 함)
-function buildPedigreeTreeHtml(key, dogsByKey) {
+// birthSummaryText: "총 N회 출산 · 누적 M마리 · 최근 YYYY.MM.DD" 형태의 한 줄 요약 (선택)
+function buildPedigreeTreeHtml(key, dogsByKey, birthSummaryText) {
   function cell(k, label, ownerKey, ownerSex, slot) {
     const dog = k ? dogsByKey[k] : null;
     const text = dog ? dogLabel(dog) : '미상';
@@ -5020,7 +5059,8 @@ function buildPedigreeTreeHtml(key, dogsByKey) {
   const total = 15; // 본인1 + 부모2 + 조부모4 + 증조부모8
 
   return `
-    <div style="font-size:11px; color:#64748B; font-weight:700; margin-bottom:8px;">혈통 정보 완성도: ${filledCount}/${total}칸 <span style="color:#B7950B;">(✎ 칸은 클릭해서 지정할 수 있어요)</span></div>
+    <div style="font-size:11px; color:#64748B; font-weight:700; margin-bottom:4px;">혈통 정보 완성도: ${filledCount}/${total}칸 <span style="color:#B7950B;">(✎ 칸은 클릭해서 지정할 수 있어요)</span></div>
+    ${birthSummaryText ? `<div style="font-size:11px; color:#94A3B8; font-weight:700; margin-bottom:8px;">${birthSummaryText}</div>` : ''}
     <div style="font-size:12px; font-weight:800; margin-bottom:8px;">${dogLabel(self)}</div>
     <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:4px;">
       ${ggDefs.map(g => `<div>${cell(g.k, g.label, g.ownerKey, g.ownerSex, g.slot)}</div>`).join('')}
@@ -5086,6 +5126,9 @@ window.renderPedigreeDetail = function(key) {
   const dog = dogsByKey[key];
   if (!dog) { el.innerHTML = ''; return; }
 
+  const birthStats = getBirthStats(dog);
+  const birthSummaryText = `총 ${birthStats.count}회 ${dog.sex === 'female' ? '출산' : '교배 참여'} · 누적 ${birthStats.totalPuppies}마리${birthStats.lastDate ? ' · 최근 ' + fmtDate(birthStats.lastDate) : ''}`;
+
   const oppositeSex = dog.sex === 'female' ? 'male' : 'female';
   const candidates = allDogs().filter(d => d.sex === oppositeSex);
   const results = candidates.map(c => {
@@ -5119,8 +5162,9 @@ window.renderPedigreeDetail = function(key) {
   el.innerHTML = `
     <div class="sec-title" style="margin-top:0;">${dogLabel(dog)} — 3대 계보도</div>
     <div class="form-card" style="margin-bottom:16px;">
-      ${buildPedigreeTreeHtml(key, dogsByKey)}
+      ${buildPedigreeTreeHtml(key, dogsByKey, birthSummaryText)}
     </div>
+    ${buildBirthHistoryHtml(dog, birthStats.matched)}
     <div class="sec-title">${dog.sex === 'female' ? '🐕 교배 가능한 부견 목록' : '🐕‍🦺 교배 가능한 모견 목록'} (${candidates.length}두)</div>
     <div class="form-card" style="padding:0; overflow:hidden;">
       ${compatRows || '<div style="padding:16px; font-size:12px; color:#94A3B8;">등록된 반대 성별 개체가 없습니다.</div>'}
@@ -6558,6 +6602,7 @@ function renderPuppies(){
     const isFirst = idx === 0;
     const card = document.createElement('div');
     card.className = 'litter-card';
+    card.id = 'litter-card-' + lt._key;
 
     const puppyEntries = lt.puppies ? Object.entries(lt.puppies) : [];
     const sortedPuppyEntries = [...puppyEntries].sort(([, a], [, b]) => {
@@ -6609,6 +6654,24 @@ function renderPuppies(){
     list.appendChild(card);
   });
 }
+
+// 혈통 탭 출산 이력에서 "새끼 탭에서 보기" 클릭 시 해당 출산 카드로 이동 + 펼침 + 하이라이트
+window.goToLitterFromPedigree = function(litterKey) {
+  window.showTab('puppies');
+  setTimeout(() => {
+    const card = document.getElementById('litter-card-' + litterKey);
+    if (!card) return;
+    const body = card.querySelector('.litter-body');
+    const icon = card.querySelector('.litter-toggle-icon');
+    if (body && getComputedStyle(body).display === 'none') {
+      body.style.display = 'block';
+      if (icon) icon.textContent = '▼';
+    }
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('litter-highlight');
+    setTimeout(() => card.classList.remove('litter-highlight'), 1800);
+  }, 100);
+};
 
 window.toggleLitter = function(headerEl) {
   const card = headerEl.closest('.litter-card');
