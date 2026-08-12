@@ -2024,7 +2024,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
       <p>골든리트리버 번식·견사 통합 관리</p>
     </div>
-    <button onclick="window.adminSignOut && window.adminSignOut()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔒 로그아웃</button>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <a href="goldi_admin.html" target="_blank" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none;">🖥 어드민 바로가기 ↗</a>
+      <button onclick="window.adminSignOut && window.adminSignOut()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔒 로그아웃</button>
+    </div>
   </header>
 
 
@@ -3376,6 +3379,30 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
   </div>
 
+  <!-- 교배 기록 수정 모달 -->
+  <div class="modal-overlay" id="breeding-edit-modal" onclick="handleBreedingEditModalOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🌸 교배 기록 수정</h2>
+        <button class="modal-close" onclick="closeBreedingEditModal()">✕</button>
+      </div>
+      <div class="form-group"><label>모견</label><select id="be-female" onchange="checkBreedingEditCompat()"></select></div>
+      <div class="form-group"><label>부견</label><select id="be-male" onchange="checkBreedingEditCompat()"></select></div>
+      <div id="be-compat-warning"></div>
+      <div class="form-group">
+        <label>교배일 (발정기 중 교배한 날짜를 모두 입력, 최대 5회)</label>
+        <div id="be-date-list"></div>
+        <button type="button" class="btn-outline btn-sm" onclick="addBreedingDateInput(null,'be-date-list')" style="margin-top:4px;">＋ 교배일 추가</button>
+      </div>
+      <div id="be-due-preview" style="font-size:12px; color:#64748B; font-weight:700; margin:-4px 0 10px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" onclick="deleteBreedingRecord()" style="flex:1;">🗑️ 삭제</button>
+        <button class="btn btn-cancel" onclick="closeBreedingEditModal()" style="flex:1;">취소</button>
+        <button class="btn" onclick="saveBreedingEdit()" style="flex:1;">✅ 저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 출산 기록 추가 모달 -->
   <div class="modal-overlay" id="litter-modal" onclick="handleLitterModalOverlay(event)">
     <div class="modal">
@@ -4261,16 +4288,18 @@ window.closeVaxPopup = function() {
 };
 
 
-let __listenersStarted = false;
+// females/males/litters/contracts는 공개 읽기 경로라 로그인과 무관하게 즉시 구독 시작 (startPublicListeners, init()에서 무조건 호출)
+// breeding/moveLog/deliveries/treatments는 관리자 전용 읽기 경로라, 인증 확정 전에 구독하면
+// permission-denied로 리스너가 끊겨버림 — 그래서 로그인 확정 후에만 시작 (아래 maybeStartListeners)
+let __adminListenersStarted = false;
 function maybeStartListeners() {
-  if (__listenersStarted) return;
-  if (!auth.currentUser) return; // 인증 확정 전에 관리자 전용 경로(breeding/moveLog/deliveries/treatments/schedules/reservations)를
-                                   // 구독하면 permission-denied로 리스너가 끊겨버려서, 인증 확인 후에만 시작
-  __listenersStarted = true;
-  startListeners();
+  if (__adminListenersStarted) return;
+  if (!auth.currentUser) return;
+  __adminListenersStarted = true;
+  startAdminListeners();
 }
 
-function startListeners(){
+function startPublicListeners(){
 
   // 재연결 시 동일 데이터로 다시 렌더링되어 화면이 깜빡이는 것을 방지하는 헬퍼
   // (모바일에서 다른 앱 갔다가 돌아오면 Firebase 리스너가 재동기화되며
@@ -4505,6 +4534,19 @@ function startListeners(){
 
 
   });
+}
+
+function startAdminListeners(){
+
+  // (관리자 전용 리스너에서도 동일한 변경 감지 헬퍼 필요 — 공개 리스너와 독립된 함수라 별도 정의)
+  const __lastRawJSON = window.__lastRawJSON || (window.__lastRawJSON = {});
+  function changedSince(key, val) {
+    const json = JSON.stringify(val);
+    if (__lastRawJSON[key] === json) return false;
+    __lastRawJSON[key] = json;
+    return true;
+  }
+
 
 
 
@@ -4698,11 +4740,11 @@ async function init(){
 
 
 
-    // 2. 백그라운드 데이터 실시간 리스너 동기화 시작 (인증이 이미 확정된 세션이면 바로 시작,
-    //    보통은 아래 onAuthStateChanged가 인증 확인 후 시작함)
+    // 2. 백그라운드 데이터 실시간 리스너 동기화 시작
+    //    공개 경로(females/males/litters/contracts)는 로그인과 무관하게 즉시 시작 (속도 최우선)
+    //    관리자 전용 경로는 인증이 이미 확정된 세션일 때만 여기서 시작 (보통은 onAuthStateChanged가 처리)
 
-
-
+    startPublicListeners();
     maybeStartListeners();
 
 
@@ -6218,9 +6260,10 @@ function renderBreeding(){
 
           <h3>🌸 ${b.femaleCode} × ${b.maleCode} 상세</h3>
 
-
-
-          <button class="bd-close" onclick="toggleBreedingDetail('${b._key}')">✕</button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="bd-close" style="width:auto; border-radius:8px; padding:0 10px; font-size:12px; font-weight:700;" onclick="event.stopPropagation(); openBreedingEditModal('${b._key}')">✏️ 수정</button>
+            <button class="bd-close" onclick="toggleBreedingDetail('${b._key}')">✕</button>
+          </div>
 
 
 
@@ -6462,34 +6505,42 @@ window.saveBreedingMemo=async function(bKey,val){
 // ── 다회차 교배일 입력 (발정기 중 여러 번 교배, 최대 5회) ──
 const MAX_BREEDING_DATES = 5;
 
-window.addBreedingDateInput = function(prefillValue) {
-  const list = document.getElementById('b-date-list');
+// containerId를 받아서 교배 등록 폼(b-date-list)과 교배 수정 모달(be-date-list)에서 공용으로 사용
+window.addBreedingDateInput = function(prefillValue, containerId) {
+  containerId = containerId || 'b-date-list';
+  const list = document.getElementById(containerId);
   if (!list) return;
   const inputs = list.querySelectorAll('.b-date-input');
   if (inputs.length >= MAX_BREEDING_DATES) { showToast(`교배일은 최대 ${MAX_BREEDING_DATES}회까지만 등록할 수 있어요.`); return; }
   const isFirst = inputs.length === 0;
   const row = document.createElement('div');
   row.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:6px;';
-  row.innerHTML = `<input type="date" class="b-date-input" value="${prefillValue || ''}" onchange="updateBreedingDuePreview()" style="flex:1;">` +
-    (isFirst ? '' : `<button type="button" class="btn-outline btn-sm" onclick="removeBreedingDateInput(this)" style="padding:6px 10px; margin:0;">✕</button>`);
+  row.innerHTML = `<input type="date" class="b-date-input" value="${prefillValue || ''}" onchange="updateBreedingDuePreview('${containerId}')" style="flex:1;">` +
+    (isFirst ? '' : `<button type="button" class="btn-outline btn-sm" onclick="removeBreedingDateInput(this,'${containerId}')" style="padding:6px 10px; margin:0;">✕</button>`);
   list.appendChild(row);
-  updateBreedingDuePreview();
+  updateBreedingDuePreview(containerId);
 };
 
-window.removeBreedingDateInput = function(btn) {
+window.removeBreedingDateInput = function(btn, containerId) {
   btn.parentElement.remove();
-  updateBreedingDuePreview();
+  updateBreedingDuePreview(containerId || 'b-date-list');
 };
 
-window.resetBreedingDateInputs = function() {
-  const list = document.getElementById('b-date-list');
+window.resetBreedingDateInputs = function(prefillDates, containerId) {
+  containerId = containerId || 'b-date-list';
+  const list = document.getElementById(containerId);
   if (!list) return;
   list.innerHTML = '';
-  addBreedingDateInput(today());
+  if (prefillDates && prefillDates.length) {
+    prefillDates.forEach(d => addBreedingDateInput(d, containerId));
+  } else {
+    addBreedingDateInput(today(), containerId);
+  }
 };
 
-function getBreedingDates() {
-  return Array.from(document.querySelectorAll('#b-date-list .b-date-input'))
+function getBreedingDates(containerId) {
+  containerId = containerId || 'b-date-list';
+  return Array.from(document.querySelectorAll(`#${containerId} .b-date-input`))
     .map(i => i.value).filter(Boolean).sort();
 }
 
@@ -6509,10 +6560,12 @@ function calcBreedingDue(dates) {
   return { avgDate, dueDate, earliestDue, latestDue };
 }
 
-window.updateBreedingDuePreview = function() {
-  const preview = document.getElementById('b-due-preview');
+window.updateBreedingDuePreview = function(containerId) {
+  containerId = containerId || 'b-date-list';
+  const previewId = containerId === 'be-date-list' ? 'be-due-preview' : 'b-due-preview';
+  const preview = document.getElementById(previewId);
   if (!preview) return;
-  const dates = getBreedingDates();
+  const dates = getBreedingDates(containerId);
   if (!dates.length) { preview.textContent = ''; return; }
   const calc = calcBreedingDue(dates);
   preview.innerHTML = `📅 예상 출산예정일: <b>${fmtDate(calc.dueDate)}</b> (관찰 구간 ${fmtDate(calc.earliestDue)} ~ ${fmtDate(calc.latestDue)}, 교배 ${dates.length}회 평균 기준)`;
@@ -6580,6 +6633,133 @@ window.registerBreeding=async function(){
 
   resetBreedingDateInputs();
 
+};
+
+// ═══════════════════════════════════════
+//  교배 기록 수정 / 삭제
+// ═══════════════════════════════════════
+
+let _breedingEditKey = null;
+let _breedingEditOriginal = null; // 모견 변경 시 이전 모견 필드 정리 판단용 스냅샷
+
+window.openBreedingEditModal = function(key) {
+  const b = breedingRecords.find(r => r._key === key);
+  if (!b) return;
+  _breedingEditKey = key;
+  _breedingEditOriginal = { ...b };
+
+  const dogs = allDogs(true); // 보관된 개체가 상대였던 과거 기록도 수정 화면에서 보여야 함
+  const femaleOptions = dogs.filter(d => d.sex === 'female');
+  const maleOptions = dogs.filter(d => d.sex === 'male');
+  const curFemale = femaleOptions.find(d => d.code === b.femaleCode);
+  const curMale = maleOptions.find(d => d.code === b.maleCode);
+  const tag = d => d.archived ? ' (보관됨)' : '';
+
+  document.getElementById('be-female').innerHTML = femaleOptions.map(d =>
+    `<option value="${d._key}" ${curFemale && d._key === curFemale._key ? 'selected' : ''}>${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${tag(d)}</option>`).join('');
+  document.getElementById('be-male').innerHTML = maleOptions.map(d =>
+    `<option value="${d._key}" ${curMale && d._key === curMale._key ? 'selected' : ''}>${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${tag(d)}</option>`).join('');
+
+  const existingDates = (b.matingDates && b.matingDates.length) ? b.matingDates : (b.matingDate ? [b.matingDate] : []);
+  resetBreedingDateInputs(existingDates, 'be-date-list');
+  checkBreedingEditCompat();
+
+  document.getElementById('breeding-edit-modal').classList.add('open');
+};
+
+window.closeBreedingEditModal = function() {
+  document.getElementById('breeding-edit-modal').classList.remove('open');
+  _breedingEditKey = null;
+  _breedingEditOriginal = null;
+};
+
+window.handleBreedingEditModalOverlay = function(e) {
+  if (e.target === document.getElementById('breeding-edit-modal')) closeBreedingEditModal();
+};
+
+window.checkBreedingEditCompat = function() {
+  const el = document.getElementById('be-compat-warning');
+  if (!el) return;
+  const fKey = document.getElementById('be-female').value;
+  const mKey = document.getElementById('be-male').value;
+  if (!fKey || !mKey) { el.innerHTML = ''; return; }
+
+  const compat = checkInbreeding(mKey, fKey, 3);
+  const dogsByKey = buildDogsByKeyMap();
+
+  if (compat.status === 'red') {
+    let detail = compat.reason || ('공통 조상: ' + compat.common.map(c => dogLabel(dogsByKey[c.key])).join(', '));
+    el.innerHTML = `<div style="background:#FDEDEC; border:1px solid #F5B7B1; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🔴 교배 불가 — 3대 이내 근친 관계입니다. (${esc(detail)})</div>`;
+  } else if (compat.status === 'yellow') {
+    el.innerHTML = `<div style="background:#FEF9E7; border:1px solid #F7DC6F; color:#B7950B; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다.</div>`;
+  } else {
+    el.innerHTML = `<div style="background:#E8F8EF; border:1px solid #A8DDB9; color:#27AE60; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟢 3대 이내 공통 조상이 확인되지 않았습니다.</div>`;
+  }
+};
+
+// 특정 모견의 dueDate/breeding/mateCode가 정확히 이 교배 기록에서 비롯된 값일 때만 정리(초기화)
+// — 다른 교배 기록이나 수동 입력값을 실수로 지우지 않기 위한 안전장치
+async function clearFemaleBreedingFieldsIfMatches(femaleCode, original) {
+  if (!femaleCode || !original) return;
+  const dog = allDogs(true).find(d => d.sex === 'female' && d.code === femaleCode);
+  if (!dog) return;
+  const originalMatingDate = (original.matingDates && original.matingDates[0]) || original.matingDate;
+  if (dog.breeding === originalMatingDate && dog.dueDate === original.dueDate) {
+    await fbUpdate(`females/${dog._key}`, { breeding: null, dueDate: null, mateCode: null });
+  }
+}
+
+window.saveBreedingEdit = async function() {
+  if (!_breedingEditKey) return;
+  const fKey = document.getElementById('be-female').value;
+  const mKey = document.getElementById('be-male').value;
+  const matingDates = getBreedingDates('be-date-list');
+  if (!matingDates.length) { showToast('교배일을 최소 1개 입력해주세요'); return; }
+  const fDog = allDogs(true).find(d => d._key === fKey && d.sex === 'female');
+  const mDog = allDogs(true).find(d => d._key === mKey && d.sex === 'male');
+  if (!fDog || !mDog) { showToast('모견/부견을 선택해주세요'); return; }
+
+  if (fKey && mKey) {
+    const compat = checkInbreeding(mKey, fKey, 3);
+    if (compat.status === 'red') {
+      if (!confirm('⚠️ 3대 이내 근친 관계가 확인되었습니다. 그래도 저장하시겠습니까?')) return;
+    } else if (compat.status === 'yellow') {
+      if (!confirm('🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다. 그래도 저장하시겠습니까?')) return;
+    }
+  }
+
+  const calc = calcBreedingDue(matingDates);
+  const due = calc.dueDate;
+  const original = _breedingEditOriginal;
+  const femaleChanged = original.femaleCode !== fDog.code;
+
+  await fbUpdate(`breeding/${_breedingEditKey}`, {
+    femaleCode: fDog.code, maleCode: mDog.code,
+    matingDate: matingDates[0], matingDates: matingDates, avgMatingDate: calc.avgDate,
+    dueDate: due, dueDateEarliest: calc.earliestDue, dueDateLatest: calc.latestDue
+  });
+
+  if (femaleChanged) {
+    // 모견이 바뀌었으면 이전 모견의 출산예정일 정보(이 기록에서 비롯된 것이었다면)는 정리
+    await clearFemaleBreedingFieldsIfMatches(original.femaleCode, original);
+  }
+  await fbUpdate(`females/${fKey}`, { breeding: matingDates[0], dueDate: due, mateCode: mDog.code });
+
+  showToast(`✅ 교배 기록이 수정됐어요. 출산 예정일: ${fmtDate(due)}`);
+  closeBreedingEditModal();
+};
+
+window.deleteBreedingRecord = async function() {
+  if (!_breedingEditKey) return;
+  if (!confirm('이 교배 기록을 삭제할까요? 삭제된 기록은 복구할 수 없습니다.')) return;
+  const original = _breedingEditOriginal;
+  await fbRemove(`breeding/${_breedingEditKey}`);
+  if (original) {
+    await clearFemaleBreedingFieldsIfMatches(original.femaleCode, original);
+  }
+  showToast('🗑️ 교배 기록이 삭제됐어요.');
+  closeBreedingEditModal();
+  openBreedingIdx = null;
 };
 
 
