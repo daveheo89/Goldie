@@ -651,6 +651,9 @@ window.saveLitterEdit=async(lid)=>{
 window.closeEditModal=()=>document.getElementById('editModal').classList.remove('open');
 
 // ── TAB3: 계약 DB
+// "빈 계약"(구매자명/분양가/강아지이름 전부 없음) 판별 — 잘못 들어온 고스트 데이터로 간주
+window.isGhostContract = c => !c.buyer_name && !(Number(c.price) > 0) && !c.dogname;
+
 window.contractStatus = c => {
   const depositPaid = c.deposit_paid !== false; // 필드 없는 기존 계약은 완납으로 간주(계약금은 계약시 받는게 기본)
   const balancePaid = !!c.balance_paid;
@@ -661,14 +664,41 @@ window.contractStatus = c => {
   return { label: '🟡 잔금 대기중', color: '#E67E22' };
 };
 
+window.deleteGhostContract = async (id) => {
+  if (!confirm('정보가 없는 이 계약 항목을 완전히 삭제하시겠습니까? (되돌릴 수 없습니다)')) return;
+  await fbRemove(ref(db, `contracts/${id}`));
+  toast('삭제되었습니다.');
+};
+
 window.renderContractAnalytics = () => {
   const el = document.getElementById('dbAnalytics');
   if (!el) return;
-  const all = Object.entries(window._contracts || {});
-  const ym = new Date().toISOString().slice(0, 7);
+  const rawAll = Object.entries(window._contracts || {});
+  const ghosts = rawAll.filter(([, c]) => window.isGhostContract(c));
+  const all = rawAll.filter(([, c]) => !window.isGhostContract(c)); // 이하 모든 집계는 고스트 제외
+
+  const now = new Date();
+  const ym = now.toISOString().slice(0, 7);
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYm = prevDate.toISOString().slice(0, 7);
+
   const monthList = all.filter(([, c]) => (c.contract_date || '').startsWith(ym));
+  const prevMonthList = all.filter(([, c]) => (c.contract_date || '').startsWith(prevYm));
   const monthCount = monthList.length;
   const monthRevenue = monthList.reduce((s, [, c]) => s + (Number(c.price) || 0), 0);
+  const prevCount = prevMonthList.length;
+  const prevRevenue = prevMonthList.reduce((s, [, c]) => s + (Number(c.price) || 0), 0);
+
+  const pct = (cur, prev) => {
+    if (!prev) return cur ? '▲ 신규' : '—';
+    const d = Math.round(((cur - prev) / prev) * 100);
+    if (d > 0) return `▲ ${d}%`;
+    if (d < 0) return `▼ ${Math.abs(d)}%`;
+    return '— 0%';
+  };
+  const pctColor = (cur, prev) => (cur > prev ? '#27AE60' : (cur < prev ? '#E74C3C' : 'var(--gray)'));
+
+  const avgPrice = all.length ? Math.round(all.reduce((s, [, c]) => s + (Number(c.price) || 0), 0) / all.length) : 0;
 
   const unpaid = all.filter(([, c]) => !c.balance_paid);
   const unpaidTotal = unpaid.reduce((s, [, c]) => s + Math.max((Number(c.price) || 0) - (Number(c.deposit) || 0), 0), 0);
@@ -677,9 +707,24 @@ window.renderContractAnalytics = () => {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const cardsHtml = `
-    <div class="fgrid" style="grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px;">
-      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 계약건수</div><div style="font-size:20px; font-weight:800; color:var(--br);">${monthCount}건</div></div>
-      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 매출</div><div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(monthRevenue)}</div></div>
+    <div class="fgrid" style="grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px;">
+      <div class="card" style="text-align:center; padding:12px;">
+        <div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 계약건수</div>
+        <div style="font-size:20px; font-weight:800; color:var(--br);">${monthCount}건</div>
+        <div style="font-size:11px; font-weight:700; color:${pctColor(monthCount, prevCount)};">전월대비 ${pct(monthCount, prevCount)}</div>
+      </div>
+      <div class="card" style="text-align:center; padding:12px;">
+        <div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 매출</div>
+        <div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(monthRevenue)}</div>
+        <div style="font-size:11px; font-weight:700; color:${pctColor(monthRevenue, prevRevenue)};">전월대비 ${pct(monthRevenue, prevRevenue)}</div>
+      </div>
+      <div class="card" style="text-align:center; padding:12px;">
+        <div style="font-size:11px; color:var(--gray); font-weight:700;">평균 분양가</div>
+        <div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(avgPrice)}</div>
+        <div style="font-size:11px; color:var(--gray);">전체 ${all.length}건 기준</div>
+      </div>
+    </div>
+    <div class="fgrid" style="grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;">
       <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">잔금 미수금</div><div style="font-size:20px; font-weight:800; color:#E74C3C;">${numFmt(unpaidTotal)}</div></div>
       <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">완납률</div><div style="font-size:20px; font-weight:800; color:#27AE60;">${completionRate}%</div></div>
     </div>
@@ -708,10 +753,27 @@ window.renderContractAnalytics = () => {
     `;
   }
 
-  el.innerHTML = cardsHtml + unpaidHtml;
+  let ghostHtml = '';
+  if (ghosts.length) {
+    const rows = ghosts.map(([id, c]) => `
+      <tr>
+        <td style="font-family:monospace; font-size:11px;">${id}</td>
+        <td>${fmt(c.contract_date) || '—'}</td>
+        <td><button class="btn btn-gray btn-sm" style="color:var(--red);" onclick="deleteGhostContract('${id}')">삭제</button></td>
+      </tr>`).join('');
+    ghostHtml = `
+      <div class="stitle">⚠️ 정보 누락 계약 (${ghosts.length}건) — 확인 후 삭제해주세요</div>
+      <div class="card" style="padding:0; overflow:hidden; margin-bottom:14px; border-color:#F5CBA7;">
+        <table class="tbl"><thead><tr><th>Firebase 키</th><th>계약일(있으면)</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div>
+    `;
+  }
+
+  el.innerHTML = cardsHtml + unpaidHtml + ghostHtml;
 };
 
-// 잔금(배송) 예정 미니 캘린더 — 완납되지 않은 계약의 balance_date만 표시
+// 계약 예정 캘린더 — 계약체결일(📝) + 잔금(배송)예정일(💰, 완납되면 자동소멸)
 window._dbCalDate = new Date();
 window.changeDbCalMonth = offset => {
   window._dbCalDate.setMonth(window._dbCalDate.getMonth() + offset);
@@ -726,9 +788,16 @@ window.renderDbCalendar = () => {
   const month = window._dbCalDate.getMonth();
   titleEl.textContent = `${year}년 ${month + 1}월`;
 
-  const events = Object.entries(window._contracts || {})
+  const validContracts = Object.entries(window._contracts || {}).filter(([, c]) => !window.isGhostContract(c));
+
+  const signEvents = validContracts
+    .filter(([, c]) => c.contract_date)
+    .map(([id, c]) => ({ id, date: c.contract_date, kind: 'sign', buyer: c.buyer_name || '고객', dogname: c.dogname || '' }));
+  const balanceEvents = validContracts
     .filter(([, c]) => c.balance_date && !c.balance_paid)
-    .map(([id, c]) => ({ id, date: c.balance_date, buyer: c.buyer_name || '고객' }));
+    .map(([id, c]) => ({ id, date: c.balance_date, kind: 'balance', buyer: c.buyer_name || '고객', dogname: c.dogname || '' }));
+  const allEvents = [...signEvents, ...balanceEvents];
+  window._dbCalEvents = allEvents;
 
   const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
   let html = daysKo.map((d, i) => `<div class="cal-head${i === 0 ? ' sun' : ''}${i === 6 ? ' sat' : ''}">${d}</div>`).join('');
@@ -745,14 +814,20 @@ window.renderDbCalendar = () => {
   }
   for (let d = 1; d <= totalDays; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayEvents = events.filter(e => e.date === dateStr);
+    const dayEvents = allEvents.filter(e => e.date === dateStr);
+    const signCount = dayEvents.filter(e => e.kind === 'sign').length;
+    const balCount = dayEvents.filter(e => e.kind === 'balance').length;
     const isToday = dateStr === todayStr;
-    const overdue = dateStr < todayStr && dayEvents.length;
+    const overdue = dateStr < todayStr && balCount > 0;
     let chipsHtml = '';
     if (dayEvents.length) {
-      chipsHtml = `<div class="cal-chips"><div class="cal-chip delivery" style="${overdue ? 'background:#FDEDEC; color:#E74C3C; border-color:#F5B7B1;' : ''}">💰 ${dayEvents.length}건</div></div>`;
+      chipsHtml = '<div class="cal-chips">';
+      if (signCount > 0) chipsHtml += `<div class="cal-chip rsv">📝 ${signCount}건</div>`;
+      if (balCount > 0) chipsHtml += `<div class="cal-chip delivery" style="${overdue ? 'background:#FDEDEC; color:#E74C3C; border-color:#F5B7B1;' : ''}">💰 ${balCount}건</div>`;
+      chipsHtml += '</div>';
     }
-    html += `<div class="cal-cell${isToday ? ' today' : ''}"><div class="cal-day">${d}</div>${chipsHtml}</div>`;
+    const clickable = dayEvents.length ? ` onclick="showDbCalDay('${dateStr}')" style="cursor:pointer;"` : '';
+    html += `<div class="cal-cell${isToday ? ' today' : ''}"${clickable}><div class="cal-day">${d}</div>${chipsHtml}</div>`;
   }
   const totalCells = startDayOfWeek + totalDays;
   const remainingCells = (7 - (totalCells % 7)) % 7;
@@ -762,6 +837,19 @@ window.renderDbCalendar = () => {
   grid.innerHTML = html;
 };
 
+// 캘린더 날짜 클릭 → 그날 계약체결/잔금예정 목록 표시
+window.showDbCalDay = dateStr => {
+  const events = (window._dbCalEvents || []).filter(e => e.date === dateStr);
+  if (!events.length) return;
+  const rows = events.map(e => `
+    <div class="detail-row">
+      <span class="detail-key">${e.kind === 'sign' ? '📝 계약체결' : '💰 잔금예정'}</span>
+      <span class="detail-val">${e.buyer}${e.dogname ? ` (${e.dogname})` : ''}</span>
+    </div>`).join('');
+  document.getElementById('modalBody').innerHTML = `<div class="stitle" style="margin-top:0;">${fmt(dateStr)} 일정</div>` + rows;
+  document.getElementById('detailModal').classList.add('open');
+};
+
 window.renderDB=()=>{
   window.renderContractAnalytics();
   window.renderDbCalendar();
@@ -769,11 +857,15 @@ window.renderDB=()=>{
   const list=Object.entries(window._contracts).filter(([,c])=>{
     if(!kw) return true;
     return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw);
-  });
+  }).filter(([,c])=>!window.isGhostContract(c));
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
   el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th>상태</th><th></th></tr></thead><tbody>
-    ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>{
+    ${list.sort(([,a],[,b])=>{
+      const aUnpaid = !a.balance_paid, bUnpaid = !b.balance_paid;
+      if (aUnpaid !== bUnpaid) return aUnpaid ? 1 : -1; // 미납은 맨 아래로
+      return (b.contract_date||'').localeCompare(a.contract_date||'');
+    }).map(([id,c])=>{
       const st = window.contractStatus(c);
       return `
     <tr>
@@ -788,7 +880,7 @@ window.renderDB=()=>{
 };
 
 window.exportCSV = () => {
-  const rows = Object.values(window._contracts || {});
+  const rows = Object.values(window._contracts || {}).filter(c=>!window.isGhostContract(c));
   if (!rows.length) { alert('내보낼 계약 데이터가 없습니다.'); return; }
   const headers = ['계약일','강아지','성별','구매자','연락처','주소','분양가','계약금','계약금완납','잔금납부일','잔금완납','완납일'];
   const lines = [headers.join(',')];
