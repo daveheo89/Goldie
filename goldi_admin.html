@@ -173,7 +173,6 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="tab-bar">
   <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
-  <button class="tab-btn" onclick="switchTab(this,'puppy')">🐶 새끼 관리</button>
   <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
   <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 일정 & Google 캘린더</button>
   <button class="tab-btn" onclick="window.open('https://daveheo89.github.io/Goldie/goldie_farm.html','_blank')" style="color:var(--gold-l);">🏡 농장 관리 페이지 ↗</button>
@@ -207,18 +206,6 @@ window.addEventListener('DOMContentLoaded', function(){
       <button class="btn btn-green btn-sm" onclick="sendKakao()">💬 카카오 메시지 복사</button>
     </div>
   </div>
-</div>
-
-<!-- TAB2 -->
-<div class="tab-panel" id="tab-puppy">
-  <div class="stats-row">
-    <div class="stat"><div class="stat-n" id="st-total">—</div><div class="stat-l">전체</div></div>
-    <div class="stat"><div class="stat-n" id="st-avail">—</div><div class="stat-l">분양 전</div></div>
-    <div class="stat"><div class="stat-n" id="st-rsv">—</div><div class="stat-l">예약</div></div>
-    <div class="stat"><div class="stat-n" id="st-sold">—</div><div class="stat-l">분양 완료</div></div>
-  </div>
-  <div class="stitle">전체 새끼 목록</div>
-  <div id="manageList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
 <!-- TAB3 -->
@@ -535,6 +522,8 @@ window.sendKakao=async()=>{
 
 // ── TAB2: 새끼 관리
 function updateStats(){
+  const totalEl = document.getElementById('st-total');
+  if (!totalEl) return; // 새끼 관리 탭 제거됨(요소 없음) - 안전하게 종료
   let total=0,avail=0,rsv=0,sold=0;
   Object.values(window._litters).forEach(l=>{
     Object.values(l.puppies||{}).forEach(p=>{
@@ -544,7 +533,7 @@ function updateStats(){
       else sold++;
     });
   });
-  document.getElementById('st-total').textContent=total;
+  totalEl.textContent=total;
   document.getElementById('st-avail').textContent=avail;
   document.getElementById('st-rsv').textContent=rsv;
   document.getElementById('st-sold').textContent=sold;
@@ -553,6 +542,7 @@ function updateStats(){
 function renderManageList(){
   const litters=window._litters;
   const el=document.getElementById('manageList');
+  if(!el) return; // 새끼 관리 탭 제거됨(요소 없음) - 안전하게 종료
   if(!Object.keys(litters).length){el.innerHTML='<div class="loading">데이터 없음</div>';return;}
   const sorted=Object.entries(litters).sort(([,a],[,b])=>(b.birthB||'').localeCompare(a.birthB||''));
   let html='';
@@ -1277,9 +1267,15 @@ window.openAddEventModal = function() {
   const html = `
     <div class="ffield" style="margin-bottom:12px;">
       <label>카테고리 구분 *</label>
-      <select id="cal_type" style="padding:10px; font-weight:700;">
+      <select id="cal_type" onchange="window.onCalTypeChange()" style="padding:10px; font-weight:700;">
         <option value="rsv">🟡 예약 (방문/상담 - Google 캘린더 연동)</option>
         <option value="delivery">🔵 배송 (분양 인도 - Google 캘린더 연동)</option>
+      </select>
+    </div>
+    <div class="ffield" id="cal_contract_field" style="margin-bottom:12px; display:none;">
+      <label>분양 계약건 선택 (선택 시 아래 정보 자동 입력)</label>
+      <select id="cal_contract" onchange="window.onCalContractSelect()" style="padding:10px;">
+        <option value="">-- 계약 선택 (직접 입력하려면 비워두세요) --</option>
       </select>
     </div>
     <div class="ffield" style="margin-bottom:12px;">
@@ -1305,6 +1301,41 @@ window.openAddEventModal = function() {
   `;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('detailModal').classList.add('open');
+  window.onCalTypeChange();
+};
+
+// 카테고리를 '배송'으로 바꾸면 계약 선택 드롭다운을 보여주고 목록을 채운다
+window.onCalTypeChange = function() {
+  const type = document.getElementById('cal_type').value;
+  const field = document.getElementById('cal_contract_field');
+  if (!field) return;
+  if (type !== 'delivery') {
+    field.style.display = 'none';
+    return;
+  }
+  field.style.display = 'block';
+  const sel = document.getElementById('cal_contract');
+  const contracts = window._contracts || {};
+  const options = Object.entries(contracts)
+    .filter(([, c]) => c && c.buyer_name)
+    .sort(([, a], [, b]) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .map(([id, c]) => `<option value="${id}">${c.buyer_name} 님 (${c.femaleCode || ''}×${c.maleCode || ''})</option>`)
+    .join('');
+  sel.innerHTML = '<option value="">-- 계약 선택 (직접 입력하려면 비워두세요) --</option>' + options;
+};
+
+// 계약을 선택하면 제목/날짜/주소/상세내용을 자동으로 채운다
+window.onCalContractSelect = function() {
+  const contractId = document.getElementById('cal_contract').value;
+  if (!contractId) return;
+  const c = (window._contracts || {})[contractId];
+  if (!c) return;
+
+  const dogLabel = `${c.femaleCode || ''}×${c.maleCode || ''}`;
+  document.getElementById('cal_title').value = `🚚 [배송] ${c.buyer_name || ''} 님 (${dogLabel})`;
+  if (c.balance_date) document.getElementById('cal_date').value = c.balance_date;
+  document.getElementById('cal_location').value = [c.buyer_addr || '', c.buyer_addr_detail || ''].filter(Boolean).join(' ');
+  document.getElementById('cal_details').value = `수령인: ${c.buyer_name || ''} (${c.buyer_phone || ''}) | 강아지: ${dogLabel} | 계약ID: ${contractId}`;
 };
 
 window.saveAddEvent = async function() {
@@ -1313,14 +1344,26 @@ window.saveAddEvent = async function() {
   const date = document.getElementById('cal_date').value;
   const location = document.getElementById('cal_location').value.trim();
   const details = document.getElementById('cal_details').value.trim();
+  const contractEl = document.getElementById('cal_contract');
+  const contractId = contractEl ? contractEl.value : '';
 
   if (!title || !date) {
     toast('일정 제목과 일시를 입력해주세요.');
     return;
   }
 
+  const payload = { type, title, date, location, details, createdAt: Date.now() };
+  if (contractId) {
+    const c = (window._contracts || {})[contractId];
+    if (c) {
+      payload.contractId = contractId;
+      payload.buyer_name = c.buyer_name || '';
+      payload.buyer_phone = c.buyer_phone || '';
+    }
+  }
+
   const newRef = fbPush(ref(db, 'schedules'));
-  await update(newRef, { type, title, date, location, details, createdAt: Date.now() });
+  await update(newRef, payload);
   closeModal();
   toast('새 일정이 등록되었습니다!');
 };
