@@ -2023,6 +2023,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     <div>
       <h1>🐕 골디쉼터 농장 관리 <span class="sync-dot" id="sync-dot" title="연결 상태"></span></h1>
       <p>골든리트리버 번식·견사 통합 관리</p>
+      <p id="deploy-time-info" style="font-size:11px; color:rgba(255,255,255,.65); margin-top:2px;">🕐 최신 배포 확인 중...</p>
     </div>
     <div style="display:flex; gap:6px; align-items:center;">
       <a href="goldi_admin.html" target="_blank" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none;">🖥 어드민 바로가기 ↗</a>
@@ -3588,6 +3589,25 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
+
+// ── GitHub 최신 배포(커밋) 시각 조회 — Firebase 로그인과 무관하게 페이지 로드 즉시 확인 ──
+async function loadLastDeployTime(filePath, elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const res = await fetch(`https://api.github.com/repos/daveheo89/Goldie/commits?path=${encodeURIComponent(filePath)}&per_page=1`);
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const data = await res.json();
+    if (!data || !data[0] || !data[0].commit) throw new Error('커밋 정보 없음');
+    const dateStr = data[0].commit.committer?.date || data[0].commit.author?.date;
+    const kst = new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+    el.textContent = `🕐 최신 배포: ${kst} (GitHub 기준)`;
+  } catch (e) {
+    el.textContent = '🕐 최신 배포 시간 확인 불가';
+    console.warn('[배포 시간 조회 실패]:', e);
+  }
+}
+loadLastDeployTime('goldie_farm.html', 'deploy-time-info');
 
 // ── 🔐 실제 Firebase 로그인 (기존 "5900" 비교는 화면만 가리는 자물쇠였고
 //     데이터베이스 접근 자체는 막지 못했다. 이제 진짜 계정으로 로그인해야
