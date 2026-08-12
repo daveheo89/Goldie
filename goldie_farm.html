@@ -4397,39 +4397,6 @@ function startPublicListeners(){
 
 
 
-  // 교배
-
-
-
-  onValue(ref(db,'breeding'), snap=>{
-
-
-
-    breedingRecords=[];
-
-
-
-    snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
-
-
-
-    if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
-
-
-
-    saveLocalCache('breeding', breedingRecords);
-
-
-
-  }, error => {
-
-
-
-    showFirebaseError(error);
-
-
-
-  });
 
 
 
@@ -4469,39 +4436,6 @@ function startPublicListeners(){
 
 
 
-  // 이동
-
-
-
-  onValue(ref(db,'moveLog'), snap=>{
-
-
-
-    moveLog=[];
-
-
-
-    snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
-
-
-
-    if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
-
-
-
-    saveLocalCache('moveLog', moveLog);
-
-
-
-  }, error => {
-
-
-
-    showFirebaseError(error);
-
-
-
-  });
 
 
 
@@ -4546,6 +4480,75 @@ function startAdminListeners(){
     __lastRawJSON[key] = json;
     return true;
   }
+
+  // 교배
+
+
+
+  onValue(ref(db,'breeding'), snap=>{
+
+
+
+    breedingRecords=[];
+
+
+
+    snap.forEach(child=>{breedingRecords.push({_key:child.key,...child.val()});});
+
+
+
+    if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
+
+
+
+    saveLocalCache('breeding', breedingRecords);
+
+
+
+  }, error => {
+
+
+
+    showFirebaseError(error);
+
+
+
+  });
+
+  // 이동
+
+
+
+  onValue(ref(db,'moveLog'), snap=>{
+
+
+
+    moveLog=[];
+
+
+
+    snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
+
+
+
+    if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
+
+
+
+    saveLocalCache('moveLog', moveLog);
+
+
+
+  }, error => {
+
+
+
+    showFirebaseError(error);
+
+
+
+  });
+
 
 
 
