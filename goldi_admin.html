@@ -210,6 +210,16 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <!-- TAB3 -->
 <div class="tab-panel" id="tab-db">
+  <div id="dbAnalytics" style="margin-bottom:14px;"></div>
+
+  <div class="stitle">📅 잔금(배송) 예정 캘린더</div>
+  <div class="cal-nav">
+    <button class="btn btn-gray btn-sm" onclick="changeDbCalMonth(-1)">◀</button>
+    <div class="cal-nav-center"><h2 id="dbCalTitle"></h2></div>
+    <button class="btn btn-gray btn-sm" onclick="changeDbCalMonth(1)">▶</button>
+  </div>
+  <div class="cal-grid" id="dbCalGrid"></div>
+
   <div class="search-row">
     <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
     <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
@@ -641,7 +651,120 @@ window.saveLitterEdit=async(lid)=>{
 window.closeEditModal=()=>document.getElementById('editModal').classList.remove('open');
 
 // ── TAB3: 계약 DB
+window.contractStatus = c => {
+  const depositPaid = c.deposit_paid !== false; // 필드 없는 기존 계약은 완납으로 간주(계약금은 계약시 받는게 기본)
+  const balancePaid = !!c.balance_paid;
+  if (balancePaid) return { label: '🟢 완납', color: '#27AE60' };
+  if (!depositPaid) return { label: '🔴 계약금 미납', color: '#E74C3C' };
+  const today = new Date().toISOString().slice(0, 10);
+  if (c.balance_date && c.balance_date < today) return { label: '🔴 잔금 연체', color: '#E74C3C' };
+  return { label: '🟡 잔금 대기중', color: '#E67E22' };
+};
+
+window.renderContractAnalytics = () => {
+  const el = document.getElementById('dbAnalytics');
+  if (!el) return;
+  const all = Object.entries(window._contracts || {});
+  const ym = new Date().toISOString().slice(0, 7);
+  const monthList = all.filter(([, c]) => (c.contract_date || '').startsWith(ym));
+  const monthCount = monthList.length;
+  const monthRevenue = monthList.reduce((s, [, c]) => s + (Number(c.price) || 0), 0);
+
+  const unpaid = all.filter(([, c]) => !c.balance_paid);
+  const unpaidTotal = unpaid.reduce((s, [, c]) => s + Math.max((Number(c.price) || 0) - (Number(c.deposit) || 0), 0), 0);
+  const paidCount = all.length - unpaid.length;
+  const completionRate = all.length ? Math.round((paidCount / all.length) * 100) : 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const cardsHtml = `
+    <div class="fgrid" style="grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px;">
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 계약건수</div><div style="font-size:20px; font-weight:800; color:var(--br);">${monthCount}건</div></div>
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">이번달 매출</div><div style="font-size:20px; font-weight:800; color:var(--br);">${numFmt(monthRevenue)}</div></div>
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">잔금 미수금</div><div style="font-size:20px; font-weight:800; color:#E74C3C;">${numFmt(unpaidTotal)}</div></div>
+      <div class="card" style="text-align:center; padding:12px;"><div style="font-size:11px; color:var(--gray); font-weight:700;">완납률</div><div style="font-size:20px; font-weight:800; color:#27AE60;">${completionRate}%</div></div>
+    </div>
+  `;
+
+  let unpaidHtml = '';
+  if (unpaid.length) {
+    const rows = unpaid
+      .sort(([, a], [, b]) => (a.balance_date || '9999').localeCompare(b.balance_date || '9999'))
+      .map(([id, c]) => {
+        const overdue = c.balance_date && c.balance_date < todayStr;
+        const bal = Math.max((Number(c.price) || 0) - (Number(c.deposit) || 0), 0);
+        return `<tr style="cursor:pointer; ${overdue ? 'background:#FDEDEC;' : ''}" onclick="showDetail('${id}')">
+          <td>${c.buyer_name || '—'}</td>
+          <td>${c.buyer_phone || '—'}</td>
+          <td>${numFmt(bal)}</td>
+          <td>${fmt(c.balance_date)}${overdue ? ' <span style="color:#E74C3C; font-weight:800;">연체</span>' : ''}</td>
+        </tr>`;
+      }).join('');
+    unpaidHtml = `
+      <div class="stitle">💰 잔금 미납자 리스트 (${unpaid.length}건)</div>
+      <div class="card" style="padding:0; overflow:hidden; margin-bottom:14px;">
+        <table class="tbl"><thead><tr><th>구매자</th><th>연락처</th><th>미납액</th><th>잔금예정일</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div>
+    `;
+  }
+
+  el.innerHTML = cardsHtml + unpaidHtml;
+};
+
+// 잔금(배송) 예정 미니 캘린더 — 완납되지 않은 계약의 balance_date만 표시
+window._dbCalDate = new Date();
+window.changeDbCalMonth = offset => {
+  window._dbCalDate.setMonth(window._dbCalDate.getMonth() + offset);
+  window.renderDbCalendar();
+};
+window.renderDbCalendar = () => {
+  const grid = document.getElementById('dbCalGrid');
+  const titleEl = document.getElementById('dbCalTitle');
+  if (!grid || !titleEl) return;
+
+  const year = window._dbCalDate.getFullYear();
+  const month = window._dbCalDate.getMonth();
+  titleEl.textContent = `${year}년 ${month + 1}월`;
+
+  const events = Object.entries(window._contracts || {})
+    .filter(([, c]) => c.balance_date && !c.balance_paid)
+    .map(([id, c]) => ({ id, date: c.balance_date, buyer: c.buyer_name || '고객' }));
+
+  const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
+  let html = daysKo.map((d, i) => `<div class="cal-head${i === 0 ? ' sun' : ''}${i === 6 ? ' sat' : ''}">${d}</div>`).join('');
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+  const prevLastDay = new Date(year, month, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    html += `<div class="cal-cell other"><div class="cal-day">${prevLastDay - i}</div></div>`;
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayEvents = events.filter(e => e.date === dateStr);
+    const isToday = dateStr === todayStr;
+    const overdue = dateStr < todayStr && dayEvents.length;
+    let chipsHtml = '';
+    if (dayEvents.length) {
+      chipsHtml = `<div class="cal-chips"><div class="cal-chip delivery" style="${overdue ? 'background:#FDEDEC; color:#E74C3C; border-color:#F5B7B1;' : ''}">💰 ${dayEvents.length}건</div></div>`;
+    }
+    html += `<div class="cal-cell${isToday ? ' today' : ''}"><div class="cal-day">${d}</div>${chipsHtml}</div>`;
+  }
+  const totalCells = startDayOfWeek + totalDays;
+  const remainingCells = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remainingCells; i++) {
+    html += `<div class="cal-cell other"><div class="cal-day">${i}</div></div>`;
+  }
+  grid.innerHTML = html;
+};
+
 window.renderDB=()=>{
+  window.renderContractAnalytics();
+  window.renderDbCalendar();
   const kw=(document.getElementById('dbSearch')?.value||'').toLowerCase();
   const list=Object.entries(window._contracts).filter(([,c])=>{
     if(!kw) return true;
@@ -649,30 +772,93 @@ window.renderDB=()=>{
   });
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
-  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th></th></tr></thead><tbody>
-    ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>`
+  el.innerHTML=`<table class="tbl"><thead><tr><th>계약일</th><th>강아지</th><th>구매자</th><th>분양가</th><th>상태</th><th></th></tr></thead><tbody>
+    ${list.sort(([,a],[,b])=>(b.contract_date||'').localeCompare(a.contract_date||'')).map(([id,c])=>{
+      const st = window.contractStatus(c);
+      return `
     <tr>
       <td>${fmt(c.contract_date)}</td>
       <td><strong>${c.dogname||'—'}</strong></td>
       <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
       <td>${c.price?numFmt(c.price):'—'}</td>
+      <td><span style="font-size:12px; font-weight:700; color:${st.color};">${st.label}</span></td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
-    </tr>`).join('')}
+    </tr>`;}).join('')}
   </tbody></table>`;
+};
+
+window.exportCSV = () => {
+  const rows = Object.values(window._contracts || {});
+  if (!rows.length) { alert('내보낼 계약 데이터가 없습니다.'); return; }
+  const headers = ['계약일','강아지','성별','구매자','연락처','주소','분양가','계약금','계약금완납','잔금납부일','잔금완납','완납일'];
+  const lines = [headers.join(',')];
+  rows.sort((a,b)=>(a.contract_date||'').localeCompare(b.contract_date||'')).forEach(c=>{
+    const st = window.contractStatus(c);
+    const vals = [
+      c.contract_date||'', c.dogname||'', genderTxt(c.sex)||'', c.buyer_name||'', c.buyer_phone||'',
+      (c.buyer_addr||'').replace(/,/g,' '), c.price||0, c.deposit||0,
+      c.deposit_paid!==false ? 'Y' : 'N', c.balance_date||'', c.balance_paid ? 'Y' : 'N', c.balance_paid_date||''
+    ];
+    lines.push(vals.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `골디쉼터_계약DB_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+window.toggleDepositPaid = async (id) => {
+  const c = window._contracts[id]; if (!c) return;
+  const nowPaid = c.deposit_paid === false; // 현재 미납이면 완납으로 전환
+  if (!confirm(nowPaid ? '계약금을 완납 처리하시겠습니까?' : '계약금을 미납 상태로 되돌리시겠습니까?')) return;
+  await update(ref(db, `contracts/${id}`), {
+    deposit_paid: nowPaid,
+    deposit_paid_date: nowPaid ? new Date().toISOString().slice(0,10) : ''
+  });
+  toast('계약금 상태가 변경되었습니다.');
+  closeModal();
+};
+
+window.toggleBalancePaid = async (id) => {
+  const c = window._contracts[id]; if (!c) return;
+  const nowPaid = !c.balance_paid;
+  if (!confirm(nowPaid ? '잔금을 완납 처리하시겠습니까? (배송 시 카드에서도 처리 가능합니다)' : '잔금을 미납 상태로 되돌리시겠습니까?')) return;
+  await update(ref(db, `contracts/${id}`), {
+    balance_paid: nowPaid,
+    balance_paid_date: nowPaid ? new Date().toISOString().slice(0,10) : ''
+  });
+  toast('잔금 상태가 변경되었습니다.');
+  closeModal();
 };
 
 window.showDetail=id=>{
   const c=window._contracts[id];if(!c)return;
+  const depositPaid = c.deposit_paid !== false;
+  const balancePaid = !!c.balance_paid;
   const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',c.femaleCode],
     ['구매자',c.buyer_name],['연락처',c.buyer_phone],['주소',c.buyer_addr],
     ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
-    ['잔금납부일',fmt(c.balance_date)],['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
+    ['계약금 완납', depositPaid ? `✅ 완납 (${fmt(c.deposit_paid_date)||'—'})` : '❌ 미납'],
+    ['잔금납부일',fmt(c.balance_date)],
+    ['잔금 완납', balancePaid ? `✅ 완납 (${fmt(c.balance_paid_date)||'—'})` : '❌ 미납'],
+    ['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
   ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
+  const btns = `
+    <div class="btn-row" style="margin-top:14px; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-sm ${depositPaid?'btn-gray':'btn-gold'}" onclick="toggleDepositPaid('${id}')">${depositPaid?'계약금 미납으로 변경':'💰 계약금 완납 처리'}</button>
+      <button class="btn btn-sm ${balancePaid?'btn-gray':'btn-gold'}" onclick="toggleBalancePaid('${id}')">${balancePaid?'잔금 미납으로 변경':'💰 잔금 완납 처리'}</button>
+    </div>
+  `;
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
-    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
+    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + btns;
   document.getElementById('detailModal').classList.add('open');
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
+
 
 // ── TAB4: 일정 & Google 캘린더 연동 & 카테고리 분리
 window._schedules = {};
@@ -1077,11 +1263,26 @@ window.renderSelectedDayEvents = function(dateStr) {
       kakaoBtn = `<button class="btn btn-sm" onclick="shareDeliveryKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 가족 카톡 전송</button>`;
     }
 
+    // 배송 카드에 연결된 계약의 잔금 완납 상태 버튼
+    let settleBtn = '';
+    let settledBadge = '';
+    if (type === 'delivery') {
+      const contractId = s.raw?.contractId;
+      const linkedContract = contractId ? (window._contracts || {})[contractId] : null;
+      if (linkedContract) {
+        if (linkedContract.balance_paid) {
+          settledBadge = `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; margin-left:6px;">✅ 잔금 완료</span>`;
+        } else {
+          settleBtn = `<button class="btn btn-sm" onclick="settleBalanceFromDelivery('${contractId}')" style="background:#27AE60; color:#fff; font-weight:700; border:none;">💰 잔금 수령 완료</button>`;
+        }
+      }
+    }
+
     return `
       <div class="card" style="margin-bottom:10px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
           <div>
-            ${catBadge}
+            ${catBadge}${settledBadge}
             <span style="font-weight:800; font-size:15px; margin-left:8px;">${s.title}</span>
           </div>
           <span style="font-size:12px; color:var(--gray); font-weight:600;">📅 ${fmt(s.date)}${s.time ? ` ⏰ ${s.time}` : ''}</span>
@@ -1093,6 +1294,7 @@ window.renderSelectedDayEvents = function(dateStr) {
             ${gcalBtn}
             ${tmapBtn}
             ${kakaoBtn}
+            ${settleBtn}
           </div>
           <div style="display:flex; gap:6px;">
             <button class="btn btn-gold btn-sm" onclick="openEditCalendarEventModal('${s.id}')">✏️ 수정</button>
@@ -1102,6 +1304,17 @@ window.renderSelectedDayEvents = function(dateStr) {
       </div>
     `;
   }).join('');
+};
+
+// 배송 카드에서 바로 잔금 완납 처리 (계약과 연결된 경우)
+window.settleBalanceFromDelivery = async (contractId) => {
+  if (!contractId) return;
+  if (!confirm('이 계약의 잔금을 완납 처리하시겠습니까?')) return;
+  await update(ref(db, `contracts/${contractId}`), {
+    balance_paid: true,
+    balance_paid_date: new Date().toISOString().slice(0, 10)
+  });
+  toast('💰 잔금 완납 처리되었습니다.');
 };
 
 // 💬 가족 공유용 배송 일정 카카오톡 메시지 전송 기능
