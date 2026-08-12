@@ -1032,12 +1032,48 @@ window.showDetail=id=>{
       <button class="btn btn-sm ${depositPaid?'btn-gray':'btn-gold'}" onclick="toggleDepositPaid('${id}')">${depositPaid?'계약금 미납으로 변경':'💰 계약금 완납 처리'}</button>
       <button class="btn btn-sm ${balancePaid?'btn-gray':'btn-gold'}" onclick="toggleBalancePaid('${id}')">${balancePaid?'잔금 미납으로 변경':'💰 잔금 완납 처리'}</button>
       <button class="btn btn-br btn-sm" onclick="toggleContractPdf('${id}')">📄 계약서 PDF 보기</button>
+      <button class="btn btn-gray btn-sm" onclick="startEditContract('${id}')">✏️ 정보 수정</button>
     </div>
     <div id="pdfPreviewWrap" data-open="0"></div>
   `;
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + btns;
   document.getElementById('detailModal').classList.add('open');
+};
+
+// ✏️ 계약 정보 직접 수정 (분양가/계약금/잔금납부일/결제방법/이체자/메모 등 오타·누락 보정용)
+window.startEditContract = id => {
+  const c = window._contracts[id]; if (!c) return;
+  const html = `
+    <div class="stitle" style="margin-top:0;">✏️ 계약 정보 수정 — ${c.buyer_name || ''} 님</div>
+    <div class="ffield" style="margin-bottom:10px;"><label>분양가 (원)</label><input type="number" id="edit_price" value="${c.price || 0}"></div>
+    <div class="ffield" style="margin-bottom:10px;"><label>계약금 (원)</label><input type="number" id="edit_deposit" value="${c.deposit || 0}"></div>
+    <div class="ffield" style="margin-bottom:10px;"><label>잔금납부일</label><input type="date" id="edit_balance_date" value="${c.balance_date || ''}"></div>
+    <div class="ffield" style="margin-bottom:10px;"><label>결제방법</label><input type="text" id="edit_payment" value="${c.payment || ''}"></div>
+    <div class="ffield" style="margin-bottom:10px;"><label>이체자</label><input type="text" id="edit_transfer_name" value="${c.transfer_name || ''}"></div>
+    <div class="ffield" style="margin-bottom:14px;"><label>메모</label><textarea id="edit_memo" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:10px; width:100%; height:60px; font-family:inherit;">${c.memo || ''}</textarea></div>
+    <div class="btn-row" style="gap:8px;">
+      <button class="btn btn-gray" onclick="showDetail('${id}')">취소</button>
+      <button class="btn btn-gold" onclick="saveEditContract('${id}')">💾 저장</button>
+    </div>
+  `;
+  document.getElementById('modalBody').innerHTML = html;
+};
+
+window.saveEditContract = async id => {
+  const price = Number(document.getElementById('edit_price').value) || 0;
+  const deposit = Number(document.getElementById('edit_deposit').value) || 0;
+  const balance_date = document.getElementById('edit_balance_date').value;
+  const payment = document.getElementById('edit_payment').value.trim();
+  const transfer_name = document.getElementById('edit_transfer_name').value.trim();
+  const memo = document.getElementById('edit_memo').value.trim();
+
+  await update(ref(db, `contracts/${id}`), { price, deposit, balance_date, payment, transfer_name, memo });
+  if (window._contracts[id]) {
+    Object.assign(window._contracts[id], { price, deposit, balance_date, payment, transfer_name, memo });
+  }
+  toast('계약 정보가 수정되었습니다.');
+  showDetail(id);
 };
 window.closeModal=()=>document.getElementById('detailModal').classList.remove('open');
 
