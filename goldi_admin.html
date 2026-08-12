@@ -711,6 +711,7 @@ window.buildGCalUrl = function(title, details, location, startDateStr) {
   const d = encodeURIComponent(details || '');
   const l = encodeURIComponent(location || '');
   let datesParam = '';
+  let ctzParam = '';
   if (startDateStr) {
     const clean = startDateStr.replace(/[^0-9]/g, '');
     if (clean.length === 8) {
@@ -718,10 +719,12 @@ window.buildGCalUrl = function(title, details, location, startDateStr) {
     } else if (clean.length >= 12) {
       const ymd = clean.slice(0, 8);
       const hm = clean.slice(8, 12);
-      datesParam = `&dates=${ymd}T${hm}00Z/${ymd}T${hm}00Z`;
+      // Z(UTC)를 붙이지 않고 한국시간(Asia/Seoul) 로컬시각 + ctz 파라미터로 정확히 등록
+      datesParam = `&dates=${ymd}T${hm}00/${ymd}T${hm}00`;
+      ctzParam = `&ctz=Asia%2FSeoul`;
     }
   }
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${t}&details=${d}&location=${l}${datesParam}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${t}&details=${d}&location=${l}${datesParam}${ctzParam}`;
 };
 
 window.filterCalCategory = function(cat) {
@@ -788,12 +791,28 @@ window.exportMonthGCalICS = function() {
     if (e.tmapUrl) desc += ` | Tmap: ${e.tmapUrl}`;
     const loc = (e.location || '골디쉼터').replace(/\n/g, ' ');
 
+    // 시간이 있으면 특정 시각 일정으로, 없으면 종일 일정으로 등록
+    let dtLines;
+    if (e.time) {
+      const cleanTime = e.time.replace(/[^0-9]/g, '').padEnd(4, '0'); // HHmm
+      const startLocal = `${cleanDate}T${cleanTime}00`;
+      // 한국 표준시(KST, UTC+9) 기준 로컬 시각으로 등록
+      dtLines = [
+        `DTSTART;TZID=Asia/Seoul:${startLocal}`,
+        `DTEND;TZID=Asia/Seoul:${startLocal}`
+      ];
+    } else {
+      dtLines = [
+        `DTSTART;VALUE=DATE:${cleanDate}`,
+        `DTEND;VALUE=DATE:${cleanDate}`
+      ];
+    }
+
     icsLines.push(
       'BEGIN:VEVENT',
       `UID:${e.id}@goldie.com`,
       `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-      `DTSTART;VALUE=DATE:${cleanDate}`,
-      `DTEND;VALUE=DATE:${cleanDate}`,
+      ...dtLines,
       `SUMMARY:${summary}`,
       `DESCRIPTION:${desc}`,
       `LOCATION:${loc}`,
@@ -845,6 +864,7 @@ window.renderCalendarEvents = function() {
       type: 'delivery',
       title: `🚚 [배송] ${d.buyer_name || '수령인'} 님 (${d.buyer_phone || ''})`,
       date: d.date,
+      time: d.time || '',
       location: d.address || '',
       details: `수령인: ${d.buyer_name || ''} (${d.buyer_phone || ''}) | 계약ID: ${d.contractId || ''}`,
       tmapUrl: tmapUrl,
@@ -869,6 +889,7 @@ window.renderCalendarEvents = function() {
       type: 'rsv',
       title: `🤝 [방문 예약] ${name || '방문 고객'} ${phone ? `(${phone})` : ''}`,
       date: r.date,
+      time: r.timeStart || r.time || '',
       location: r.location || '골디쉼터 본원',
       details: `메모: ${r.memo || '없음'} | Status: ${r.status || '신청'}`,
       raw: r
@@ -905,6 +926,7 @@ window.renderCalendarEvents = function() {
       type: s.type || 'rsv',
       title: s.title,
       date: s.date,
+      time: s.time || '',
       location: s.location || '골디쉼터',
       details: s.details || '',
       raw: s
@@ -1035,7 +1057,8 @@ window.renderSelectedDayEvents = function(dateStr) {
       isGCalSyncable = false;
     }
 
-    const gcalUrl = window.buildGCalUrl(s.title, s.details || '', s.location || '', s.date);
+    const gcalDateStr = s.time ? `${s.date}${s.time.replace(':', '')}` : s.date;
+    const gcalUrl = window.buildGCalUrl(s.title, s.details || '', s.location || '', gcalDateStr);
 
     let gcalBtn = '';
     if (isGCalSyncable) {
@@ -1061,7 +1084,7 @@ window.renderSelectedDayEvents = function(dateStr) {
             ${catBadge}
             <span style="font-weight:800; font-size:15px; margin-left:8px;">${s.title}</span>
           </div>
-          <span style="font-size:12px; color:var(--gray); font-weight:600;">📅 ${fmt(s.date)}</span>
+          <span style="font-size:12px; color:var(--gray); font-weight:600;">📅 ${fmt(s.date)}${s.time ? ` ⏰ ${s.time}` : ''}</span>
         </div>
         ${s.location ? `<div style="font-size:12px; color:var(--br-l); margin-bottom:4px; word-break:break-all;">📍 <strong>장소/주소:</strong> ${s.location}</div>` : ''}
         ${s.details ? `<div style="font-size:12px; color:var(--gray); margin-bottom:10px; word-break:break-all;">📝 <strong>상세내용:</strong> ${s.details}</div>` : ''}
@@ -1282,9 +1305,9 @@ window.openAddEventModal = function() {
       <label>일정 제목 *</label>
       <input type="text" id="cal_title" placeholder="예: 홍길동 님 자견 인도 배송 / 견사 전체 소독">
     </div>
-    <div class="ffield" style="margin-bottom:12px;">
-      <label>일시 *</label>
-      <input type="date" id="cal_date" value="${new Date().toISOString().slice(0,10)}">
+    <div class="fgrid" style="margin-bottom:12px;">
+      <div class="ffield"><label>날짜 *</label><input type="date" id="cal_date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="ffield"><label>시간 (선택)</label><input type="time" id="cal_time"></div>
     </div>
     <div class="ffield" style="margin-bottom:12px;">
       <label>장소 / 배송지 주소 (선택)</label>
@@ -1342,6 +1365,7 @@ window.saveAddEvent = async function() {
   const type = document.getElementById('cal_type').value;
   const title = document.getElementById('cal_title').value.trim();
   const date = document.getElementById('cal_date').value;
+  const time = document.getElementById('cal_time')?.value || '';
   const location = document.getElementById('cal_location').value.trim();
   const details = document.getElementById('cal_details').value.trim();
   const contractEl = document.getElementById('cal_contract');
@@ -1352,7 +1376,7 @@ window.saveAddEvent = async function() {
     return;
   }
 
-  const payload = { type, title, date, location, details, createdAt: Date.now() };
+  const payload = { type, title, date, time, location, details, createdAt: Date.now() };
   if (contractId) {
     const c = (window._contracts || {})[contractId];
     if (c) {
@@ -1368,9 +1392,21 @@ window.saveAddEvent = async function() {
   toast('새 일정이 등록되었습니다!');
 };
 
-window.deleteCalendarEvent = async function(id) {
+window.deleteCalendarEvent = async function(dbPath) {
+  if (!dbPath) return;
+
+  // 계약서(/contracts)에서 파생된 "잔금 납부일" 일정은 계약서 자체를 삭제하면 안 되므로
+  // 잔금납부일 필드만 비우는 방식으로 안전하게 처리
+  if (dbPath.startsWith('contracts/')) {
+    if (confirm('이 일정은 계약서의 "잔금 납부일" 정보로 자동 생성된 항목입니다.\n계약서 자체는 삭제되지 않고, 잔금 납부일만 비워집니다.\n계속하시겠습니까?')) {
+      await update(ref(db, dbPath), { balance_date: '' });
+      toast('잔금 납부일 일정이 삭제(비움) 처리되었습니다.');
+    }
+    return;
+  }
+
   if (confirm('이 일정을 삭제하시겠습니까?')) {
-    await fbRemove(ref(db, `schedules/${id}`));
+    await fbRemove(ref(db, dbPath));
     toast('일정이 삭제되었습니다.');
   }
 };
