@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>골디쉼터 교배 확인</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22%3E%3Ctext%20y=%22.9em%22%20font-size=%2290%22%3E%F0%9F%90%95%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
+  --brown:#6B3F0E; --brown-light:#A0632A; --cream:#FDF3DC;
+  --text:#2C1A06; --text-muted:#8B6A3A; --border:#E8D5A3;
+  --female:#D4547A; --female-bg:#FFF0F5;
+  --male:#3A7AC8; --male-bg:#EEF5FF;
+  --red:#C0392B; --red-bg:#FDECEA; --red-border:#F3B8B0;
+  --yellow:#B7950B; --yellow-bg:#FFF8E1; --yellow-border:#F0DE9A;
+  --green:#2E7D4F; --green-bg:#EAF7EE; --green-border:#B9E3C6;
+  --shadow:0 4px 20px rgba(100,60,10,.10); --radius:14px;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
+  background:var(--gold-bg); color:var(--text); -webkit-tap-highlight-color:transparent;
+}
+header {
+  position:sticky; top:0; z-index:10; background:linear-gradient(135deg,var(--gold),#DDA22A);
+  color:#fff; padding:14px 16px; box-shadow:var(--shadow);
+}
+header h1 { margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px; }
+header .sub { font-size:11px; opacity:.9; margin-top:2px; }
+main { max-width:600px; margin:0 auto; padding:14px; padding-bottom:60px; }
+
+.notice { background:var(--cream); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5; }
+
+.search-box { margin-bottom:12px; }
+.search-box input {
+  width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px;
+  font-size:15px; background:#fff; color:var(--text);
+}
+.search-box input:focus { outline:none; border-color:var(--gold); }
+
+.section-title { font-size:13px; font-weight:800; color:var(--text-muted); margin:16px 0 8px; letter-spacing:.02em; }
+
+.dam-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+@media (min-width:420px) { .dam-grid { grid-template-columns:repeat(3,1fr); } }
+
+.dam-card {
+  border:1.5px solid var(--female-bg); background:#fff; border-radius:12px; padding:12px 8px;
+  text-align:center; cursor:pointer; transition:transform .1s;
+}
+.dam-card:active { transform:scale(.96); }
+.dam-card .icon { font-size:22px; }
+.dam-card .code { font-weight:800; font-size:13px; color:var(--female); margin-top:4px; }
+.dam-card .name { font-size:11px; color:var(--text-muted); }
+
+.empty { text-align:center; padding:40px 20px; color:var(--text-muted); font-size:13px; }
+
+.loading, .error-box { text-align:center; padding:60px 20px; color:var(--text-muted); font-size:14px; }
+.error-box { color:var(--red); }
+.error-box .retry-btn { margin-top:14px; }
+
+.result-header { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--female-bg); border-radius:14px; padding:12px 14px; margin-bottom:14px; }
+.result-header .icon { font-size:26px; }
+.result-header .info { flex:1; min-width:0; }
+.result-header .code { font-weight:800; font-size:16px; color:var(--female); }
+.result-header .name { font-size:12px; color:var(--text-muted); }
+.change-btn {
+  border:1.5px solid var(--border); background:#fff; color:var(--text-muted);
+  border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.change-btn:active { background:var(--cream); }
+
+.status-summary { display:flex; gap:8px; margin-bottom:14px; }
+.status-pill { flex:1; text-align:center; padding:8px 4px; border-radius:10px; font-size:11px; font-weight:800; }
+.status-pill .n { font-size:18px; display:block; }
+.status-pill.red { background:var(--red-bg); color:var(--red); }
+.status-pill.yellow { background:var(--yellow-bg); color:var(--yellow); }
+.status-pill.green { background:var(--green-bg); color:var(--green); }
+
+.sire-list { display:flex; flex-direction:column; gap:8px; }
+.sire-item { border-radius:12px; padding:11px 13px; border:1.5px solid; }
+.sire-item.red { background:var(--red-bg); border-color:var(--red-border); }
+.sire-item.yellow { background:var(--yellow-bg); border-color:var(--yellow-border); }
+.sire-item.green { background:var(--green-bg); border-color:var(--green-border); }
+.sire-item .row1 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sire-item .code { font-weight:800; font-size:14px; color:var(--male); }
+.sire-item .name { font-size:11px; color:var(--text-muted); font-weight:400; }
+.sire-item .badge { font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+.sire-item.red .badge { background:var(--red); color:#fff; }
+.sire-item.yellow .badge { background:var(--yellow); color:#fff; }
+.sire-item.green .badge { background:var(--green); color:#fff; }
+.sire-item .reason { font-size:11.5px; color:var(--text-muted); margin-top:5px; line-height:1.4; }
+
+details.collapsible { margin-top:6px; }
+details.collapsible > summary {
+  list-style:none; cursor:pointer; font-size:13px; font-weight:800; color:var(--text-muted);
+  padding:10px 2px; display:flex; align-items:center; gap:6px; user-select:none;
+}
+details.collapsible > summary::-webkit-details-marker { display:none; }
+details.collapsible > summary .arrow { transition:transform .15s; font-size:10px; }
+details.collapsible[open] > summary .arrow { transform:rotate(90deg); }
+
+footer.deploy-info { text-align:center; font-size:10px; color:var(--text-muted); opacity:.7; margin-top:24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐕 골디쉼터 교배 확인</h1>
+  <div class="sub">모견을 선택하면 교배 금지 부견 목록을 바로 보여줍니다</div>
+</header>
+
+<main id="main">
+  <div class="loading" id="loading-state">⏳ 데이터를 불러오는 중...</div>
+</main>
+
+<div style="text-align:center;"><span class="deploy-info" id="deploy-time-info"></span></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── Firebase 초기화 (읽기 전용 — 로그인 없음, females/males 노드는
+//    Firebase 콘솔에서 .read를 공개로 열어둬야 이 페이지가 동작합니다) ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId: "goldie-shelter-d6c81",
+  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId: "1071275996614",
+  appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ════════ 유틸 ════════
+function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
+
+// ════════ 로컬 상태 (Firebase에서 동기화) ════════
+let females = [];
+let males = [];
+let femalesLoaded = false;
+let malesLoaded = false;
+let loadError = null;
+
+let selectedDamKey = null;
+let damSearch = '';
+
+// includeArchived=true면 보관 처리된 개체도 포함 (계보도 조상 조회 등에서 사용)
+function allDogs(includeArchived) {
+  const fList = (window.females && window.females.length) ? window.females : (females || []);
+  const mList = (window.males && window.males.length) ? window.males : (males || []);
+  let list = [...fList.map(d => ({ ...d, sex: 'female' })), ...mList.map(d => ({ ...d, sex: 'male' }))];
+  if (!includeArchived) list = list.filter(d => !d.archived);
+  return list;
+}
+window.allDogs = allDogs;
+
+// key로 개체를 빠르게 찾기 위한 맵 (보관된 개체도 포함 — 조상 계보 정보가 끊기면 안 되므로)
+function buildDogsByKeyMap() {
+  const map = {};
+  allDogs(true).forEach(d => { map[d._key] = d; });
+  return map;
+}
+
+// key로부터 시작해서 depth대(1~maxDepth) 조상들의 key -> 최소depth 맵을 만듦 (본인 제외)
+function ancestorMap(key, maxDepth, dogsByKey) {
+  const result = new Map();
+  const visiting = new Set(); // 순환참조 방지
+  function recurse(k, depth) {
+    if (!k || depth > maxDepth || visiting.has(k)) return;
+    visiting.add(k);
+    const dog = dogsByKey[k];
+    if (dog) {
+      if (dog.sire_key) {
+        if (!result.has(dog.sire_key) || result.get(dog.sire_key) > depth) result.set(dog.sire_key, depth);
+        recurse(dog.sire_key, depth + 1);
+      }
+      if (dog.dam_key) {
+        if (!result.has(dog.dam_key) || result.get(dog.dam_key) > depth) result.set(dog.dam_key, depth);
+        recurse(dog.dam_key, depth + 1);
+      }
+    }
+    visiting.delete(k);
+  }
+  recurse(key, 1);
+  return result;
+}
+
+// maxDepth 이내에 부모 정보가 비어있는 조상이 있는지 (판정 불가 여부 확인용)
+function hasUnknownWithinDepth(key, maxDepth, dogsByKey) {
+  const visited = new Set();
+  let found = false;
+  function recurse(k, depth) {
+    if (found || !k || visited.has(k + ':' + depth)) return;
+    visited.add(k + ':' + depth);
+    const dog = dogsByKey[k];
+    if (!dog) return;
+    if (depth < maxDepth) {
+      if (!dog.sire_key) { found = true; return; }
+      if (!dog.dam_key) { found = true; return; }
+    }
+    if (depth < maxDepth) {
+      if (dog.sire_key) recurse(dog.sire_key, depth + 1);
+      if (dog.dam_key) recurse(dog.dam_key, depth + 1);
+    }
+  }
+  recurse(key, 0);
+  return found;
+}
+
+// 두 개체(부견키/모견키)의 교배 근친 판정: 3대(부모/조부모/증조부모) 이내 공통 조상 검사
+function checkInbreeding(sireKey, damKey, maxDepth) {
+  maxDepth = maxDepth || 3;
+  if (!sireKey || !damKey) return { status: 'yellow', common: [], reason: '부견 또는 모견 정보 없음' };
+  if (sireKey === damKey) return { status: 'red', common: [], reason: '동일 개체' };
+
+  const dogsByKey = buildDogsByKeyMap();
+  const sireAnc = ancestorMap(sireKey, maxDepth, dogsByKey);
+  const damAnc = ancestorMap(damKey, maxDepth, dogsByKey);
+
+  // 부모-자식 관계(한쪽이 다른 쪽의 조상인 경우)
+  if (sireAnc.has(damKey)) return { status: 'red', common: [{ key: damKey, sireDepth: 0, damDepth: 0 }], reason: '모견이 부견의 직계 조상' };
+  if (damAnc.has(sireKey)) return { status: 'red', common: [{ key: sireKey, sireDepth: 0, damDepth: 0 }], reason: '부견이 모견의 직계 조상' };
+
+  const common = [];
+  sireAnc.forEach((sDepth, k) => {
+    if (damAnc.has(k)) common.push({ key: k, sireDepth: sDepth, damDepth: damAnc.get(k) });
+  });
+  if (common.length) return { status: 'red', common };
+
+  const incomplete = hasUnknownWithinDepth(sireKey, maxDepth, dogsByKey) || hasUnknownWithinDepth(damKey, maxDepth, dogsByKey);
+  if (incomplete) return { status: 'yellow', common: [] };
+
+  return { status: 'green', common: [] };
+}
+
+// 자동 근친 판정 + 수동 "이 조합만 교배 금지" 설정을 합쳐서 최종 판정.
+// (개체 전체가 아니라 특정 부견×모견 "조합"만 금지하는 방식 — 한쪽 개체 레코드의
+//  bannedPartners 맵에 상대 key가 있으면 그 조합만 금지)
+function checkBreedingAllowed(sireKey, damKey, maxDepth) {
+  const dogsByKey = buildDogsByKeyMap();
+  const sireDog = dogsByKey[sireKey];
+  const damDog = dogsByKey[damKey];
+  const pairBan = (sireDog && sireDog.bannedPartners && sireDog.bannedPartners[damKey])
+                || (damDog && damDog.bannedPartners && damDog.bannedPartners[sireKey]);
+  if (pairBan) {
+    return {
+      status: 'red', banned: true, common: [],
+      reason: `🚫 이 조합은 수동으로 교배 금지 처리됨${pairBan.reason ? ' (' + pairBan.reason + ')' : ''}`
+    };
+  }
+  const r = checkInbreeding(sireKey, damKey, maxDepth);
+  return { ...r, banned: false };
+}
+
+function dogLabel(dog) {
+  if (!dog) return '미상';
+  return `${esc(dog.code)}${dog.name ? ' (' + esc(dog.name) + ')' : ''}`;
+}
+
+window.allDogs = allDogs;
+window.buildDogsByKeyMap = buildDogsByKeyMap;
+window.checkBreedingAllowed = checkBreedingAllowed;
+window.dogLabel = dogLabel;
+
+// ════════ 렌더링 ════════
+const mainEl = document.getElementById('main');
+
+function koSort(a, b) { return String(a.code || '').localeCompare(String(b.code || ''), 'ko'); }
+
+function renderApp() {
+  if (loadError) { renderError(); return; }
+  if (!femalesLoaded || !malesLoaded) { renderLoading(); return; }
+  if (!selectedDamKey) { renderDamSelect(); return; }
+  const dogsByKey = buildDogsByKeyMap();
+  if (!dogsByKey[selectedDamKey] || dogsByKey[selectedDamKey].archived) {
+    // 선택된 모견이 삭제/보관된 경우 선택 화면으로 복귀
+    selectedDamKey = null;
+    renderDamSelect();
+    return;
+  }
+  renderResults(dogsByKey);
+}
+
+function renderLoading() {
+  mainEl.innerHTML = `<div class="loading">⏳ 데이터를 불러오는 중...</div>`;
+}
+
+function renderError() {
+  mainEl.innerHTML = `
+    <div class="error-box">
+      ⚠️ 데이터를 불러오지 못했습니다.<br>
+      (${esc(loadError)})<br><br>
+      Firebase 데이터베이스 규칙에서 females/males 읽기 권한이 열려있는지 확인해주세요.
+    </div>`;
+}
+
+window.setDamSearch = function(v) {
+  damSearch = v;
+  renderDamSelect();
+};
+
+function renderDamSelect() {
+  const q = damSearch.trim().toLowerCase();
+  let dams = allDogs().filter(d => d.sex === 'female').sort(koSort);
+  if (q) {
+    dams = dams.filter(d => (d.code || '').toLowerCase().includes(q) || (d.name || '').toLowerCase().includes(q));
+  }
+
+  const grid = dams.length
+    ? `<div class="dam-grid">${dams.map(d => `
+        <div class="dam-card" onclick="selectDam('${d._key}')">
+          <div class="icon">🐕‍🦺</div>
+          <div class="code">${esc(d.code)}</div>
+          ${d.name ? `<div class="name">${esc(d.name)}</div>` : ''}
+        </div>
+      `).join('')}</div>`
+    : `<div class="empty">검색 결과가 없습니다.</div>`;
+
+  mainEl.innerHTML = `
+    <div class="notice">📋 <b>모견</b>을 선택하면 이 모견과 <b>교배가 금지된 부견</b> 목록을 바로 보여드려요. (근친 자동 판정 + 수동 금지 설정 포함)</div>
+    <div class="search-box"><input type="text" placeholder="🔍 모견 코드/이름 검색" value="${esc(damSearch)}" oninput="setDamSearch(this.value)"></div>
+    <div class="section-title">모견 선택 (${dams.length}두)</div>
+    ${grid}
+  `;
+}
+
+window.selectDam = function(key) {
+  selectedDamKey = key;
+  renderApp();
+  window.scrollTo(0, 0);
+};
+
+window.changeDam = function() {
+  selectedDamKey = null;
+  renderApp();
+  window.scrollTo(0, 0);
+};
+
+function renderResults(dogsByKey) {
+  const dam = dogsByKey[selectedDamKey];
+  const sires = allDogs().filter(d => d.sex === 'male').sort(koSort);
+
+  const banned = [], caution = [], ok = [];
+  sires.forEach(sire => {
+    const r = checkBreedingAllowed(sire._key, selectedDamKey, 3);
+    let reasonText = r.reason;
+    if (!reasonText && r.common && r.common.length) {
+      reasonText = '공통 조상: ' + r.common.map(c => dogLabel(dogsByKey[c.key])).join(', ');
+    }
+    const item = { dog: sire, reasonText };
+    if (r.status === 'red') banned.push(item);
+    else if (r.status === 'yellow') caution.push(item);
+    else ok.push(item);
+  });
+
+  function renderSireItem(item, statusClass, badgeText) {
+    return `
+      <div class="sire-item ${statusClass}">
+        <div class="row1">
+          <div class="code">${esc(item.dog.code)}${item.dog.name ? ` <span class="name">(${esc(item.dog.name)})</span>` : ''}</div>
+          <div class="badge">${badgeText}</div>
+        </div>
+        ${item.reasonText ? `<div class="reason">${esc(item.reasonText)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  const bannedHtml = banned.length
+    ? `<div class="sire-list">${banned.map(i => renderSireItem(i, 'red', '🚫 금지')).join('')}</div>`
+    : `<div class="empty">🎉 교배 금지된 부견이 없습니다.</div>`;
+
+  const cautionHtml = caution.length
+    ? `<div class="sire-list">${caution.map(i => renderSireItem(i, 'yellow', '⚠️ 판정불가')).join('')}</div>`
+    : `<div class="empty">해당 없음</div>`;
+
+  const okHtml = ok.length
+    ? `<div class="sire-list">${ok.map(i => renderSireItem(i, 'green', '✅ 가능')).join('')}</div>`
+    : `<div class="empty">해당 없음</div>`;
+
+  mainEl.innerHTML = `
+    <div class="result-header">
+      <div class="icon">🐕‍🦺</div>
+      <div class="info">
+        <div class="code">${esc(dam.code)}${dam.name ? ' (' + esc(dam.name) + ')' : ''}</div>
+        <div class="name">부견 전체 ${sires.length}두 기준 판정</div>
+      </div>
+      <button class="change-btn" onclick="changeDam()">↺ 다른 모견</button>
+    </div>
+
+    <div class="status-summary">
+      <div class="status-pill red"><span class="n">${banned.length}</span>금지</div>
+      <div class="status-pill yellow"><span class="n">${caution.length}</span>판정불가</div>
+      <div class="status-pill green"><span class="n">${ok.length}</span>가능</div>
+    </div>
+
+    <div class="section-title">🚫 교배 금지 부견</div>
+    ${bannedHtml}
+
+    <details class="collapsible">
+      <summary><span class="arrow">▶</span> ⚠️ 판정 불가 (정보 부족) — ${caution.length}두</summary>
+      ${cautionHtml}
+    </details>
+
+    <details class="collapsible">
+      <summary><span class="arrow">▶</span> ✅ 교배 가능 — ${ok.length}두</summary>
+      ${okHtml}
+    </details>
+  `;
+}
+
+// ════════ Firebase 실시간 구독 (읽기 전용) ════════
+onValue(ref(db, 'females'), snap => {
+  females = [];
+  snap.forEach(child => { females.push({ _key: child.key, ...child.val() }); });
+  femalesLoaded = true;
+  loadError = null;
+  renderApp();
+}, error => {
+  loadError = error && error.message ? error.message : String(error);
+  renderApp();
+});
+
+onValue(ref(db, 'males'), snap => {
+  males = [];
+  snap.forEach(child => { males.push({ _key: child.key, ...child.val() }); });
+  malesLoaded = true;
+  loadError = null;
+  renderApp();
+}, error => {
+  loadError = error && error.message ? error.message : String(error);
+  renderApp();
+});
+
+renderApp();
+
+// ── GitHub 최신 배포(커밋) 시각 조회 ──
+async function loadLastDeployTime(filePath, elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const res = await fetch(`https://api.github.com/repos/daveheo89/Goldie/commits?path=${encodeURIComponent(filePath)}&per_page=1`);
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const data = await res.json();
+    if (!data || !data[0] || !data[0].commit) throw new Error('커밋 정보 없음');
+    const dateStr = data[0].commit.committer?.date || data[0].commit.author?.date;
+    const kst = new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+    el.textContent = `🕐 최신 배포: ${kst} (GitHub 기준)`;
+  } catch (e) {
+    el.textContent = '';
+    console.warn('[배포 시간 조회 실패]:', e);
+  }
+}
+loadLastDeployTime('breeding_check.html', 'deploy-time-info');
+</script>
+</body>
+</html>
