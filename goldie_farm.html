@@ -3140,21 +3140,21 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       </div>
     </div>
 
-    <!-- 교배 금지(수동) 설정 모달 -->
-    <div class="modal-overlay" id="breeding-ban-modal" onclick="handleBreedingBanModalOverlay(event)">
+    <!-- 교배 금지(수동, 조합 단위) 설정 모달 -->
+    <div class="modal-overlay" id="pair-ban-modal" onclick="handlePairBanModalOverlay(event)">
       <div class="modal">
         <div class="modal-header">
-          <h2>🚫 교배 금지 설정</h2>
-          <button class="modal-close" onclick="closeBreedingBanModal()">✕</button>
+          <h2>🚫 이 조합만 교배 금지</h2>
+          <button class="modal-close" onclick="closePairBanModal()">✕</button>
         </div>
-        <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">이 개체는 누구와 짝지어도 교배 등록이 막힙니다. 해제하기 전까지는 등록 화면에서도 저장할 수 없어요.</p>
+        <p id="pair-ban-desc" style="font-size:12px; color:#64748B; margin:-6px 0 14px;"></p>
         <div class="form-group">
           <label>금지 사유 메모</label>
-          <textarea id="breeding-ban-reason-input" placeholder="예: 부견과 남매 관계로 추정" style="width:100%;height:70px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+          <textarea id="pair-ban-reason-input" placeholder="예: 남매 관계로 추정" style="width:100%;height:70px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-cancel" onclick="closeBreedingBanModal()" style="flex:1;">취소</button>
-          <button class="btn btn-danger" onclick="confirmBreedingBan()" style="flex:1;">🚫 교배 금지로 설정</button>
+          <button class="btn btn-cancel" onclick="closePairBanModal()" style="flex:1;">취소</button>
+          <button class="btn btn-danger" onclick="confirmPairBan()" style="flex:1;">🚫 이 조합 금지로 설정</button>
         </div>
       </div>
     </div>
@@ -4991,15 +4991,19 @@ function checkInbreeding(sireKey, damKey, maxDepth) {
 
 // 자동 근친 판정 + 수동 "교배 금지" 플래그를 합쳐서 최종 판정.
 // 수동 금지된 개체가 한쪽이라도 있으면 무조건 red + banned:true (등록 화면에서 하드블록 처리용)
+// 자동 근친 판정 + 수동 "이 조합만 교배 금지" 설정을 합쳐서 최종 판정.
+// (개체 전체가 아니라 특정 부견×모견 "조합"만 금지하는 방식 — 한쪽 개체 레코드의
+//  bannedPartners 맵에 상대 key가 있으면 그 조합만 금지)
 function checkBreedingAllowed(sireKey, damKey, maxDepth) {
   const dogsByKey = buildDogsByKeyMap();
   const sireDog = dogsByKey[sireKey];
   const damDog = dogsByKey[damKey];
-  const bannedDog = (sireDog && sireDog.breedingBanned) ? sireDog : ((damDog && damDog.breedingBanned) ? damDog : null);
-  if (bannedDog) {
+  const pairBan = (sireDog && sireDog.bannedPartners && sireDog.bannedPartners[damKey])
+                || (damDog && damDog.bannedPartners && damDog.bannedPartners[sireKey]);
+  if (pairBan) {
     return {
       status: 'red', banned: true, common: [],
-      reason: `🚫 ${dogLabel(bannedDog)} 개체가 수동 교배 금지 상태입니다${bannedDog.breedingBanReason ? ' (' + bannedDog.breedingBanReason + ')' : ''}`
+      reason: `🚫 이 조합은 수동으로 교배 금지 처리됨${pairBan.reason ? ' (' + pairBan.reason + ')' : ''}`
     };
   }
   const r = checkInbreeding(sireKey, damKey, maxDepth);
@@ -5217,43 +5221,51 @@ window.handleAncestorPickerOverlay = function(e) {
   if (e.target === document.getElementById('ancestor-picker-modal')) closeAncestorPicker();
 };
 
-// ── 수동 교배 금지 설정/해제 ──
-let _breedingBanTargetKey = null;
-let _breedingBanTargetSex = null;
+// ── 수동 교배 금지 설정/해제 (조합 단위: A×B 이 쌍만 막음, 개체 전체 금지 아님) ──
+let _pairBanA = null; // { key, sex }
+let _pairBanB = null;
 
-window.openBreedingBanModal = function(key) {
-  const dog = allDogs(true).find(d => d._key === key);
-  if (!dog) return;
-  _breedingBanTargetKey = key;
-  _breedingBanTargetSex = dog.sex;
-  document.getElementById('breeding-ban-reason-input').value = '';
-  document.getElementById('breeding-ban-modal').classList.add('open');
+window.openPairBanModal = function(candidateKey) {
+  const selfKey = window._pedigreeSelectedKey;
+  const selfDog = allDogs(true).find(d => d._key === selfKey);
+  const candidateDog = allDogs(true).find(d => d._key === candidateKey);
+  if (!selfDog || !candidateDog) return;
+  _pairBanA = { key: selfDog._key, sex: selfDog.sex };
+  _pairBanB = { key: candidateDog._key, sex: candidateDog.sex };
+  document.getElementById('pair-ban-desc').textContent = `${dogLabel(selfDog)} × ${dogLabel(candidateDog)} — 이 조합만 교배 등록이 막힙니다. 다른 개체와의 조합에는 영향이 없어요.`;
+  document.getElementById('pair-ban-reason-input').value = '';
+  document.getElementById('pair-ban-modal').classList.add('open');
 };
 
-window.closeBreedingBanModal = function() {
-  document.getElementById('breeding-ban-modal').classList.remove('open');
-  _breedingBanTargetKey = null;
-  _breedingBanTargetSex = null;
+window.closePairBanModal = function() {
+  document.getElementById('pair-ban-modal').classList.remove('open');
+  _pairBanA = null;
+  _pairBanB = null;
 };
 
-window.handleBreedingBanModalOverlay = function(e) {
-  if (e.target === document.getElementById('breeding-ban-modal')) closeBreedingBanModal();
+window.handlePairBanModalOverlay = function(e) {
+  if (e.target === document.getElementById('pair-ban-modal')) closePairBanModal();
 };
 
-window.confirmBreedingBan = async function() {
-  if (!_breedingBanTargetKey) return;
-  const reason = document.getElementById('breeding-ban-reason-input').value.trim();
-  const path = (_breedingBanTargetSex === 'female' ? 'females' : 'males') + '/' + _breedingBanTargetKey;
-  await fbUpdate(path, { breedingBanned: true, breedingBanReason: reason || null, breedingBanDate: today() });
-  showToast('🚫 교배 금지로 설정됐어요.');
-  closeBreedingBanModal();
+window.confirmPairBan = async function() {
+  if (!_pairBanA || !_pairBanB) return;
+  const reason = document.getElementById('pair-ban-reason-input').value.trim();
+  const data = { reason: reason || null, date: today() };
+  const pathA = (_pairBanA.sex === 'female' ? 'females' : 'males') + '/' + _pairBanA.key + '/bannedPartners/' + _pairBanB.key;
+  const pathB = (_pairBanB.sex === 'female' ? 'females' : 'males') + '/' + _pairBanB.key + '/bannedPartners/' + _pairBanA.key;
+  await fbSet(pathA, data);
+  await fbSet(pathB, data);
+  showToast('🚫 이 조합만 교배 금지로 설정됐어요.');
+  closePairBanModal();
 };
 
-window.unbanBreedingDog = async function(key, sex) {
-  if (!confirm('교배 금지를 해제할까요?')) return;
-  const path = (sex === 'female' ? 'females' : 'males') + '/' + key;
-  await fbUpdate(path, { breedingBanned: false, breedingBanReason: null, breedingBanDate: null });
-  showToast('✅ 교배 금지가 해제됐어요.');
+window.unbanPair = async function(aKey, aSex, bKey, bSex) {
+  if (!confirm('이 조합의 교배 금지를 해제할까요?')) return;
+  const pathA = (aSex === 'female' ? 'females' : 'males') + '/' + aKey + '/bannedPartners/' + bKey;
+  const pathB = (bSex === 'female' ? 'females' : 'males') + '/' + bKey + '/bannedPartners/' + aKey;
+  await fbRemove(pathA);
+  await fbRemove(pathB);
+  showToast('✅ 이 조합의 교배 금지가 해제됐어요.');
 };
 
 // 선택된 개체 상세: 3대 계보 + 반대성별 전체와의 교배가능여부 리스트
@@ -5266,15 +5278,6 @@ window.renderPedigreeDetail = function(key) {
 
   const birthStats = getBirthStats(dog);
   const birthSummaryText = `총 ${birthStats.count}회 ${dog.sex === 'female' ? '출산' : '교배 참여'} · 누적 ${birthStats.totalPuppies}마리${birthStats.lastDate ? ' · 최근 ' + fmtDate(birthStats.lastDate) : ''}`;
-
-  const banBannerHtml = dog.breedingBanned
-    ? `<div style="background:#FDEDEC; border:2px solid #E74C3C; color:#E74C3C; border-radius:8px; padding:10px 12px; font-size:12px; font-weight:700; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <span>🚫 교배 금지됨${dog.breedingBanReason ? ' — ' + esc(dog.breedingBanReason) : ''}</span>
-        <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0; white-space:nowrap; background:#fff;" onclick="unbanBreedingDog('${dog._key}','${dog.sex}')">해제</button>
-      </div>`
-    : `<div style="text-align:right; margin-bottom:12px;">
-        <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0;" onclick="openBreedingBanModal('${dog._key}')">🚫 이 개체 교배 금지로 설정</button>
-      </div>`;
 
   const oppositeSex = dog.sex === 'female' ? 'male' : 'female';
   const candidates = allDogs().filter(d => d.sex === oppositeSex);
@@ -5294,25 +5297,25 @@ window.renderPedigreeDetail = function(key) {
 
   const compatRows = results.map(({ candidate, result }) => {
     let reasonText = '';
-    if (result.status === 'red') {
+    if (result.status === 'red' && !result.banned) {
       if (result.reason) reasonText = result.reason;
       else if (result.common.length) reasonText = '공통 조상: ' + result.common.map(c => dogLabel(dogsByKey[c.key])).join(', ');
     }
-    const clickable = result.status === 'yellow' && !result.banned; // 확인 불가 항목만 클릭해서 수동 금지 설정 가능
-    const rowStyle = `display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;${clickable ? ' cursor:pointer;' : ''}`;
-    const onclickAttr = clickable ? ` onclick="openBreedingBanModal('${candidate._key}')"` : '';
-    return `<div style="${rowStyle}"${onclickAttr}${clickable ? ' title="클릭해서 이 개체를 교배 금지로 설정"' : ''}>
-      <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}${clickable ? ' <span style="font-size:10px; color:#B7950B; font-weight:600;">(클릭해서 금지 설정)</span>' : ''}</div>
+    const settable = result.status === 'yellow' && !result.banned; // 확인 불가 항목만 클릭해서 "이 조합만" 금지 설정 가능
+    const rowStyle = `display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;${settable ? ' cursor:pointer;' : ''}`;
+    const onclickAttr = settable ? ` onclick="openPairBanModal('${candidate._key}')"` : '';
+    return `<div style="${rowStyle}"${onclickAttr}${settable ? ' title="클릭해서 이 조합만 교배 금지로 설정"' : ''}>
+      <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}${settable ? ' <span style="font-size:10px; color:#B7950B; font-weight:600;">(클릭해서 이 조합만 금지 설정)</span>' : ''}</div>
       <div style="text-align:right;">
-        <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${result.banned ? '🚫 수동 금지' : badgeText[result.status]}</span>
+        <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${result.banned ? '🚫 이 조합 수동 금지' : badgeText[result.status]}</span>
         ${reasonText ? `<div style="font-size:10px; color:#E74C3C; margin-top:2px;">${esc(reasonText)}</div>` : ''}
+        ${result.banned ? `<button class="btn-outline" style="font-size:10px; padding:3px 8px; margin:4px 0 0; background:#fff;" onclick="event.stopPropagation(); unbanPair('${dog._key}','${dog.sex}','${candidate._key}','${candidate.sex}')">해제</button>` : ''}
       </div>
     </div>`;
   }).join('');
 
   el.innerHTML = `
     <div class="sec-title" style="margin-top:0;">${dogLabel(dog)} — 3대 계보도</div>
-    ${banBannerHtml}
     <div class="form-card" style="margin-bottom:16px;">
       ${buildPedigreeTreeHtml(key, dogsByKey, birthSummaryText)}
     </div>
