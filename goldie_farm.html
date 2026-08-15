@@ -5298,8 +5298,11 @@ window.renderPedigreeDetail = function(key) {
       if (result.reason) reasonText = result.reason;
       else if (result.common.length) reasonText = '공통 조상: ' + result.common.map(c => dogLabel(dogsByKey[c.key])).join(', ');
     }
-    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;">
-      <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}</div>
+    const clickable = result.status === 'yellow' && !result.banned; // 확인 불가 항목만 클릭해서 수동 금지 설정 가능
+    const rowStyle = `display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;${clickable ? ' cursor:pointer;' : ''}`;
+    const onclickAttr = clickable ? ` onclick="openBreedingBanModal('${candidate._key}')"` : '';
+    return `<div style="${rowStyle}"${onclickAttr}${clickable ? ' title="클릭해서 이 개체를 교배 금지로 설정"' : ''}>
+      <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}${clickable ? ' <span style="font-size:10px; color:#B7950B; font-weight:600;">(클릭해서 금지 설정)</span>' : ''}</div>
       <div style="text-align:right;">
         <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${result.banned ? '🚫 수동 금지' : badgeText[result.status]}</span>
         ${reasonText ? `<div style="font-size:10px; color:#E74C3C; margin-top:2px;">${esc(reasonText)}</div>` : ''}
