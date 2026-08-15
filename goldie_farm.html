@@ -2189,7 +2189,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </div>
         <div id="b-due-preview" style="font-size:12px; color:#64748B; font-weight:700; margin:-4px 0 10px;"></div>
 
-        <button class="btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
+        <button class="btn" id="b-register-btn" onclick="registerBreeding()">출산 예정일 계산 및 등록</button>
 
       </div>
 
@@ -3140,6 +3140,25 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       </div>
     </div>
 
+    <!-- 교배 금지(수동) 설정 모달 -->
+    <div class="modal-overlay" id="breeding-ban-modal" onclick="handleBreedingBanModalOverlay(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>🚫 교배 금지 설정</h2>
+          <button class="modal-close" onclick="closeBreedingBanModal()">✕</button>
+        </div>
+        <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">이 개체는 누구와 짝지어도 교배 등록이 막힙니다. 해제하기 전까지는 등록 화면에서도 저장할 수 없어요.</p>
+        <div class="form-group">
+          <label>금지 사유 메모</label>
+          <textarea id="breeding-ban-reason-input" placeholder="예: 부견과 남매 관계로 추정" style="width:100%;height:70px;padding:8px;border:2px solid var(--border);border-radius:9px;resize:vertical;font-family:inherit;font-size:14px;outline:none;background:var(--gold-pale);color:var(--text);"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-cancel" onclick="closeBreedingBanModal()" style="flex:1;">취소</button>
+          <button class="btn btn-danger" onclick="confirmBreedingBan()" style="flex:1;">🚫 교배 금지로 설정</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 개체 보관 처리 모달 -->
     <div class="modal-overlay" id="archive-dog-modal" onclick="handleArchiveDogModalOverlay(event)">
       <div class="modal">
@@ -3392,7 +3411,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div class="modal-actions">
         <button class="btn btn-danger" onclick="deleteBreedingRecord()" style="flex:1;">🗑️ 삭제</button>
         <button class="btn btn-cancel" onclick="closeBreedingEditModal()" style="flex:1;">취소</button>
-        <button class="btn" onclick="saveBreedingEdit()" style="flex:1;">✅ 저장</button>
+        <button class="btn" id="be-save-btn" onclick="saveBreedingEdit()" style="flex:1;">✅ 저장</button>
       </div>
     </div>
   </div>
@@ -4970,6 +4989,23 @@ function checkInbreeding(sireKey, damKey, maxDepth) {
   return { status: 'green', common: [] };
 }
 
+// 자동 근친 판정 + 수동 "교배 금지" 플래그를 합쳐서 최종 판정.
+// 수동 금지된 개체가 한쪽이라도 있으면 무조건 red + banned:true (등록 화면에서 하드블록 처리용)
+function checkBreedingAllowed(sireKey, damKey, maxDepth) {
+  const dogsByKey = buildDogsByKeyMap();
+  const sireDog = dogsByKey[sireKey];
+  const damDog = dogsByKey[damKey];
+  const bannedDog = (sireDog && sireDog.breedingBanned) ? sireDog : ((damDog && damDog.breedingBanned) ? damDog : null);
+  if (bannedDog) {
+    return {
+      status: 'red', banned: true, common: [],
+      reason: `🚫 ${dogLabel(bannedDog)} 개체가 수동 교배 금지 상태입니다${bannedDog.breedingBanReason ? ' (' + bannedDog.breedingBanReason + ')' : ''}`
+    };
+  }
+  const r = checkInbreeding(sireKey, damKey, maxDepth);
+  return { ...r, banned: false };
+}
+
 window.allDogs = allDogs;
 
 // ── 🧬 혈통 관리 탭 렌더링 (성능: 진입 시 사진 그리드를 즉시 그리지 않고, 모견/부견을 펼쳤을 때만 렌더링) ──
@@ -5181,6 +5217,45 @@ window.handleAncestorPickerOverlay = function(e) {
   if (e.target === document.getElementById('ancestor-picker-modal')) closeAncestorPicker();
 };
 
+// ── 수동 교배 금지 설정/해제 ──
+let _breedingBanTargetKey = null;
+let _breedingBanTargetSex = null;
+
+window.openBreedingBanModal = function(key) {
+  const dog = allDogs(true).find(d => d._key === key);
+  if (!dog) return;
+  _breedingBanTargetKey = key;
+  _breedingBanTargetSex = dog.sex;
+  document.getElementById('breeding-ban-reason-input').value = '';
+  document.getElementById('breeding-ban-modal').classList.add('open');
+};
+
+window.closeBreedingBanModal = function() {
+  document.getElementById('breeding-ban-modal').classList.remove('open');
+  _breedingBanTargetKey = null;
+  _breedingBanTargetSex = null;
+};
+
+window.handleBreedingBanModalOverlay = function(e) {
+  if (e.target === document.getElementById('breeding-ban-modal')) closeBreedingBanModal();
+};
+
+window.confirmBreedingBan = async function() {
+  if (!_breedingBanTargetKey) return;
+  const reason = document.getElementById('breeding-ban-reason-input').value.trim();
+  const path = (_breedingBanTargetSex === 'female' ? 'females' : 'males') + '/' + _breedingBanTargetKey;
+  await fbUpdate(path, { breedingBanned: true, breedingBanReason: reason || null, breedingBanDate: today() });
+  showToast('🚫 교배 금지로 설정됐어요.');
+  closeBreedingBanModal();
+};
+
+window.unbanBreedingDog = async function(key, sex) {
+  if (!confirm('교배 금지를 해제할까요?')) return;
+  const path = (sex === 'female' ? 'females' : 'males') + '/' + key;
+  await fbUpdate(path, { breedingBanned: false, breedingBanReason: null, breedingBanDate: null });
+  showToast('✅ 교배 금지가 해제됐어요.');
+};
+
 // 선택된 개체 상세: 3대 계보 + 반대성별 전체와의 교배가능여부 리스트
 window.renderPedigreeDetail = function(key) {
   const el = document.getElementById('pedigree-detail');
@@ -5192,20 +5267,30 @@ window.renderPedigreeDetail = function(key) {
   const birthStats = getBirthStats(dog);
   const birthSummaryText = `총 ${birthStats.count}회 ${dog.sex === 'female' ? '출산' : '교배 참여'} · 누적 ${birthStats.totalPuppies}마리${birthStats.lastDate ? ' · 최근 ' + fmtDate(birthStats.lastDate) : ''}`;
 
+  const banBannerHtml = dog.breedingBanned
+    ? `<div style="background:#FDEDEC; border:2px solid #E74C3C; color:#E74C3C; border-radius:8px; padding:10px 12px; font-size:12px; font-weight:700; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <span>🚫 교배 금지됨${dog.breedingBanReason ? ' — ' + esc(dog.breedingBanReason) : ''}</span>
+        <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0; white-space:nowrap; background:#fff;" onclick="unbanBreedingDog('${dog._key}','${dog.sex}')">해제</button>
+      </div>`
+    : `<div style="text-align:right; margin-bottom:12px;">
+        <button class="btn-outline" style="font-size:11px; padding:6px 10px; margin:0;" onclick="openBreedingBanModal('${dog._key}')">🚫 이 개체 교배 금지로 설정</button>
+      </div>`;
+
   const oppositeSex = dog.sex === 'female' ? 'male' : 'female';
   const candidates = allDogs().filter(d => d.sex === oppositeSex);
   const results = candidates.map(c => {
     const sireKey = dog.sex === 'male' ? dog._key : c._key;
     const damKey = dog.sex === 'female' ? dog._key : c._key;
-    const r = checkInbreeding(sireKey, damKey, 3);
+    const r = checkBreedingAllowed(sireKey, damKey, 3);
     return { candidate: c, result: r };
-  }).sort((a, b) => {
-    const order = { green: 0, yellow: 1, red: 2 };
-    return order[a.result.status] - order[b.result.status];
-  });
+  }).filter(({ result }) => result.status !== 'green') // 교배 "가능한" 애들이 아니라 "안되는" 애들만 결과로 보여줌
+    .sort((a, b) => {
+      const order = { red: 0, yellow: 1 };
+      return order[a.result.status] - order[b.result.status];
+    });
 
-  const badgeStyle = { green: 'background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;', yellow: 'background:#FEF9E7; color:#B7950B; border:1px solid #F7DC6F;', red: 'background:#FDEDEC; color:#E74C3C; border:1px solid #F5B7B1;' };
-  const badgeText = { green: '🟢 교배 가능', yellow: '🟡 확인 불가(정보부족)', red: '🔴 교배 불가' };
+  const badgeStyle = { yellow: 'background:#FEF9E7; color:#B7950B; border:1px solid #F7DC6F;', red: 'background:#FDEDEC; color:#E74C3C; border:1px solid #F5B7B1;' };
+  const badgeText = { yellow: '🟡 확인 불가(정보부족)', red: '🔴 교배 불가' };
 
   const compatRows = results.map(({ candidate, result }) => {
     let reasonText = '';
@@ -5216,7 +5301,7 @@ window.renderPedigreeDetail = function(key) {
     return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9;">
       <div style="font-size:13px; font-weight:700;">${dogLabel(candidate)}</div>
       <div style="text-align:right;">
-        <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${badgeText[result.status]}</span>
+        <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; ${badgeStyle[result.status]}">${result.banned ? '🚫 수동 금지' : badgeText[result.status]}</span>
         ${reasonText ? `<div style="font-size:10px; color:#E74C3C; margin-top:2px;">${esc(reasonText)}</div>` : ''}
       </div>
     </div>`;
@@ -5224,13 +5309,14 @@ window.renderPedigreeDetail = function(key) {
 
   el.innerHTML = `
     <div class="sec-title" style="margin-top:0;">${dogLabel(dog)} — 3대 계보도</div>
+    ${banBannerHtml}
     <div class="form-card" style="margin-bottom:16px;">
       ${buildPedigreeTreeHtml(key, dogsByKey, birthSummaryText)}
     </div>
     ${buildBirthHistoryHtml(dog, birthStats.matched)}
-    <div class="sec-title">${dog.sex === 'female' ? '🐕 교배 가능한 부견 목록' : '🐕‍🦺 교배 가능한 모견 목록'} (${candidates.length}두)</div>
+    <div class="sec-title">${dog.sex === 'female' ? '🚫 부견 교배 불가 목록' : '🚫 모견 교배 불가 목록'} (${results.length}두 / 전체 ${candidates.length}두)</div>
     <div class="form-card" style="padding:0; overflow:hidden;">
-      ${compatRows || '<div style="padding:16px; font-size:12px; color:#94A3B8;">등록된 반대 성별 개체가 없습니다.</div>'}
+      ${compatRows || '<div style="padding:16px; font-size:12px; color:#94A3B8;">교배 불가로 확인된 개체가 없습니다. 등록된 반대 성별 개체가 모두 교배 가능(🟢) 상태입니다.</div>'}
     </div>
   `;
 };
@@ -6577,21 +6663,28 @@ window.updateBreedingDuePreview = function(containerId) {
 
 window.checkBreedingCompat = function() {
   const el = document.getElementById('b-compat-warning');
+  const btn = document.getElementById('b-register-btn');
   if (!el) return;
   const fKey = document.getElementById('b-female').value;
   const mKey = document.getElementById('b-male').value;
-  if (!fKey || !mKey) { el.innerHTML = ''; return; }
+  if (!fKey || !mKey) { el.innerHTML = ''; if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
 
-  const compat = checkInbreeding(mKey, fKey, 3);
+  const compat = checkBreedingAllowed(mKey, fKey, 3);
   const dogsByKey = buildDogsByKeyMap();
 
-  if (compat.status === 'red') {
+  if (compat.banned) {
+    el.innerHTML = `<div style="background:#FDEDEC; border:2px solid #E74C3C; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">${esc(compat.reason)} — 등록할 수 없습니다. 혈통 탭에서 먼저 금지를 해제해주세요.</div>`;
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  } else if (compat.status === 'red') {
     let detail = compat.reason || ('공통 조상: ' + compat.common.map(c => dogLabel(dogsByKey[c.key])).join(', '));
     el.innerHTML = `<div style="background:#FDEDEC; border:1px solid #F5B7B1; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🔴 교배 불가 — 3대 이내 근친 관계입니다. (${esc(detail)})</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   } else if (compat.status === 'yellow') {
     el.innerHTML = `<div style="background:#FEF9E7; border:1px solid #F7DC6F; color:#B7950B; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다.</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   } else {
     el.innerHTML = `<div style="background:#E8F8EF; border:1px solid #A8DDB9; color:#27AE60; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟢 3대 이내 공통 조상이 확인되지 않았습니다.</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 };
 
@@ -6612,7 +6705,11 @@ window.registerBreeding=async function(){
   if(!fDog||!mDog)return;
 
   if (fKey && mKey) {
-    const compat = checkInbreeding(mKey, fKey, 3);
+    const compat = checkBreedingAllowed(mKey, fKey, 3);
+    if (compat.banned) {
+      showToast(esc(compat.reason) + ' — 등록할 수 없습니다.');
+      return;
+    }
     if (compat.status === 'red') {
       if (!confirm('⚠️ 3대 이내 근친 관계가 확인되었습니다. 그래도 교배를 등록하시겠습니까?')) return;
     } else if (compat.status === 'yellow') {
@@ -6683,21 +6780,28 @@ window.handleBreedingEditModalOverlay = function(e) {
 
 window.checkBreedingEditCompat = function() {
   const el = document.getElementById('be-compat-warning');
+  const btn = document.getElementById('be-save-btn');
   if (!el) return;
   const fKey = document.getElementById('be-female').value;
   const mKey = document.getElementById('be-male').value;
-  if (!fKey || !mKey) { el.innerHTML = ''; return; }
+  if (!fKey || !mKey) { el.innerHTML = ''; if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
 
-  const compat = checkInbreeding(mKey, fKey, 3);
+  const compat = checkBreedingAllowed(mKey, fKey, 3);
   const dogsByKey = buildDogsByKeyMap();
 
-  if (compat.status === 'red') {
+  if (compat.banned) {
+    el.innerHTML = `<div style="background:#FDEDEC; border:2px solid #E74C3C; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">${esc(compat.reason)} — 저장할 수 없습니다. 혈통 탭에서 먼저 금지를 해제해주세요.</div>`;
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  } else if (compat.status === 'red') {
     let detail = compat.reason || ('공통 조상: ' + compat.common.map(c => dogLabel(dogsByKey[c.key])).join(', '));
     el.innerHTML = `<div style="background:#FDEDEC; border:1px solid #F5B7B1; color:#E74C3C; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🔴 교배 불가 — 3대 이내 근친 관계입니다. (${esc(detail)})</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   } else if (compat.status === 'yellow') {
     el.innerHTML = `<div style="background:#FEF9E7; border:1px solid #F7DC6F; color:#B7950B; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟡 부모견 정보가 일부 비어있어 근친 여부를 완전히 확인할 수 없습니다.</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   } else {
     el.innerHTML = `<div style="background:#E8F8EF; border:1px solid #A8DDB9; color:#27AE60; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; margin-bottom:10px;">🟢 3대 이내 공통 조상이 확인되지 않았습니다.</div>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 };
 
@@ -6724,7 +6828,11 @@ window.saveBreedingEdit = async function() {
   if (!fDog || !mDog) { showToast('모견/부견을 선택해주세요'); return; }
 
   if (fKey && mKey) {
-    const compat = checkInbreeding(mKey, fKey, 3);
+    const compat = checkBreedingAllowed(mKey, fKey, 3);
+    if (compat.banned) {
+      showToast(esc(compat.reason) + ' — 저장할 수 없습니다.');
+      return;
+    }
     if (compat.status === 'red') {
       if (!confirm('⚠️ 3대 이내 근친 관계가 확인되었습니다. 그래도 저장하시겠습니까?')) return;
     } else if (compat.status === 'yellow') {
