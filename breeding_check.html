@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>골디쉼터 교배 확인</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22%3E%3Ctext%20y=%22.9em%22%20font-size=%2290%22%3E%F0%9F%90%95%3C/text%3E%3C/svg%3E">
+<!-- 현장에서 즉시 접속해야 하므로, 첫 로딩 속도를 위해 Firebase 접속 주소를 미리 연결해둠 -->
+<link rel="preconnect" href="https://goldie-shelter-d6c81-default-rtdb.firebaseio.com">
+<link rel="dns-prefetch" href="https://goldie-shelter-d6c81-default-rtdb.firebaseio.com">
 <style>
 :root {
   --gold:#C8860A; --gold-pale:#FFF8E7; --gold-bg:#FFFDF5;
@@ -28,6 +31,15 @@ header {
 }
 header h1 { margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px; }
 header .sub { font-size:11px; opacity:.9; margin-top:2px; }
+.header-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.refresh-btn {
+  flex-shrink:0; width:38px; height:38px; border-radius:50%; border:none;
+  background:rgba(255,255,255,.22); color:#fff; font-size:17px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.refresh-btn:active { background:rgba(255,255,255,.35); }
+.refresh-btn.spinning { animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
 main { max-width:600px; margin:0 auto; padding:14px; padding-bottom:60px; }
 
 .notice { background:var(--cream); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5; }
@@ -106,8 +118,13 @@ footer.deploy-info { text-align:center; font-size:10px; color:var(--text-muted);
 <body>
 
 <header>
-  <h1>🐕 골디쉼터 교배 확인</h1>
-  <div class="sub">모견을 선택하면 교배 금지 부견 목록을 바로 보여줍니다</div>
+  <div class="header-row">
+    <div>
+      <h1>🐕 골디쉼터 교배 확인</h1>
+      <div class="sub" id="header-sub">모견을 선택하면 교배 금지 부견 목록을 바로 보여줍니다</div>
+    </div>
+    <button class="refresh-btn" id="refresh-btn" onclick="reloadData(true)" title="새로고침">🔄</button>
+  </div>
 </header>
 
 <main id="main">
@@ -116,33 +133,25 @@ footer.deploy-info { text-align:center; font-size:10px; color:var(--text-muted);
 
 <div style="text-align:center;"><span class="deploy-info" id="deploy-time-info"></span></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-// ── Firebase 초기화 (읽기 전용 — 로그인 없음, females/males 노드는
-//    Firebase 콘솔에서 .read를 공개로 열어둬야 이 페이지가 동작합니다) ──
-const firebaseConfig = {
-  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
-  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
-  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
-  projectId: "goldie-shelter-d6c81",
-  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
-  messagingSenderId: "1071275996614",
-  appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+<script>
+// ── 데이터 접속 (읽기 전용, REST 방식) ──
+// Firebase JS SDK(실시간 웹소켓 연결)를 쓰지 않고, females/males를 REST GET 2번으로 바로 받아온다.
+// 이 페이지는 "그 순간 한 번 확인"하는 용도라 실시간 구독이 필요 없고, SDK 다운로드 + 웹소켓
+// 연결 과정을 통째로 생략하는 게 현장(약한 신호)에서 첫 로딩을 가장 크게 줄이는 방법이다.
+// (females/males 노드는 Firebase 콘솔에서 .read를 공개로 열어둬야 이 페이지가 동작합니다)
+const DB_URL = "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com";
 
 // ════════ 유틸 ════════
 function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 
-// ════════ 로컬 상태 (Firebase에서 동기화) ════════
+// ════════ 로컬 상태 (REST로 받아옴) ════════
 let females = [];
 let males = [];
 let femalesLoaded = false;
 let malesLoaded = false;
 let loadError = null;
+let isRefreshing = false;
+let lastLoadedAt = null; // "14:32" 형태
 
 let selectedDamKey = null;
 let damSearch = '';
@@ -293,7 +302,8 @@ function renderError() {
     <div class="error-box">
       ⚠️ 데이터를 불러오지 못했습니다.<br>
       (${esc(loadError)})<br><br>
-      Firebase 데이터베이스 규칙에서 females/males 읽기 권한이 열려있는지 확인해주세요.
+      Firebase 데이터베이스 규칙에서 females/males 읽기 권한이 열려있는지 확인해주세요.<br>
+      <button class="change-btn retry-btn" onclick="reloadData(true)">🔄 다시 시도</button>
     </div>`;
 }
 
@@ -411,30 +421,49 @@ function renderResults(dogsByKey) {
   `;
 }
 
-// ════════ Firebase 실시간 구독 (읽기 전용) ════════
-onValue(ref(db, 'females'), snap => {
-  females = [];
-  snap.forEach(child => { females.push({ _key: child.key, ...child.val() }); });
-  femalesLoaded = true;
-  loadError = null;
-  renderApp();
-}, error => {
-  loadError = error && error.message ? error.message : String(error);
-  renderApp();
-});
+// ════════ 데이터 로딩 (REST GET, 필요할 때만 새로고침) ════════
+function updateHeaderStatus() {
+  const sub = document.getElementById('header-sub');
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.classList.toggle('spinning', isRefreshing);
+  if (!sub) return;
+  if (isRefreshing) { sub.textContent = '🔄 새로고침 중...'; return; }
+  if (loadError) { sub.textContent = '⚠️ 불러오기 실패 — 🔄을 눌러 다시 시도'; return; }
+  if (lastLoadedAt) { sub.textContent = `최근 갱신 ${lastLoadedAt} · 모견을 선택하세요`; return; }
+  sub.textContent = '모견을 선택하면 교배 금지 부견 목록을 바로 보여줍니다';
+}
 
-onValue(ref(db, 'males'), snap => {
-  males = [];
-  snap.forEach(child => { males.push({ _key: child.key, ...child.val() }); });
-  malesLoaded = true;
-  loadError = null;
-  renderApp();
-}, error => {
-  loadError = error && error.message ? error.message : String(error);
-  renderApp();
-});
+async function fetchNode(path) {
+  const res = await fetch(`${DB_URL}/${path}.json`);
+  if (!res.ok) {
+    let msg = `연결 실패 (HTTP ${res.status})`;
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
 
-renderApp();
+async function loadAll(isManualRefresh) {
+  isRefreshing = true;
+  updateHeaderStatus();
+  try {
+    const [rawF, rawM] = await Promise.all([fetchNode('females'), fetchNode('males')]);
+    females = rawF ? Object.keys(rawF).map(k => ({ _key: k, ...rawF[k] })) : [];
+    males = rawM ? Object.keys(rawM).map(k => ({ _key: k, ...rawM[k] })) : [];
+    femalesLoaded = true;
+    malesLoaded = true;
+    loadError = null;
+    lastLoadedAt = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  } catch (e) {
+    loadError = e && e.message ? e.message : String(e);
+  }
+  isRefreshing = false;
+  updateHeaderStatus();
+  renderApp();
+}
+window.reloadData = loadAll;
+
+loadAll(false);
 
 // ── GitHub 최신 배포(커밋) 시각 조회 ──
 async function loadLastDeployTime(filePath, elId) {
