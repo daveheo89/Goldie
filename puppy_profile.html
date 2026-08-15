@@ -187,9 +187,18 @@
 
     function getSortedMedia(p) {
       const list = [];
+      const seen = new Set();
+      // 대표 사진(photo)은 개체 등록 시 가장 먼저 올리는 메인 사진이라, media 갤러리가
+      // 나중에 추가되었더라도 항상 포함시키고 항상 맨 앞(메인)에 오도록 고정한다.
+      // (기존엔 media가 하나라도 있으면 photo를 아예 무시해버리는 버그가 있었음)
+      if (p.photo) {
+        list.push({ type: 'image', src: p.photo, order: -1 });
+        seen.add(p.photo);
+      }
       if (p.media && Object.keys(p.media).length) {
         Object.entries(p.media).forEach(([k, v]) => {
-          if (v && v.src) {
+          if (v && v.src && !seen.has(v.src)) {
+            seen.add(v.src);
             list.push({
               _key: k,
               type: v.type || 'image',
@@ -198,8 +207,6 @@
             });
           }
         });
-      } else if (p.photo) {
-        list.push({ type: 'image', src: p.photo, order: 0 });
       }
       return list.sort((a, b) => a.order - b.order);
     }
