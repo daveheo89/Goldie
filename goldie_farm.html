@@ -442,6 +442,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .kmap-box.editing{cursor:grab;touch-action:none;}
 .kmap-box.editing:active{cursor:grabbing;}
 .kmap-resize-handle{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;background:var(--gold);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.kmap-grid{background-image:linear-gradient(to right, rgba(107,63,14,.14) 1px, transparent 1px),linear-gradient(to bottom, rgba(107,63,14,.14) 1px, transparent 1px);}
 
 
 
@@ -3824,8 +3825,10 @@ let kennelLayout = {}; // Firebase에 저장된 배치 {견사명:{x,y,w,h}}
 let kennelLayoutLoaded = false;
 let kennelMapEditMode = false;
 let __kennelWorkingLayout = null; // 편집 중 임시 작업본 (저장 눌러야 반영)
-const KENNEL_MAP_W = 800;
-const KENNEL_MAP_H = 1000;
+const KENNEL_MAP_W = 900;
+const KENNEL_MAP_H = 900;
+const KENNEL_GRID_CELLS = 30; // 가로/세로 30칸씩 정사각형 격자
+const KENNEL_GRID_CELL_PX = KENNEL_MAP_W / KENNEL_GRID_CELLS; // 30px
 
 
 
@@ -6310,7 +6313,7 @@ window.toggleKennelMapEdit = function() {
   if (saveBtn) saveBtn.classList.toggle('hidden', !kennelMapEditMode);
   if (resetBtn) resetBtn.classList.toggle('hidden', !kennelMapEditMode);
   if (hint) hint.textContent = kennelMapEditMode
-    ? '박스를 끌어서 옮기고, 우측 하단 동그란 점을 끌어서 크기를 조절하세요. 다 하시면 저장을 눌러주세요.'
+    ? '박스를 끌어서 옮기고, 우측 하단 동그란 점을 끌어서 크기를 조절하세요. 격자에 맞춰 자동으로 줄이 맞춰져요. 다 하시면 저장을 눌러주세요.'
     : '';
   window.renderKennelMap();
 };
@@ -6332,6 +6335,8 @@ window.resetKennelLayout = function() {
   window.renderKennelMap();
 };
 
+function snapToGrid(v) { return Math.round(v / KENNEL_GRID_CELL_PX) * KENNEL_GRID_CELL_PX; }
+
 function attachKennelDragHandlers(box, handle, kennelName) {
   let mode = null, startX = 0, startY = 0, startPos = null;
 
@@ -6348,12 +6353,12 @@ function attachKennelDragHandlers(box, handle, kennelName) {
     const dx = e.clientX - startX, dy = e.clientY - startY;
     const pos = __kennelWorkingLayout[kennelName];
     if (mode === 'move') {
-      pos.x = Math.max(0, Math.round(startPos.x + dx));
-      pos.y = Math.max(0, Math.round(startPos.y + dy));
+      pos.x = Math.max(0, snapToGrid(startPos.x + dx));
+      pos.y = Math.max(0, snapToGrid(startPos.y + dy));
       box.style.left = pos.x + 'px'; box.style.top = pos.y + 'px';
     } else {
-      pos.w = Math.max(30, Math.round(startPos.w + dx));
-      pos.h = Math.max(30, Math.round(startPos.h + dy));
+      pos.w = Math.max(KENNEL_GRID_CELL_PX, snapToGrid(startPos.w + dx));
+      pos.h = Math.max(KENNEL_GRID_CELL_PX, snapToGrid(startPos.h + dy));
       box.style.width = pos.w + 'px'; box.style.height = pos.h + 'px';
     }
   });
@@ -6371,6 +6376,8 @@ window.renderKennelMap = function() {
 
   canvas.style.width = KENNEL_MAP_W + 'px';
   canvas.style.height = KENNEL_MAP_H + 'px';
+  canvas.style.backgroundSize = KENNEL_GRID_CELL_PX + 'px ' + KENNEL_GRID_CELL_PX + 'px';
+  canvas.classList.toggle('kmap-grid', kennelMapEditMode);
   canvas.innerHTML = '';
 
   KENNELS.forEach(k => {
