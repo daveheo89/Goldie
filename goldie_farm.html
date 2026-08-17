@@ -6417,7 +6417,10 @@ window.renderKennelMap = function() {
     outer.style.display = 'block';
     outer.style.margin = '0';
   } else {
-    // 보기 모드: 실제 사용 영역만 잘라서, 화면에 맞게 축소 — 스크롤/빈 여백 없이 한눈에
+    // 보기 모드: 실제 사용 영역만 잘라서, 가로 폭에 맞춰 최대한 크게 — 세로는 페이지 스크롤에 맡김
+    // (세로 화면 높이에 맞추려 하면 헤더/탭처럼 위쪽이 이미 차지한 공간 때문에 여유가 별로
+    //  없어서 잘 안 커지는 문제가 있었음. 세로로 길어지는 건 일반적인 페이지 스크롤이라
+    //  캔버스 안에 갇혀서 스크롤되던 예전 문제와는 다름.)
     const bbox = computeKennelBoundingBox(layout);
     offsetX = bbox.minX; offsetY = bbox.minY;
     canvas.style.width = bbox.width + 'px';
@@ -6426,8 +6429,9 @@ window.renderKennelMap = function() {
     // outer 자신의 너비가 아니라 부모(안 줄어드는 기준)를 재야 매번 다시 그릴 때 계산이 안 꼬임
     const measureEl = outer.parentElement || outer;
     const availW = measureEl.clientWidth || bbox.width;
-    const maxH = Math.max(160, Math.min((window.innerHeight || 700) * 0.45, 480));
-    let scale = Math.min(1, availW / bbox.width, maxH / bbox.height);
+
+    const MAX_SCALE = 2.5; // 화면이 아주 넓어도 너무 크게 늘어나 흐릿해지지 않도록 상한선
+    let scale = Math.min(availW / bbox.width, MAX_SCALE);
     if (!isFinite(scale) || scale <= 0) scale = 1;
 
     canvas.style.transform = `scale(${scale})`;
