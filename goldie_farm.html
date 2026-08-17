@@ -443,6 +443,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .kmap-box.editing:active{cursor:grabbing;}
 .kmap-resize-handle{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;background:var(--gold);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.25);}
 .kmap-grid{background-image:linear-gradient(to right, rgba(107,63,14,.14) 1px, transparent 1px),linear-gradient(to bottom, rgba(107,63,14,.14) 1px, transparent 1px);}
+.kmap-loading{display:flex;align-items:center;justify-content:center;height:100%;font-size:.85rem;font-weight:700;color:var(--text-muted);}
 
 
 
@@ -6376,6 +6377,24 @@ window.renderKennelMap = function() {
   const outer = document.getElementById('kennel-map-canvas-outer');
   if (!canvas || !outer) return;
 
+  // Firebase에서 저장된 배치가 아직 도착하기 전에는 기본 배치를 잠깐 보여줬다가
+  // 실제 배치로 바뀌는 "깜빡임"이 생기므로, 도착 전에는 로딩 표시만 하고 기다린다.
+  // (이미 편집 중이면 사용자가 다루고 있는 작업본을 그대로 보여줘야 하므로 예외)
+  if (!kennelMapEditMode && !kennelLayoutLoaded) {
+    canvas.classList.remove('kmap-grid');
+    canvas.style.transform = 'none';
+    canvas.style.width = '100%';
+    canvas.style.height = '120px';
+    canvas.innerHTML = '<div class="kmap-loading">⏳ 배치도를 불러오는 중...</div>';
+    outer.style.overflow = 'hidden';
+    outer.style.maxHeight = '';
+    outer.style.width = '100%';
+    outer.style.height = '';
+    outer.style.display = 'block';
+    outer.style.margin = '0';
+    return;
+  }
+
   const layout = kennelMapEditMode
     ? (__kennelWorkingLayout || (__kennelWorkingLayout = getKennelLayout()))
     : getKennelLayout();
@@ -6394,7 +6413,9 @@ window.renderKennelMap = function() {
     outer.style.overflow = 'auto';
     outer.style.maxHeight = '70vh';
     outer.style.height = '';
+    outer.style.width = '100%';
     outer.style.display = 'block';
+    outer.style.margin = '0';
   } else {
     // 보기 모드: 실제 사용 영역만 잘라서, 화면에 맞게 축소 — 스크롤/빈 여백 없이 한눈에
     const bbox = computeKennelBoundingBox(layout);
@@ -6402,7 +6423,9 @@ window.renderKennelMap = function() {
     canvas.style.width = bbox.width + 'px';
     canvas.style.height = bbox.height + 'px';
 
-    const availW = outer.clientWidth || bbox.width;
+    // outer 자신의 너비가 아니라 부모(안 줄어드는 기준)를 재야 매번 다시 그릴 때 계산이 안 꼬임
+    const measureEl = outer.parentElement || outer;
+    const availW = measureEl.clientWidth || bbox.width;
     const maxH = Math.max(160, Math.min((window.innerHeight || 700) * 0.45, 480));
     let scale = Math.min(1, availW / bbox.width, maxH / bbox.height);
     if (!isFinite(scale) || scale <= 0) scale = 1;
@@ -6410,9 +6433,12 @@ window.renderKennelMap = function() {
     canvas.style.transform = `scale(${scale})`;
     outer.style.overflow = 'hidden';
     outer.style.maxHeight = '';
+    // 트랜스폼은 레이아웃 크기에 영향을 안 주므로, outer 자체를 축소된 실제 크기로
+    // 명시적으로 지정해야 빈 공간 없이 딱 맞고, margin:auto로 가운데 정렬됨
+    outer.style.width = Math.round(bbox.width * scale) + 'px';
     outer.style.height = Math.round(bbox.height * scale) + 'px';
-    outer.style.display = 'flex';
-    outer.style.justifyContent = 'center';
+    outer.style.display = 'block';
+    outer.style.margin = '0 auto';
   }
   canvas.style.transformOrigin = 'top left';
 
