@@ -6403,7 +6403,7 @@ window.renderKennelMap = function() {
   canvas.style.backgroundSize = KENNEL_GRID_CELL_PX + 'px ' + KENNEL_GRID_CELL_PX + 'px';
   canvas.innerHTML = '';
 
-  let offsetX = 0, offsetY = 0;
+  let offsetX = 0, offsetY = 0, bboxForView = null;
 
   if (kennelMapEditMode) {
     // 편집 모드: 정밀한 드래그를 위해 실제 크기 그대로, 필요하면 스크롤
@@ -6418,31 +6418,10 @@ window.renderKennelMap = function() {
     outer.style.margin = '0';
   } else {
     // 보기 모드: 실제 사용 영역만 잘라서, 가로 폭에 맞춰 최대한 크게 — 세로는 페이지 스크롤에 맡김
-    // (세로 화면 높이에 맞추려 하면 헤더/탭처럼 위쪽이 이미 차지한 공간 때문에 여유가 별로
-    //  없어서 잘 안 커지는 문제가 있었음. 세로로 길어지는 건 일반적인 페이지 스크롤이라
-    //  캔버스 안에 갇혀서 스크롤되던 예전 문제와는 다름.)
-    const bbox = computeKennelBoundingBox(layout);
-    offsetX = bbox.minX; offsetY = bbox.minY;
-    canvas.style.width = bbox.width + 'px';
-    canvas.style.height = bbox.height + 'px';
-
-    // outer 자신의 너비가 아니라 부모(안 줄어드는 기준)를 재야 매번 다시 그릴 때 계산이 안 꼬임
-    const measureEl = outer.parentElement || outer;
-    const availW = measureEl.clientWidth || bbox.width;
-
-    const MAX_SCALE = 2.5; // 화면이 아주 넓어도 너무 크게 늘어나 흐릿해지지 않도록 상한선
-    let scale = Math.min(availW / bbox.width, MAX_SCALE);
-    if (!isFinite(scale) || scale <= 0) scale = 1;
-
-    canvas.style.transform = `scale(${scale})`;
-    outer.style.overflow = 'hidden';
-    outer.style.maxHeight = '';
-    // 트랜스폼은 레이아웃 크기에 영향을 안 주므로, outer 자체를 축소된 실제 크기로
-    // 명시적으로 지정해야 빈 공간 없이 딱 맞고, margin:auto로 가운데 정렬됨
-    outer.style.width = Math.round(bbox.width * scale) + 'px';
-    outer.style.height = Math.round(bbox.height * scale) + 'px';
-    outer.style.display = 'block';
-    outer.style.margin = '0 auto';
+    bboxForView = computeKennelBoundingBox(layout);
+    offsetX = bboxForView.minX; offsetY = bboxForView.minY;
+    canvas.style.width = bboxForView.width + 'px';
+    canvas.style.height = bboxForView.height + 'px';
   }
   canvas.style.transformOrigin = 'top left';
 
@@ -6457,9 +6436,17 @@ window.renderKennelMap = function() {
     box.style.left = (pos.x - offsetX) + 'px';
     box.style.top = (pos.y - offsetY) + 'px';
     box.style.width = pos.w + 'px';
-    box.style.height = pos.h + 'px';
+    if (kennelMapEditMode) {
+      // 편집 중엔 크기조절 핸들 기준과 어긋나면 안 되므로 저장된 크기 그대로 고정
+      box.style.height = pos.h + 'px';
+    } else {
+      // 보기 모드에서는 이름이 많거나 길면 칸이 자연스럽게 늘어나도록 최소 높이만 지정
+      box.style.height = '';
+      box.style.minHeight = pos.h + 'px';
+    }
     if (dogs.length) box.style.borderColor = 'var(--gold)';
-    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogs.length ? dogs.length + '마리' : '비어있음'}</div>`;
+    const namesText = dogs.map(d => esc(d.name || d.code)).join(', ');
+    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogs.length ? namesText : '비어있음'}</div>`;
 
     if (kennelMapEditMode) {
       const handle = document.createElement('div');
@@ -6472,6 +6459,33 @@ window.renderKennelMap = function() {
 
     canvas.appendChild(box);
   });
+
+  if (!kennelMapEditMode && bboxForView) {
+    // 이름 표시 때문에 일부 칸이 원래 저장된 높이보다 더 커졌을 수 있으므로,
+    // 실제로 렌더링된 크기를 다시 재서 캔버스/축소 배율을 맞춘다 (안 그러면 늘어난
+    // 부분이 잘려 보일 수 있음). scrollWidth/Height는 각 요소의 지정 크기와 무관하게
+    // 실제 차지하는 전체 영역을 알려준다.
+    const measuredW = canvas.scrollWidth || bboxForView.width;
+    const measuredH = canvas.scrollHeight || bboxForView.height;
+    canvas.style.width = measuredW + 'px';
+    canvas.style.height = measuredH + 'px';
+
+    const measureEl = outer.parentElement || outer;
+    const availW = measureEl.clientWidth || measuredW;
+    const MAX_SCALE = 2.5; // 화면이 아주 넓어도 너무 크게 늘어나 흐릿해지지 않도록 상한선
+    let scale = Math.min(availW / measuredW, MAX_SCALE);
+    if (!isFinite(scale) || scale <= 0) scale = 1;
+
+    canvas.style.transform = `scale(${scale})`;
+    outer.style.overflow = 'hidden';
+    outer.style.maxHeight = '';
+    // 트랜스폼은 레이아웃 크기에 영향을 안 주므로, outer 자체를 축소된 실제 크기로
+    // 명시적으로 지정해야 빈 공간 없이 딱 맞고, margin:auto로 가운데 정렬됨
+    outer.style.width = Math.round(measuredW * scale) + 'px';
+    outer.style.height = Math.round(measuredH * scale) + 'px';
+    outer.style.display = 'block';
+    outer.style.margin = '0 auto';
+  }
 };
 
 
