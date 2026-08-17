@@ -436,6 +436,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 .kennel-empty{font-size:.72rem;color:#bbb;}
+.kmap-box{position:absolute;border-radius:8px;border:2px solid var(--border);background:var(--kennel-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;text-align:center;padding:2px;overflow:hidden;color:var(--brown);user-select:none;-webkit-user-select:none;box-sizing:border-box;}
+.kmap-box .kmap-name{font-size:.74rem;font-weight:900;}
+.kmap-box .kmap-count{font-size:.6rem;font-weight:700;margin-top:2px;color:var(--text-muted);}
+.kmap-box.editing{cursor:grab;touch-action:none;}
+.kmap-box.editing:active{cursor:grabbing;}
+.kmap-resize-handle{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;background:var(--gold);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.25);}
 
 
 
@@ -2153,9 +2159,24 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
       <div class="sec-title">🏠 견사 현황</div>
 
-
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button type="button" class="btn btn-sm" id="kennel-view-list-btn" onclick="setKennelView('list')">📋 목록형</button>
+        <button type="button" class="btn-outline btn-sm" id="kennel-view-map-btn" onclick="setKennelView('map')">🗺️ 배치도</button>
+      </div>
 
       <div class="kennel-grid" id="kennel-grid"></div>
+
+      <div id="kennel-map-wrap" class="hidden">
+        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" class="btn-outline btn-sm" id="kennel-map-edit-btn" onclick="toggleKennelMapEdit()">✏️ 편집</button>
+          <button type="button" class="btn btn-sm hidden" id="kennel-map-save-btn" onclick="saveKennelLayout()">💾 저장</button>
+          <button type="button" class="btn-outline btn-sm hidden" id="kennel-map-reset-btn" onclick="resetKennelLayout()">↺ 기본 배치로 초기화</button>
+        </div>
+        <div id="kennel-map-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
+        <div id="kennel-map-canvas-outer" style="overflow:auto; max-height:70vh; border:2px solid var(--border); border-radius:12px; background:var(--kennel-bg);">
+          <div id="kennel-map-canvas" style="position:relative;"></div>
+        </div>
+      </div>
 
 
 
@@ -2925,6 +2946,14 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
               </div>
+
+
+
+              <!-- 직접 입력 (매뉴얼 조합) -->
+
+              <div id="manual-inj-rows" style="display:flex; flex-direction:column; gap:6px; margin-top:6px;"></div>
+
+              <button type="button" onclick="addManualInjRow()" style="margin-top:6px; padding:6px 10px; border:2px dashed var(--border); border-radius:8px; background:transparent; color:var(--text-muted); font-size:.78rem; font-weight:700; cursor:pointer; width:100%;">➕ 직접 입력 (매뉴얼 조합) 추가</button>
 
 
 
@@ -3746,7 +3775,7 @@ window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 
 
 
-const KENNELS=['1번','2번','3번','4번','5번','6번','7번','8번','9번','10번','11번','12번','A1','A2','A3','B1','B2','B3'];
+const KENNELS=['1번','2번','3번','4번','5번','6번','7번','8번','9번','10번','11번','12번','A1','A2','A3','B1','B2','B3','B4','보일러실','운동장1','운동장2','운동장3','운동장4'];
 
 
 
@@ -3787,6 +3816,16 @@ let deliveries=[];
 
 
 let contracts=[];
+
+
+
+// 견사 배치도 (드래그/크기조절 편집 기능)
+let kennelLayout = {}; // Firebase에 저장된 배치 {견사명:{x,y,w,h}}
+let kennelLayoutLoaded = false;
+let kennelMapEditMode = false;
+let __kennelWorkingLayout = null; // 편집 중 임시 작업본 (저장 눌러야 반영)
+const KENNEL_MAP_W = 800;
+const KENNEL_MAP_H = 1000;
 
 
 
@@ -4666,6 +4705,24 @@ function startAllListeners(){
 
 
 
+  // 견사 배치도
+
+  onValue(ref(db,'kennelLayout'), snap=>{
+
+    kennelLayout = snap.val() || {};
+
+    kennelLayoutLoaded = true;
+
+    if(document.getElementById('tab-kennels') && !document.getElementById('tab-kennels').classList.contains('hidden') && typeof window.renderKennelMap==='function' && !kennelMapEditMode) window.renderKennelMap();
+
+  }, error => {
+
+    showFirebaseError(error);
+
+  });
+
+
+
 }
 
 
@@ -4882,6 +4939,7 @@ window.showTab = function(tab) {
       if (typeof window.renderBreeding === 'function') window.renderBreeding();
     } else if (tab === 'kennels' || tab === 'kennel') {
       if (typeof window.renderKennels === 'function') window.renderKennels();
+      if (typeof window.renderKennelMap === 'function' && !kennelMapEditMode) window.renderKennelMap();
     } else if (tab === 'delivery') {
       if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
     } else if (tab === 'treatment') {
@@ -6186,6 +6244,162 @@ function renderKennels(){
 
 
 }
+
+
+
+// ═══════════════════════════════════════
+//  견사 배치도 (드래그/크기조절 편집)
+// ═══════════════════════════════════════
+
+// KENNELS 순서대로 자동 배치되는 기본 그리드 (Firebase에 저장된 배치가 없을 때의 대체값)
+function defaultKennelLayout() {
+  const layout = {};
+  const boxW = 90, boxH = 60, gap = 12, cols = 6, margin = 20;
+  KENNELS.forEach((k, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    layout[k] = { x: margin + col * (boxW + gap), y: margin + row * (boxH + gap), w: boxW, h: boxH };
+  });
+  return layout;
+}
+
+// 저장된 배치 + 기본값을 합쳐서(새로 추가된 견사도 항상 위치를 갖도록) 반환
+function getKennelLayout() {
+  const base = defaultKennelLayout();
+  const saved = kennelLayout || {};
+  const merged = {};
+  KENNELS.forEach(k => {
+    const s = saved[k];
+    merged[k] = (s && typeof s.x === 'number') ? { x: s.x, y: s.y, w: s.w, h: s.h } : base[k];
+  });
+  return merged;
+}
+
+window.setKennelView = function(mode) {
+  const gridEl = document.getElementById('kennel-grid');
+  const mapEl = document.getElementById('kennel-map-wrap');
+  const listBtn = document.getElementById('kennel-view-list-btn');
+  const mapBtn = document.getElementById('kennel-view-map-btn');
+  if (!gridEl || !mapEl || !listBtn || !mapBtn) return;
+  const isMap = mode === 'map';
+  gridEl.classList.toggle('hidden', isMap);
+  mapEl.classList.toggle('hidden', !isMap);
+  listBtn.className = isMap ? 'btn-outline btn-sm' : 'btn btn-sm';
+  mapBtn.className = isMap ? 'btn btn-sm' : 'btn-outline btn-sm';
+  if (isMap) window.renderKennelMap();
+};
+
+window.toggleKennelMapEdit = function() {
+  if (kennelMapEditMode) {
+    const current = JSON.stringify(__kennelWorkingLayout);
+    const saved = JSON.stringify(getKennelLayout());
+    if (current !== saved) {
+      if (!confirm('저장하지 않은 변경사항이 있어요. 저장하지 않고 편집을 끝낼까요?')) return;
+    }
+    kennelMapEditMode = false;
+    __kennelWorkingLayout = null;
+  } else {
+    kennelMapEditMode = true;
+    __kennelWorkingLayout = getKennelLayout();
+  }
+  const editBtn = document.getElementById('kennel-map-edit-btn');
+  const saveBtn = document.getElementById('kennel-map-save-btn');
+  const resetBtn = document.getElementById('kennel-map-reset-btn');
+  const hint = document.getElementById('kennel-map-hint');
+  if (editBtn) editBtn.textContent = kennelMapEditMode ? '✅ 편집 종료' : '✏️ 편집';
+  if (saveBtn) saveBtn.classList.toggle('hidden', !kennelMapEditMode);
+  if (resetBtn) resetBtn.classList.toggle('hidden', !kennelMapEditMode);
+  if (hint) hint.textContent = kennelMapEditMode
+    ? '박스를 끌어서 옮기고, 우측 하단 동그란 점을 끌어서 크기를 조절하세요. 다 하시면 저장을 눌러주세요.'
+    : '';
+  window.renderKennelMap();
+};
+
+window.saveKennelLayout = async function() {
+  if (!__kennelWorkingLayout) return;
+  try {
+    await set(ref(db, 'kennelLayout'), __kennelWorkingLayout);
+    kennelLayout = { ...__kennelWorkingLayout };
+    showToast('🗺️ 배치도가 저장됐어요.');
+  } catch (e) {
+    showToast('⚠ 저장 실패: ' + e.message);
+  }
+};
+
+window.resetKennelLayout = function() {
+  if (!confirm('배치를 기본 배치로 초기화할까요? (저장을 눌러야 실제로 반영돼요)')) return;
+  __kennelWorkingLayout = defaultKennelLayout();
+  window.renderKennelMap();
+};
+
+function attachKennelDragHandlers(box, handle, kennelName) {
+  let mode = null, startX = 0, startY = 0, startPos = null;
+
+  box.addEventListener('pointerdown', (e) => {
+    mode = (e.target === handle) ? 'resize' : 'move';
+    startX = e.clientX; startY = e.clientY;
+    startPos = { ...__kennelWorkingLayout[kennelName] };
+    try { box.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+
+  box.addEventListener('pointermove', (e) => {
+    if (!mode || !__kennelWorkingLayout[kennelName]) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    const pos = __kennelWorkingLayout[kennelName];
+    if (mode === 'move') {
+      pos.x = Math.max(0, Math.round(startPos.x + dx));
+      pos.y = Math.max(0, Math.round(startPos.y + dy));
+      box.style.left = pos.x + 'px'; box.style.top = pos.y + 'px';
+    } else {
+      pos.w = Math.max(30, Math.round(startPos.w + dx));
+      pos.h = Math.max(30, Math.round(startPos.h + dy));
+      box.style.width = pos.w + 'px'; box.style.height = pos.h + 'px';
+    }
+  });
+
+  ['pointerup', 'pointercancel'].forEach(evt => box.addEventListener(evt, () => { mode = null; }));
+}
+
+window.renderKennelMap = function() {
+  const canvas = document.getElementById('kennel-map-canvas');
+  if (!canvas) return;
+
+  const layout = kennelMapEditMode
+    ? (__kennelWorkingLayout || (__kennelWorkingLayout = getKennelLayout()))
+    : getKennelLayout();
+
+  canvas.style.width = KENNEL_MAP_W + 'px';
+  canvas.style.height = KENNEL_MAP_H + 'px';
+  canvas.innerHTML = '';
+
+  KENNELS.forEach(k => {
+    const pos = layout[k];
+    if (!pos) return;
+    const dogs = allDogs().filter(d => d.kennel === k);
+
+    const box = document.createElement('div');
+    box.className = 'kmap-box' + (kennelMapEditMode ? ' editing' : '');
+    box.dataset.kennel = k;
+    box.style.left = pos.x + 'px';
+    box.style.top = pos.y + 'px';
+    box.style.width = pos.w + 'px';
+    box.style.height = pos.h + 'px';
+    if (dogs.length) box.style.borderColor = 'var(--gold)';
+    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogs.length ? dogs.length + '마리' : '비어있음'}</div>`;
+
+    if (kennelMapEditMode) {
+      const handle = document.createElement('div');
+      handle.className = 'kmap-resize-handle';
+      box.appendChild(handle);
+      attachKennelDragHandlers(box, handle, k);
+    } else {
+      box.onclick = () => { if (dogs.length) { selectDog(dogs[0]._key); showTab('dogs'); } };
+    }
+
+    canvas.appendChild(box);
+  });
+};
 
 
 
@@ -9865,6 +10079,12 @@ window.setTreatmentTargetType = function(type) {
 
 
 
+  const manualRows = document.getElementById('manual-inj-rows');
+
+  if (manualRows) manualRows.innerHTML = '';
+
+
+
   checkBaytrilWarning();
 
 
@@ -10573,6 +10793,21 @@ window.onTreatmentSymptomChanged = function(symptomKey) {
 
 
 
+window.addManualInjRow = function() {
+  const container = document.getElementById('manual-inj-rows');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'manual-inj-row';
+  row.style.cssText = 'display:flex; align-items:center; gap:6px; font-size:.82rem;';
+  row.innerHTML = `
+    <input type="text" class="manual-inj-name" placeholder="약품명 입력" style="flex:1; padding:4px 8px; border:2px solid var(--border); border-radius:6px; font-size:.82rem;">
+    <input type="number" class="manual-inj-val" step="0.01" placeholder="ml" style="width:60px; padding:4px; border:2px solid var(--border); border-radius:6px; text-align:center; font-size:.82rem;">
+    <span style="font-size:11px;color:var(--text-muted)">ml</span>
+    <button type="button" onclick="this.closest('.manual-inj-row').remove()" style="background:none;border:none;color:#E74C3C;font-size:16px;cursor:pointer;padding:0 4px;">✕</button>
+  `;
+  container.appendChild(row);
+};
+
 window.onInjCheckChanged = function(key) {
 
 
@@ -11145,6 +11380,32 @@ window.saveTreatment = async function() {
 
 
 
+  document.querySelectorAll('#manual-inj-rows .manual-inj-row').forEach(row => {
+
+    const nameInput = row.querySelector('.manual-inj-name');
+
+    const valInput = row.querySelector('.manual-inj-val');
+
+    const nm = nameInput ? nameInput.value.trim() : '';
+
+    if (!nm) return;
+
+    if (Object.prototype.hasOwnProperty.call(injections, nm)) {
+
+      showToast(`"${nm}"은(는) 이미 선택된 약품과 이름이 같아 무시했습니다.`);
+
+      return;
+
+    }
+
+    injections[nm] = parseFloat(valInput?.value) || 0;
+
+    selectedCount++;
+
+  });
+
+
+
   
 
 
@@ -11326,6 +11587,12 @@ window.saveTreatment = async function() {
 
 
     });
+
+
+
+    const manualRowsAfterSave = document.getElementById('manual-inj-rows');
+
+    if (manualRowsAfterSave) manualRowsAfterSave.innerHTML = '';
 
 
 
