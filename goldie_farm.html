@@ -440,6 +440,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .kmap-box .kmap-name{font-size:.74rem;font-weight:900;}
 .kmap-box .kmap-count{font-size:.6rem;font-weight:700;margin-top:2px;color:var(--text-muted);text-align:center;}
 .kmap-box.editing{cursor:grab;touch-action:none;}
+.kmap-box:not(.editing) .kennel-dog{cursor:grab;touch-action:none;}
 .kmap-box.editing:active{cursor:grabbing;}
 .kmap-resize-handle{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;background:var(--gold);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.25);}
 .kmap-grid{background-image:linear-gradient(to right, rgba(107,63,14,.14) 1px, transparent 1px),linear-gradient(to bottom, rgba(107,63,14,.14) 1px, transparent 1px);}
@@ -6229,7 +6230,7 @@ function renderKennels(){
 
 
 
-        dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${esc(d.name || d.code)}</span>`).join('')}`;
+        dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${esc(d.name || '이름없음')}</span>`).join('')}`;
 
 
 
@@ -6372,6 +6373,80 @@ function computeKennelBoundingBox(layout) {
   };
 }
 
+// 배치도에서 이름 태그를 드래그해 다른 견사로 놓았을 때 실제로 배정을 바꾸는 함수
+// (이동 탭의 moveKennel()과 동일한 효과: 이동 기록 남기고 개체의 소속 견사 갱신.
+//  females/males 갱신은 기존 실시간 리스너가 알아서 배치도/목록/개체 탭 등을 다시 그려준다.)
+window.moveDogToKennel = async function(dogKey, sex, toKennel) {
+  const dog = allDogs().find(d => d._key === dogKey);
+  if (!dog) return;
+  const from = dog.kennel;
+  if (from === toKennel) return;
+  const label = dog.name || dog.code;
+  try {
+    await fbPush('moveLog', { code: dog.code, sex: dog.sex, from, to: toKennel, date: today() });
+    await fbUpdate(`${sex === 'female' ? 'females' : 'males'}/${dogKey}`, { kennel: toKennel });
+    showToast(`✅ ${label}: ${from} → ${toKennel} 이동 완료`);
+  } catch (e) {
+    showToast('⚠ 이동 실패: ' + e.message);
+  }
+};
+
+// 이름 태그를 살짝 스치듯 누르면(드래그 아님) 그 개체 상세로, 일정 거리 이상 끌면
+// 드래그로 간주해 손을 뗀 지점 아래의 견사 박스로 재배정한다.
+function attachDogTagDragHandlers(tag, dog) {
+  let startX = 0, startY = 0, dragging = false, ghost = null;
+  const THRESHOLD = 6;
+
+  function cleanup() {
+    if (ghost) { ghost.remove(); ghost = null; }
+    tag.style.opacity = '';
+    dragging = false;
+  }
+
+  tag.addEventListener('pointerdown', (e) => {
+    startX = e.clientX; startY = e.clientY;
+    dragging = false;
+    try { tag.setPointerCapture(e.pointerId); } catch (err) {}
+    e.stopPropagation();
+  });
+
+  tag.addEventListener('pointermove', (e) => {
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (!dragging && Math.hypot(dx, dy) > THRESHOLD) {
+      dragging = true;
+      ghost = tag.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '9999';
+      ghost.style.opacity = '0.85';
+      ghost.style.boxShadow = '0 4px 12px rgba(0,0,0,.3)';
+      document.body.appendChild(ghost);
+      tag.style.opacity = '0.35';
+    }
+    if (dragging && ghost) {
+      ghost.style.left = (e.clientX - ghost.offsetWidth / 2) + 'px';
+      ghost.style.top = (e.clientY - ghost.offsetHeight / 2) + 'px';
+    }
+  });
+
+  tag.addEventListener('pointerup', (e) => {
+    if (dragging) {
+      const dropEl = document.elementFromPoint(e.clientX, e.clientY);
+      const dropBox = dropEl ? dropEl.closest('.kmap-box') : null;
+      cleanup();
+      if (dropBox && dropBox.dataset.kennel) {
+        window.moveDogToKennel(dog._key, dog.sex, dropBox.dataset.kennel);
+      }
+    } else {
+      cleanup();
+      selectDog(dog._key);
+      showTab('dogs');
+    }
+  });
+
+  tag.addEventListener('pointercancel', cleanup);
+}
+
 window.renderKennelMap = function() {
   const canvas = document.getElementById('kennel-map-canvas');
   const outer = document.getElementById('kennel-map-canvas-outer');
@@ -6445,10 +6520,26 @@ window.renderKennelMap = function() {
       box.style.minHeight = pos.h + 'px';
     }
     if (dogs.length) box.style.borderColor = 'var(--gold)';
-    const dogsHtml = dogs.length
-      ? dogs.map(d => `<span class="kennel-dog ${d.sex === 'female' ? 'f' : 'm'}">${esc(d.name || d.code)}</span>`).join('')
-      : '비어있음';
-    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogsHtml}</div>`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'kmap-name';
+    nameEl.textContent = k;
+    box.appendChild(nameEl);
+
+    const countEl = document.createElement('div');
+    countEl.className = 'kmap-count';
+    if (dogs.length) {
+      dogs.forEach(d => {
+        const tag = document.createElement('span');
+        tag.className = 'kennel-dog ' + (d.sex === 'female' ? 'f' : 'm');
+        tag.textContent = d.name || '이름없음';
+        if (!kennelMapEditMode) attachDogTagDragHandlers(tag, d);
+        countEl.appendChild(tag);
+      });
+    } else {
+      countEl.textContent = '비어있음';
+    }
+    box.appendChild(countEl);
 
     if (kennelMapEditMode) {
       const handle = document.createElement('div');
@@ -6475,7 +6566,7 @@ window.renderKennelMap = function() {
     const measureEl = outer.parentElement || outer;
     const availW = measureEl.clientWidth || measuredW;
     const MAX_SCALE = 2.5; // 화면이 아주 넓어도 너무 크게 늘어나 흐릿해지지 않도록 상한선
-    let scale = Math.min(availW / measuredW, MAX_SCALE);
+    let scale = Math.min((availW * 0.8) / measuredW, MAX_SCALE);
     if (!isFinite(scale) || scale <= 0) scale = 1;
 
     canvas.style.transform = `scale(${scale})`;
