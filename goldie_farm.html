@@ -438,7 +438,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 .kennel-empty{font-size:.72rem;color:#bbb;}
 .kmap-box{position:absolute;border-radius:8px;border:2px solid var(--border);background:var(--kennel-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;text-align:center;padding:2px;overflow:hidden;color:var(--brown);user-select:none;-webkit-user-select:none;box-sizing:border-box;}
 .kmap-box .kmap-name{font-size:.74rem;font-weight:900;}
-.kmap-box .kmap-count{font-size:.6rem;font-weight:700;margin-top:2px;color:var(--text-muted);}
+.kmap-box .kmap-count{font-size:.6rem;font-weight:700;margin-top:2px;color:var(--text-muted);text-align:center;}
 .kmap-box.editing{cursor:grab;touch-action:none;}
 .kmap-box.editing:active{cursor:grabbing;}
 .kmap-resize-handle{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;background:var(--gold);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.25);}
@@ -6229,7 +6229,7 @@ function renderKennels(){
 
 
 
-        dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${d.code}</span>`).join('')}`;
+        dogs.map(d=>`<span class="kennel-dog ${d.sex==='female'?'f':'m'}">${esc(d.name || d.code)}</span>`).join('')}`;
 
 
 
@@ -6445,8 +6445,10 @@ window.renderKennelMap = function() {
       box.style.minHeight = pos.h + 'px';
     }
     if (dogs.length) box.style.borderColor = 'var(--gold)';
-    const namesText = dogs.map(d => esc(d.name || d.code)).join(', ');
-    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogs.length ? namesText : '비어있음'}</div>`;
+    const dogsHtml = dogs.length
+      ? dogs.map(d => `<span class="kennel-dog ${d.sex === 'female' ? 'f' : 'm'}">${esc(d.name || d.code)}</span>`).join('')
+      : '비어있음';
+    box.innerHTML = `<div class="kmap-name">${esc(k)}</div><div class="kmap-count">${dogsHtml}</div>`;
 
     if (kennelMapEditMode) {
       const handle = document.createElement('div');
