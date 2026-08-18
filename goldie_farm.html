@@ -343,6 +343,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+.dog-card .dog-name{font-size:.8rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;}
+
+
+
 .kennel-tag{font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;display:inline-block;}
 
 
@@ -1126,6 +1130,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
   .dog-card .code{font-size:0.85rem;margin-bottom:1px}
+
+
+
+  .dog-card .dog-name{font-size:0.68rem;margin-bottom:2px}
 
 
 
@@ -5504,7 +5512,11 @@ function renderDogsActual(){
 
 
 
-        <div class="code">${dog.code}</div>
+        <div class="code">${esc(dog.code)}</div>
+
+
+
+        ${dog.name ? `<div class="dog-name">${esc(dog.name)}</div>` : ''}
 
 
 
@@ -5613,7 +5625,7 @@ function selectDog(key){
 
 
 
-      <div style="flex:1;"><div style="font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:4px;">${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code}</div>${dog.archived?`<div style="font-size:11px; color:#E67E22; font-weight:700;">🗂 보관됨${dog.archived_date?' · '+fmtDate(dog.archived_date):''}${dog.archived_reason?' · '+esc(dog.archived_reason):''}</div>`:''}</div>
+      <div style="flex:1;"><div style="font-size:1rem;font-weight:900;color:var(--brown);margin-bottom:4px;">${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${esc(dog.code)}${dog.name ? ' · ' + esc(dog.name) : ''}</div>${dog.archived?`<div style="font-size:11px; color:#E67E22; font-weight:700;">🗂 보관됨${dog.archived_date?' · '+fmtDate(dog.archived_date):''}${dog.archived_reason?' · '+esc(dog.archived_reason):''}</div>`:''}</div>
 
 
 
@@ -5842,7 +5854,7 @@ window.openEditDog=function(key){
 
 
 
-  document.getElementById('dog-modal-title').textContent=`${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code} 수정`;
+  document.getElementById('dog-modal-title').textContent=`${dog.sex==='female'?'🐕‍🦺 모견':'🐕 부견'} ${dog.code}${dog.name ? ' · ' + dog.name : ''} 수정`;
 
 
 
