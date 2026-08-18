@@ -319,6 +319,7 @@ loadLastDeployTime('goldi_admin.html', 'deploy-time-info');
 
 // ── 🔐 실제 Firebase 로그인 (goldie_farm.html과 동일 계정 사용) ──
 const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
+const SHELTER_ADDRESS = '충북 음성군 감곡면 가곡로532번길 15-17'; // 방문 예약 시 장소 칸 자동 입력용
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 window.doLogin = async function() {
@@ -1429,6 +1430,8 @@ window.renderCalendarEvents = function() {
       time: s.time || '',
       location: s.location || '골디쉼터',
       details: s.details || '',
+      tmapUrl: s.tmapUrl || '',
+      puppies: s.puppies || [],
       raw: s
     });
   });
@@ -1573,8 +1576,8 @@ window.renderSelectedDayEvents = function(dateStr) {
     }
 
     let kakaoBtn = '';
-    if (type === 'delivery' || s.tmapUrl) {
-      kakaoBtn = `<button class="btn btn-sm" onclick="shareDeliveryKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 가족 카톡 전송</button>`;
+    if (type === 'delivery' || type === 'rsv' || s.tmapUrl) {
+      kakaoBtn = `<button class="btn btn-sm" onclick="shareEventKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 카톡 안내 전송</button>`;
     }
 
     // 배송 카드에 연결된 계약의 잔금 완납 상태 버튼
@@ -1631,34 +1634,37 @@ window.settleBalanceFromDelivery = async (contractId) => {
   toast('💰 잔금 완납 처리되었습니다.');
 };
 
-// 💬 가족 공유용 배송 일정 카카오톡 메시지 전송 기능
-window.shareDeliveryKakao = async function(eventId) {
+// 💬 가족/방문객 공유용 일정(배송·예약) 카카오톡 메시지 전송 기능
+window.shareEventKakao = async function(eventId) {
   const event = (window._mergedEvents || []).find(e => e.id === eventId);
   if (!event) return;
 
   const raw = event.raw || {};
-  const dogName = event.dogname || raw.dogname || raw.puppy || raw.puppyName || raw.dogName || '자견';
+  const isDelivery = event.type === 'delivery';
+
   const dateStr = event.date || '';
   const timeStr = event.time || raw.time || '';
   const dateTimeStr = timeStr ? `${dateStr} ${timeStr}` : dateStr;
 
-  const buyerName = event.buyer_name || raw.buyer_name || raw.visitorName || raw.name || raw.buyerName || '수령인';
+  const buyerName = event.buyer_name || raw.buyer_name || raw.visitorName || raw.name || raw.buyerName || (isDelivery ? '수령인' : '고객');
   const buyerPhone = event.buyer_phone || raw.buyer_phone || raw.visitorPhone || raw.phone || raw.buyerPhone || '';
   const buyerStr = buyerPhone ? `${buyerName} (${buyerPhone})` : buyerName;
 
-  const addressStr = event.location || raw.address || raw.buyer_addr || raw.location || '주소 미지정';
+  const addressStr = event.location || raw.address || raw.buyer_addr || raw.location || SHELTER_ADDRESS;
 
   let tmapLink = event.tmapUrl;
-  if (!tmapLink && addressStr && addressStr !== '주소 미지정') {
+  if (!tmapLink && addressStr) {
     tmapLink = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(addressStr)}`;
   }
-  if (!tmapLink) {
-    tmapLink = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent('골디쉼터')}`;
-  }
 
-  const memoStr = raw.memo || raw.details || event.details || '특이사항 없음';
+  const rawMemo = raw.memo || raw.details || event.details || '';
+  const memoStr = rawMemo || '특이사항 없음';
 
-  const kakaoMsg = `[골디쉼터] 🚗 배송 일정 안내
+  let kakaoMsg, shareTitle;
+  if (isDelivery) {
+    const dogName = event.dogname || raw.dogname || raw.puppy || raw.puppyName || raw.dogName || '자견';
+    shareTitle = '[골디쉼터] 🚗 배송 일정 안내';
+    kakaoMsg = `${shareTitle}
 
 🐾 강아지: ${dogName}
 📅 배송 일시: ${dateTimeStr}
@@ -1669,15 +1675,36 @@ window.shareDeliveryKakao = async function(eventId) {
 ${tmapLink}
 
 📝 메모: ${memoStr}`;
+  } else {
+    // 손님에게 직접 보내는 "방문 예약 확정" 안내 메시지
+    shareTitle = '[골디쉼터] 🐶 방문 예약이 확정되었습니다';
+    const noteLine = rawMemo ? `\n📝 안내사항: ${rawMemo}\n` : '';
+    const puppyList = event.puppies || raw.puppies || [];
+    const puppyLine = (Array.isArray(puppyList) && puppyList.length)
+      ? `\n🐾 보러 오실 아이: ${puppyList.map(p => p.name).filter(Boolean).join(', ')}\n`
+      : '';
+    kakaoMsg = `${shareTitle}
+
+안녕하세요, ${buyerName}님
+골디쉼터 방문 예약이 아래와 같이 확정되었습니다.
+
+📅 방문 일시: ${dateTimeStr}
+📍 오시는 곳: ${addressStr}
+${puppyLine}
+🚙 오시는 길 (티맵 길안내):
+${tmapLink}
+${noteLine}
+궁금하신 점은 언제든 편하게 연락 주세요. 곧 뵙겠습니다! 🐾`;
+  }
 
   // 모바일 브라우저인 경우 카카오톡 공유창 직접 연결
   if (navigator.share) {
     try {
       await navigator.share({
-        title: '[골디쉼터] 🚗 배송 일정 안내',
+        title: shareTitle,
         text: kakaoMsg
       });
-      toast('💬 가족 공유용 카카오톡 창이 열렸습니다.');
+      toast('💬 카카오톡 공유창이 열렸습니다.');
       return;
     } catch (e) {
       if (e.name === 'AbortError') return;
@@ -1687,9 +1714,11 @@ ${tmapLink}
   // 데스크톱 / PC인 경우 클립보드에 자동 복사 후 전송 안내
   const ok = await safeCopy(kakaoMsg);
   if (ok) {
-    toast('💬 가족 전달용 배송 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송하세요.');
+    toast('💬 카카오톡 전달용 안내 메시지가 복사되었습니다! 카카오톡에 붙여넣어 전송하세요.');
   }
 };
+// 이전 함수명으로 호출하는 곳이 남아있을 수 있어 별칭으로 계속 지원 (하위 호환)
+window.shareDeliveryKakao = window.shareEventKakao;
 
 // ✏️ 예약 & 배송 일정 수정 모달
 window.openEditCalendarEventModal = function(eventId) {
@@ -1793,7 +1822,8 @@ window.saveEditCalendarEvent = async function(eventId) {
         date: date,
         time: time,
         location: location,
-        details: details
+        details: details,
+        tmapUrl: location ? `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(location)}` : ''
       });
     } else if (dbPath.startsWith('contracts/')) {
       await update(ref(db, dbPath), {
@@ -1828,6 +1858,10 @@ window.openAddEventModal = function() {
         <option value="">-- 계약 선택 (직접 입력하려면 비워두세요) --</option>
       </select>
     </div>
+    <div class="ffield" id="cal_puppy_field" style="margin-bottom:12px; display:none;">
+      <label>보러 오실 자견 선택 (여러 마리 가능, 분양완료 제외)</label>
+      <div id="cal_puppy_list" style="max-height:220px; overflow-y:auto; border:1.5px solid var(--gray-l); border-radius:8px; padding:10px; background:#fafafa;"></div>
+    </div>
     <div class="ffield" style="margin-bottom:12px;">
       <label>일정 제목 *</label>
       <input type="text" id="cal_title" placeholder="예: 홍길동 님 자견 인도 배송 / 견사 전체 소독">
@@ -1854,10 +1888,50 @@ window.openAddEventModal = function() {
   window.onCalTypeChange();
 };
 
-// 카테고리를 '배송'으로 바꾸면 계약 선택 드롭다운을 보여주고 목록을 채운다
+// 예약 등록 시 "보러 오실 자견"을 배(모견×부견/출생일) 단위로 묶어 체크박스로 보여준다
+// (분양완료 상태인 자견은 이미 나갔으므로 목록에서 제외)
+window.renderCalPuppyChecklist = function() {
+  const container = document.getElementById('cal_puppy_list');
+  if (!container) return;
+  const litters = window._litters || {};
+  const sorted = Object.entries(litters).sort(([, a], [, b]) => (b.birthB || '').localeCompare(a.birthB || ''));
+  const groupsHtml = sorted.map(([lid, l]) => {
+    const puppies = l.puppies || {};
+    const items = Object.entries(puppies)
+      .filter(([, p]) => p.status !== '분양 완료')
+      .map(([pid, p]) => `
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; cursor:pointer;">
+          <input type="checkbox" class="cal-puppy-check" data-lid="${lid}" data-pid="${pid}" data-name="${p.name || pid}" data-sex="${p.sex || ''}">
+          <span style="font-weight:700; font-size:13px;">${p.name || pid}</span>
+          <span style="font-size:11px; color:var(--gray);">(${genderTxt(p.sex)})</span>
+        </label>
+      `).join('');
+    if (!items) return '';
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px; font-weight:700; color:var(--gold-l); margin-bottom:4px;">♀ ${l.femaleCode || '—'} × ♂ ${l.maleCode || '—'} (${fmt(l.birthB)})</div>
+        ${items}
+      </div>
+    `;
+  }).filter(Boolean).join('');
+  container.innerHTML = groupsHtml || '<div style="font-size:12px; color:var(--gray); text-align:center; padding:10px;">분양 가능한 자견이 없습니다.</div>';
+};
+
+// 카테고리를 '배송'으로 바꾸면 계약 선택 드롭다운을 보여주고 목록을 채운다.
+// '예약'으로 바꾸면(손님이 매장으로 방문) 장소 칸이 비어있을 때 매장 주소를 자동으로 채우고,
+// 보러 올 자견을 고를 수 있는 체크리스트를 보여준다.
 window.onCalTypeChange = function() {
   const type = document.getElementById('cal_type').value;
   const field = document.getElementById('cal_contract_field');
+  const puppyField = document.getElementById('cal_puppy_field');
+  const locInput = document.getElementById('cal_location');
+  if (type === 'rsv' && locInput && !locInput.value.trim()) {
+    locInput.value = SHELTER_ADDRESS;
+  }
+  if (puppyField) {
+    puppyField.style.display = type === 'rsv' ? 'block' : 'none';
+    if (type === 'rsv') window.renderCalPuppyChecklist();
+  }
   if (!field) return;
   if (type !== 'delivery') {
     field.style.display = 'none';
@@ -1897,6 +1971,12 @@ window.saveAddEvent = async function() {
   const details = document.getElementById('cal_details').value.trim();
   const contractEl = document.getElementById('cal_contract');
   const contractId = contractEl ? contractEl.value : '';
+  const selectedPuppies = Array.from(document.querySelectorAll('.cal-puppy-check:checked')).map(cb => ({
+    lid: cb.dataset.lid,
+    pid: cb.dataset.pid,
+    name: cb.dataset.name,
+    sex: cb.dataset.sex
+  }));
 
   if (!title || !date) {
     toast('일정 제목과 일시를 입력해주세요.');
@@ -1904,6 +1984,12 @@ window.saveAddEvent = async function() {
   }
 
   const payload = { type, title, date, time, location, details, createdAt: Date.now() };
+  if (location) {
+    payload.tmapUrl = `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(location)}`;
+  }
+  if (selectedPuppies.length) {
+    payload.puppies = selectedPuppies;
+  }
   if (contractId) {
     const c = (window._contracts || {})[contractId];
     if (c) {
