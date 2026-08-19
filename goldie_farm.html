@@ -922,6 +922,14 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 .move-item .mi-date{font-size:.68rem;color:#bbb;}
 
+.mlt-tabs{display:flex;gap:6px;margin:2px 0 10px;}
+.mlt-tab{flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:.76rem;font-weight:700;color:var(--text-muted);background:var(--gold-pale);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.mlt-tab.active{color:#fff;background:var(--gold);}
+.mlt-filters{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.mlt-select{flex:1;min-width:140px;padding:8px 10px;border:2px solid var(--border);border-radius:9px;background:#fff;font-family:inherit;font-size:.82rem;color:var(--text);}
+.mlt-date{flex:1;min-width:110px;padding:7px 8px;border:2px solid var(--border);border-radius:9px;background:#fff;font-family:inherit;font-size:.78rem;color:var(--text);}
+.mlt-reset-btn{padding:7px 12px;border:2px solid var(--border);border-radius:9px;background:#fff;font-size:.76rem;font-weight:700;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+
 
 
 
@@ -3140,7 +3148,22 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
           <h2>📋 이동 내역</h2>
           <button class="modal-close" onclick="closeMoveLogModal()">✕</button>
         </div>
-        <div class="move-log" id="move-log" style="max-height:60vh; overflow-y:auto;"></div>
+        <div class="mlt-tabs">
+          <div class="mlt-tab active" id="mlt-tab-all" onclick="switchMoveLogTab('all')">전체 (최근 30일)</div>
+          <div class="mlt-tab" id="mlt-tab-dog" onclick="switchMoveLogTab('dog')">🐕 개체별 조회</div>
+          <div class="mlt-tab" id="mlt-tab-kennel" onclick="switchMoveLogTab('kennel')">🏠 견사별 조회</div>
+        </div>
+        <div class="mlt-filters" id="mlt-picker-wrap" style="display:none;">
+          <select id="mlt-dog-select" class="mlt-select" style="display:none;" onchange="renderMoveLog()"></select>
+          <select id="mlt-kennel-select" class="mlt-select" style="display:none;" onchange="renderMoveLog()"></select>
+        </div>
+        <div class="mlt-filters">
+          <input type="date" id="mlt-date-start" class="mlt-date" onchange="renderMoveLog()">
+          <span style="color:var(--text-muted); font-size:.8rem;">~</span>
+          <input type="date" id="mlt-date-end" class="mlt-date" onchange="renderMoveLog()">
+          <button type="button" class="mlt-reset-btn" onclick="resetMoveLogFilter()">초기화</button>
+        </div>
+        <div class="move-log" id="move-log" style="max-height:50vh; overflow-y:auto;"></div>
       </div>
     </div>
 
@@ -4648,7 +4671,7 @@ function startAllListeners(){
 
     snap.forEach(child=>{moveLog.unshift({_key:child.key,...child.val()});});
 
-
+    cleanupOldMoveLogEntries();
 
     if (__moveLogChanged) {
       if(document.getElementById('move-log-modal')&&document.getElementById('move-log-modal').classList.contains('open'))renderMoveLog();
@@ -8491,7 +8514,7 @@ window.closeVaxPopup=function(){
 
 window.openMoveLogModal = function() {
   document.getElementById('move-log-modal').classList.add('open');
-  renderMoveLog();
+  switchMoveLogTab('all');
 };
 
 window.closeMoveLogModal = function() {
@@ -8502,42 +8525,189 @@ window.handleMoveLogModalOverlay = function(e) {
   if (e.target === document.getElementById('move-log-modal')) closeMoveLogModal();
 };
 
+// ── 이동 내역: 전체 / 개체별 조회 / 견사별 조회(전염병 추적용) 탭 ──
+let __moveLogTab = 'all'; // 'all' | 'dog' | 'kennel'
+
+window.switchMoveLogTab = function(tab) {
+  __moveLogTab = tab;
+  const tabAll = document.getElementById('mlt-tab-all');
+  const tabDog = document.getElementById('mlt-tab-dog');
+  const tabKennel = document.getElementById('mlt-tab-kennel');
+  if (tabAll) tabAll.classList.toggle('active', tab === 'all');
+  if (tabDog) tabDog.classList.toggle('active', tab === 'dog');
+  if (tabKennel) tabKennel.classList.toggle('active', tab === 'kennel');
+
+  const pickerWrap = document.getElementById('mlt-picker-wrap');
+  const dogSelect = document.getElementById('mlt-dog-select');
+  const kennelSelect = document.getElementById('mlt-kennel-select');
+  if (tab === 'dog') {
+    if (pickerWrap) pickerWrap.style.display = 'flex';
+    if (dogSelect) dogSelect.style.display = 'block';
+    if (kennelSelect) kennelSelect.style.display = 'none';
+    fillMoveLogDogSelect();
+  } else if (tab === 'kennel') {
+    if (pickerWrap) pickerWrap.style.display = 'flex';
+    if (dogSelect) dogSelect.style.display = 'none';
+    if (kennelSelect) kennelSelect.style.display = 'block';
+    fillMoveLogKennelSelect();
+  } else {
+    if (pickerWrap) pickerWrap.style.display = 'none';
+  }
+  renderMoveLog();
+};
+
+function fillMoveLogDogSelect(){
+  const sel = document.getElementById('mlt-dog-select');
+  if (!sel) return;
+  const currentVal = sel.value;
+  const dogs = (typeof allDogs === 'function' ? allDogs(true) : []).slice()
+    .sort((a,b)=> (a.code||'').localeCompare(b.code||''));
+  sel.innerHTML = '<option value="">-- 개체 선택 --</option>' + dogs.map(d=>{
+    const label = typeof kennelDogDisplayName === 'function' ? kennelDogDisplayName(d) : (d.name||d.code);
+    return `<option value="${esc(d.code||'')}">${d.sex==='female'?'♀':'♂'} ${esc(label)}</option>`;
+  }).join('');
+  if (currentVal) sel.value = currentVal;
+}
+
+function fillMoveLogKennelSelect(){
+  const sel = document.getElementById('mlt-kennel-select');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">-- 견사 선택 --</option>' + KENNELS.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  if (currentVal) sel.value = currentVal;
+}
+
+window.resetMoveLogFilter = function(){
+  const s = document.getElementById('mlt-date-start');
+  const e = document.getElementById('mlt-date-end');
+  if (s) s.value = '';
+  if (e) e.value = '';
+  renderMoveLog();
+};
+
+function moveLogDateRange(){
+  const s = document.getElementById('mlt-date-start');
+  const e = document.getElementById('mlt-date-end');
+  return { start: s ? s.value : '', end: e ? e.value : '' };
+}
+
+// 날짜 문자열이 [start, end] 구간에 포함되는지 (start/end가 빈 문자열이면 그쪽은 무제한)
+function moveLogInRange(dateStr, start, end){
+  if (!dateStr) return false;
+  if (start && dateStr < start) return false;
+  if (end && dateStr > end) return false;
+  return true;
+}
+
 function renderMoveLog(){
+  const log = document.getElementById('move-log');
+  if (!log) return;
+  if (__moveLogTab === 'dog') return renderMoveLogByDog(log);
+  if (__moveLogTab === 'kennel') return renderMoveLogByKennel(log);
+  return renderMoveLogAll(log);
+}
 
-
-
-  const log=document.getElementById('move-log');
-
-
-
-  if(!moveLog.length){log.innerHTML='<div style="color:#bbb;text-align:center;padding:14px;">이동 기록이 없습니다</div>';return;}
-
-
-
-  log.innerHTML=moveLog.slice(0,30).map(m=>`
-
-
-
+// 전체 탭: 날짜 필터가 없으면 최근 30일, 있으면 그 구간 그대로 최신순 리스트
+function renderMoveLogAll(log){
+  const { start, end } = moveLogDateRange();
+  let list;
+  if (start || end) {
+    list = moveLog.filter(m => moveLogInRange(m.date, start, end));
+  } else {
+    const cutoff = addDays(today(), -30);
+    list = moveLog.filter(m => m.date && m.date >= cutoff);
+  }
+  if (!list.length) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">이동 기록이 없습니다</div>'; return; }
+  log.innerHTML = list.map(m => `
     <div class="move-item">
-
-
-
       <div class="mi-code ${m.sex==='female'?'f':'m'}">${esc(m.name || moveLogDogNameByCode(m.code, m.sex))}</div>
-
-
-
-      <div class="mi-route">${m.from} → ${m.to}</div>
-
-
-
+      <div class="mi-route">${esc(m.from)} → ${esc(m.to)}</div>
       <div class="mi-date">${fmtDate(m.date)}</div>
-
-
-
     </div>`).join('');
+}
 
+// 개체별 조회: 선택한 개체가 어느 견사에 언제~언제 있었는지 구간별 타임라인
+function renderMoveLogByDog(log){
+  const code = document.getElementById('mlt-dog-select')?.value || '';
+  if (!code) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">개체를 선택해주세요</div>'; return; }
 
+  const { start, end } = moveLogDateRange();
+  const records = moveLog.filter(m => m.code === code).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  if (!records.length) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">이동 기록이 없습니다</div>'; return; }
 
+  // 구간 생성: 이번 이동으로 들어간 견사(to)에, 다음 이동 날짜 전까지 머문 것으로 계산
+  let segments = records.map((m, i) => ({
+    kennel: m.to,
+    from: m.date,
+    to: records[i+1] ? records[i+1].date : null // null = 현재도 거기 있음
+  }));
+
+  if (start || end) {
+    segments = segments.filter(s => moveLogInRange(s.from, start, end) || (s.to && moveLogInRange(s.to, start, end)) || !s.to);
+  }
+  if (!segments.length) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">해당 기간의 이동 기록이 없습니다</div>'; return; }
+
+  log.innerHTML = segments.slice().reverse().map(s => `
+    <div class="move-item">
+      <div class="mi-code">🏠 ${esc(s.kennel)}</div>
+      <div class="mi-route">${fmtDate(s.from)} ~ ${s.to ? fmtDate(s.to) : '현재'}</div>
+    </div>`).join('');
+}
+
+// 견사별 조회: 선택한 견사를 거쳐간 모든 개체를 구간별로 표시 (전염병 추적용)
+function renderMoveLogByKennel(log){
+  const kennel = document.getElementById('mlt-kennel-select')?.value || '';
+  if (!kennel) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">견사를 선택해주세요</div>'; return; }
+
+  const { start, end } = moveLogDateRange();
+
+  // 개체별로 이동 기록을 묶어 각자의 시간순 이력을 만든 뒤,
+  // 그 이력 중 이 견사로 "들어온" 시점(to===kennel)마다 다음 이동 전까지의 체류 구간을 뽑는다.
+  const byCode = {};
+  moveLog.forEach(m => { (byCode[m.code] = byCode[m.code] || []).push(m); });
+
+  let segments = [];
+  Object.keys(byCode).forEach(code => {
+    const records = byCode[code].slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+    records.forEach((m, i) => {
+      if (m.to === kennel) {
+        segments.push({
+          code,
+          name: m.name || moveLogDogNameByCode(code, m.sex),
+          sex: m.sex,
+          from: m.date,
+          to: records[i+1] ? records[i+1].date : null
+        });
+      }
+    });
+  });
+
+  if (start || end) {
+    segments = segments.filter(s => moveLogInRange(s.from, start, end) || (s.to && moveLogInRange(s.to, start, end)) || !s.to);
+  }
+  segments.sort((a,b)=> (b.from||'').localeCompare(a.from||''));
+
+  if (!segments.length) { log.innerHTML = '<div style="color:#bbb;text-align:center;padding:14px;">이 견사를 거쳐간 기록이 없습니다</div>'; return; }
+
+  log.innerHTML = segments.map(s => `
+    <div class="move-item">
+      <div class="mi-code ${s.sex==='female'?'f':'m'}">${esc(s.name)}</div>
+      <div class="mi-route">${fmtDate(s.from)} ~ ${s.to ? fmtDate(s.to) : '현재'}</div>
+    </div>`).join('');
+}
+
+// ── 2개월(60일) 보관 정책: 60일 지난 이동 기록을 자동 정리 (하루 1회만 실행) ──
+function cleanupOldMoveLogEntries(){
+  const flagKey = 'goldie_movelog_cleanup_date';
+  const todayStr = today();
+  try {
+    if (localStorage.getItem(flagKey) === todayStr) return; // 오늘 이미 실행함
+    localStorage.setItem(flagKey, todayStr);
+  } catch(e) { return; }
+
+  const cutoff = addDays(todayStr, -60);
+  const stale = moveLog.filter(m => m._key && m.date && m.date < cutoff);
+  stale.forEach(m => { fbRemove(`moveLog/${m._key}`).catch(()=>{}); });
 }
 
 
