@@ -1732,10 +1732,8 @@ ${tmapLink}
 골디쉼터 방문 예약이 아래와 같이 확정되었습니다.
 
 📅 방문 일시: ${dateTimeStr}
-📍 오시는 곳: ${addressStr}
 ${puppyLine}
-🚙 오시는 길 (티맵 길안내):
-${tmapLink}
+🚙 오시는 길: 티맵에서 "${addressStr}" 검색하시면 편하게 오실 수 있어요!
 ${noteLine}
 궁금하신 점은 언제든 편하게 연락 주세요. 곧 뵙겠습니다! 🐾`;
   }
@@ -1848,8 +1846,8 @@ window.renderEditPuppyChecklist = function(selectedPuppies) {
       .filter(([pid, p]) => p.status !== '분양 완료' || selectedPids.has(pid))
       .map(([pid, p]) => `
         <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 12px; margin:3px 6px 3px 0; border:1.5px solid var(--gray-l); border-radius:20px; background:#fff; cursor:pointer; font-size:13px; font-weight:700; white-space:nowrap;">
-          <input type="checkbox" class="edit-puppy-check" data-lid="${lid}" data-pid="${pid}" data-name="${p.name || pid}" data-sex="${p.sex || ''}" ${selectedPids.has(pid) ? 'checked' : ''} style="margin:0;">
-          <span>${p.name || pid} <span style="font-weight:400; color:var(--gray); font-size:11px;">(${genderTxt(p.sex)})</span></span>
+          <input type="checkbox" class="edit-puppy-check" data-lid="${lid}" data-pid="${pid}" data-name="${litterPuppyDisplayName(l, p, pid)}" data-sex="${p.sex || ''}" ${selectedPids.has(pid) ? 'checked' : ''} style="margin:0;">
+          <span>${litterPuppyDisplayName(l, p, pid)} <span style="font-weight:400; color:var(--gray); font-size:11px;">(${genderTxt(p.sex)})</span></span>
         </label>
       `).join('');
     if (!items) return '';
@@ -2004,6 +2002,14 @@ window.openAddEventModal = function() {
 
 // 예약 등록 시 "보러 오실 자견"을 배(모견×부견/출생일) 단위로 묶어 체크박스로 보여준다
 // (분양완료 상태인 자견은 이미 나갔으므로 목록에서 제외)
+// "보러 오실 아이" 표시를 "해리네 새끼1"처럼 배(litter)의 모견 코드를 접두어로 붙여서 보여준다.
+// (모견 코드는 femaleCode 필드에 저장돼 있고, Dave가 지어준 배 이름이 그대로 들어있음 — 예: "해리")
+function litterPuppyDisplayName(l, p, pid) {
+  const base = p.name || pid;
+  const mom = (l.femaleCode || '').trim();
+  return mom && mom !== '—' ? `${mom}네 ${base}` : base;
+}
+
 window.renderCalPuppyChecklist = function() {
   const container = document.getElementById('cal_puppy_list');
   if (!container) return;
@@ -2015,8 +2021,8 @@ window.renderCalPuppyChecklist = function() {
       .filter(([, p]) => p.status !== '분양 완료')
       .map(([pid, p]) => `
         <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 12px; margin:3px 6px 3px 0; border:1.5px solid var(--gray-l); border-radius:20px; background:#fff; cursor:pointer; font-size:13px; font-weight:700; white-space:nowrap;">
-          <input type="checkbox" class="cal-puppy-check" data-lid="${lid}" data-pid="${pid}" data-name="${p.name || pid}" data-sex="${p.sex || ''}" style="margin:0;">
-          <span>${p.name || pid} <span style="font-weight:400; color:var(--gray); font-size:11px;">(${genderTxt(p.sex)})</span></span>
+          <input type="checkbox" class="cal-puppy-check" data-lid="${lid}" data-pid="${pid}" data-name="${litterPuppyDisplayName(l, p, pid)}" data-sex="${p.sex || ''}" style="margin:0;">
+          <span>${litterPuppyDisplayName(l, p, pid)} <span style="font-weight:400; color:var(--gray); font-size:11px;">(${genderTxt(p.sex)})</span></span>
         </label>
       `).join('');
     if (!items) return '';
