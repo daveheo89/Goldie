@@ -372,6 +372,7 @@ onAuthStateChanged(auth, (user) => {
     if (gate) gate.style.display = 'none';
     if (wrap) wrap.style.display = 'block';
     if (typeof window.startAdminCalendarListeners === 'function') window.startAdminCalendarListeners();
+    if (typeof window.startMainDataListeners === 'function') window.startMainDataListeners();
   } else {
     if (gate) gate.style.display = 'flex';
     if (wrap) wrap.style.display = 'none';
@@ -445,22 +446,37 @@ try {
 }
 
 // ── Firebase 구독 (백그라운드 최신 데이터 즉시 갱신 & 캐시 저장)
-onValue(ref(db,'litters'),snap=>{
-  const val = snap.val() || {};
-  window._litters = val;
-  try { localStorage.setItem('goldi_cache_litters', JSON.stringify(val)); } catch(e){}
-  renderPuppyGroups();
-  renderManageList();
-  updateStats();
-});
-onValue(ref(db,'contracts'),snap=>{
-  const fb = snap.val() || {};
-  let ls = {};
-  try { ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}'); } catch(e){}
-  window._contracts = { ...ls, ...fb };
-  try { localStorage.setItem('goldi_cache_contracts', JSON.stringify(window._contracts)); } catch(e){}
-  renderDB();
-});
+// ⚠️ 인증이 채 끝나기 전에 구독하면 permission-denied로 리스너가 끊겨버려
+// 그 뒤로 영영 데이터가 안 뜨는 문제가 있었음(=무한 로딩). schedules/deliveries/
+// reservations와 동일하게, 로그인 인증이 확정된 뒤(onAuthStateChanged)에만 시작.
+let __mainDataListenersStarted = false;
+function startMainDataListeners() {
+  if (__mainDataListenersStarted) return;
+  __mainDataListenersStarted = true;
+  onValue(ref(db,'litters'),snap=>{
+    const val = snap.val() || {};
+    window._litters = val;
+    try { localStorage.setItem('goldi_cache_litters', JSON.stringify(val)); } catch(e){}
+    renderPuppyGroups();
+    renderManageList();
+    updateStats();
+  }, error => {
+    console.error('[litters 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 새끼 데이터 연결 오류: ' + (error.code || error.message));
+  });
+  onValue(ref(db,'contracts'),snap=>{
+    const fb = snap.val() || {};
+    let ls = {};
+    try { ls = JSON.parse(localStorage.getItem('goldi_contracts') || '{}'); } catch(e){}
+    window._contracts = { ...ls, ...fb };
+    try { localStorage.setItem('goldi_cache_contracts', JSON.stringify(window._contracts)); } catch(e){}
+    renderDB();
+  }, error => {
+    console.error('[contracts 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 계약 데이터 연결 오류: ' + (error.code || error.message));
+  });
+}
+window.startMainDataListeners = startMainDataListeners;
 
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
