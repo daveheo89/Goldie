@@ -61,16 +61,15 @@
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-
-
-
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://goldie-shelter-d6c81-default-rtdb.firebaseio.com">
+<link rel="preconnect" href="https://securetoken.googleapis.com">
 
-
-
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-
-
+<!-- 폰트: 시인성 유지를 위해 굵기 4종은 그대로 두되, 렌더링을 막지 않도록 비동기 로딩 -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet"></noscript>
 
 <script defer src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
@@ -124,7 +123,7 @@
 
 
 
-body{font-family:'Noto Sans KR',sans-serif;background:var(--gold-bg);color:var(--text);min-height:100vh;overflow-anchor:none;}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--gold-bg);color:var(--text);min-height:100vh;overflow-anchor:none;}
 
 
 
@@ -1924,10 +1923,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 <!-- Firebase SDK 프리로드 (HTML 파싱과 동시에 다운로드 시작) -->
-
-<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" as="script" crossorigin>
-
-<link rel="preload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js" as="script" crossorigin>
+<!-- ES 모듈이라 modulepreload가 정확한 힌트임. auth는 로그인 화면을 가리는 핵심 모듈인데
+     기존엔 빠져 있었음 — 추가함. storage는 사진/영상 업로드 시에만 쓰므로 지연 로딩으로 분리하고 여기서 제외. -->
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js" crossorigin>
 
 
 
@@ -3626,17 +3626,27 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-
-
-
-
-
   <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { getStorage, ref as storageRef, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserSessionPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+// ⚡ firebase-storage는 사진/영상 업로드 시점에만 동적 import해서 받는다 (첫 로딩 용량 절감)
+let __storageModPromise = null;
+let storageRef, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, storage;
+async function ensureStorage() {
+  if (storage) return;
+  if (!__storageModPromise) {
+    __storageModPromise = import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+  }
+  const mod = await __storageModPromise;
+  storage = mod.getStorage(app);
+  storageRef = mod.ref;
+  uploadString = mod.uploadString;
+  uploadBytes = mod.uploadBytes;
+  uploadBytesResumable = mod.uploadBytesResumable;
+  getDownloadURL = mod.getDownloadURL;
+  window.uploadBytesResumable = uploadBytesResumable;
+}
 
 let editPuppyLitterKey = null;
 let editPuppyId = null;
@@ -3653,7 +3663,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const storage = getStorage(app);
+// storage 인스턴스는 ensureStorage()가 첫 호출 시 만든다 (위 module-scope의 storage 변수를 그대로 사용)
 const auth = getAuth(app);
 
 // ── GitHub 최신 배포(커밋) 시각 조회 — Firebase 로그인과 무관하게 페이지 로드 즉시 확인 ──
@@ -3681,8 +3691,17 @@ loadLastDeployTime('goldie_farm.html', 'deploy-time-info');
 // 관리자 화면 로그인 전용 고정 계정 (실제 메일함이 아니어도 됨, Firebase에만 등록)
 const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
 
-// 같은 브라우저에서도 창을 닫으면 다시 로그인하도록(공유 PC 대비) 세션 단위로만 유지
-setPersistence(auth, browserSessionPersistence).catch(()=>{});
+// 🗓️ 당일 로그인 유지: 창을 닫아도 그날 안에는 다시 로그인하지 않아도 됨.
+// goldi_admin.html과 같은 localStorage 키('goldie_login_date')를 공유하므로,
+// 한쪽 페이지에서 로그인하면 그날은 두 페이지 모두 로그인 화면을 건너뛴다.
+// 자정(UTC 기준 날짜 문자열)이 지나면 다음 접속 때 자동으로 다시 로그인 화면이 뜬다.
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
+function todayDateStr(){ return new Date().toISOString().slice(0,10); }
+function markLoginToday(){ try { localStorage.setItem('goldie_login_date', todayDateStr()); } catch(_) {} }
+function clearLoginMark(){ try { localStorage.removeItem('goldie_login_date'); } catch(_) {} }
+function isLoginMarkValidToday(){
+  try { return localStorage.getItem('goldie_login_date') === todayDateStr(); } catch(_) { return false; }
+}
 
 window.attemptLogin = async function() {
   const pwInput = document.getElementById('login-password');
@@ -3693,6 +3712,10 @@ window.attemptLogin = async function() {
   if (!pw) return;
   if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
   try {
+    // ⚠️ onAuthStateChanged가 이 await 완료보다 먼저(또는 동시에) 발동할 수 있어서,
+    // 날짜 마킹을 로그인 성공 이후에 하면 방금 로그인한 사용자가 즉시 재로그아웃되는
+    // 경합이 생길 수 있다. 실패해도 무해하므로 시도 직전에 먼저 찍는다.
+    markLoginToday();
     await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
     // 화면 전환은 onAuthStateChanged가 처리
   } catch (e) {
@@ -3711,6 +3734,7 @@ window.attemptLogin = async function() {
 };
 
 window.adminSignOut = async function() {
+  clearLoginMark();
   try { await signOut(auth); } catch(e) {}
 };
 
@@ -3718,6 +3742,13 @@ onAuthStateChanged(auth, (user) => {
   const overlay = document.getElementById('login-overlay');
   const main = document.getElementById('main-content');
   const loader = document.getElementById('loading-screen');
+
+  if (user && !isLoginMarkValidToday()) {
+    // 날짜가 바뀌었는데 세션만 남아있는 경우 → 재로그인 요구
+    clearLoginMark();
+    signOut(auth).catch(()=>{});
+    return;
+  }
 
   if (user) {
     document.documentElement.classList.add('authenticated');
@@ -3752,6 +3783,7 @@ onAuthStateChanged(auth, (user) => {
 // ☁️ Firebase Storage 업로드 헬퍼
 async function uploadImageAndGetUrl(dataUrl, path) {
   try {
+    await ensureStorage();
     const r = storageRef(storage, path);
     await uploadString(r, dataUrl, 'data_url');
     return await getDownloadURL(r);
@@ -3763,6 +3795,7 @@ async function uploadImageAndGetUrl(dataUrl, path) {
 
 async function uploadVideoFileAndGetUrl(file, path) {
   try {
+    await ensureStorage();
     const r = storageRef(storage, path);
     await uploadBytes(r, file);
     return await getDownloadURL(r);
@@ -3772,7 +3805,7 @@ async function uploadVideoFileAndGetUrl(file, path) {
   }
 }
 
-window.uploadBytesResumable = uploadBytesResumable;
+// window.uploadBytesResumable은 ensureStorage()가 실제 로딩 완료 시점에 연결한다
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 
@@ -4769,7 +4802,6 @@ function startAllListeners(){
 
 // 🚀 Module functions window exposure for global callers
 
-window.uploadBytesResumable = uploadBytesResumable;
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 window.renderDogs = renderDogs;
@@ -6182,6 +6214,7 @@ window.saveDog = async function() {
         } else {
           const ext = (item.file.name.split('.').pop() || 'mp4').toLowerCase();
           const storagePath = `${path}/${targetKey}/${mediaKey}.${ext}`;
+          await ensureStorage();
           const r = storageRef(storage, storagePath);
           const metadata = { contentType: item.file.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
           try {
@@ -13049,6 +13082,7 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
 
         if (overlay) overlay.style.display = 'flex';
         if (progressText) progressText.textContent = `🎥 미디어 업로드 준비 중... (0%)`;
+        await ensureStorage();
 
         let storageUrl = '';
         if (mediaType === 'image') {
@@ -13141,7 +13175,7 @@ init();
 </script>
 
 <!-- 미디어 업로드 진행률 오버레이 -->
-<div id="upload-progress-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:'Noto Sans KR',sans-serif;">
+<div id="upload-progress-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
   <div style="font-size:3rem;margin-bottom:12px;">🎥</div>
   <div id="upload-progress-text" style="font-size:1.2rem;font-weight:900;">업로드 중... 0%</div>
   <div style="font-size:0.85rem;color:#94A3B8;margin-top:6px;">잠시만 기다려주세요 (창을 닫지 마세요)</div>
