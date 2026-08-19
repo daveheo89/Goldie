@@ -4598,6 +4598,10 @@ function startAllListeners(){
 
 
 
+    const __rawBreeding = snap.val();
+
+    const __breedingChanged = changedSince('breeding', __rawBreeding);
+
     breedingRecords=[];
 
 
@@ -4606,7 +4610,9 @@ function startAllListeners(){
 
 
 
-    if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
+    if (__breedingChanged) {
+      if(!document.getElementById('tab-breeding').classList.contains('hidden'))renderBreeding();
+    }
 
 
 
@@ -4632,6 +4638,10 @@ function startAllListeners(){
 
 
 
+    const __rawMoveLog = snap.val();
+
+    const __moveLogChanged = changedSince('moveLog', __rawMoveLog);
+
     moveLog=[];
 
 
@@ -4640,7 +4650,9 @@ function startAllListeners(){
 
 
 
-    if(document.getElementById('move-log-modal')&&document.getElementById('move-log-modal').classList.contains('open'))renderMoveLog();
+    if (__moveLogChanged) {
+      if(document.getElementById('move-log-modal')&&document.getElementById('move-log-modal').classList.contains('open'))renderMoveLog();
+    }
 
 
 
@@ -4670,6 +4682,10 @@ function startAllListeners(){
 
 
 
+    const __rawDeliveries = snap.val();
+
+    const __deliveriesChanged = changedSince('deliveries', __rawDeliveries);
+
     deliveries=[];
 
 
@@ -4678,7 +4694,9 @@ function startAllListeners(){
 
 
 
-    if(!document.getElementById('tab-delivery').classList.contains('hidden'))if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+    if (__deliveriesChanged) {
+      if(!document.getElementById('tab-delivery').classList.contains('hidden'))if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+    }
 
 
 
@@ -4710,6 +4728,10 @@ function startAllListeners(){
 
 
 
+    const __rawTreatments = snap.val();
+
+    const __treatmentsChanged = changedSince('treatments', __rawTreatments);
+
     window._treatments=[];
 
 
@@ -4718,7 +4740,9 @@ function startAllListeners(){
 
 
 
-    if(document.getElementById('tab-treatment') && !document.getElementById('tab-treatment').classList.contains('hidden'))renderTreatmentList();
+    if (__treatmentsChanged) {
+      if(document.getElementById('tab-treatment') && !document.getElementById('tab-treatment').classList.contains('hidden'))renderTreatmentList();
+    }
 
 
 
@@ -4742,11 +4766,17 @@ function startAllListeners(){
 
   onValue(ref(db,'kennelLayout'), snap=>{
 
-    kennelLayout = snap.val() || {};
+    const __rawKennelLayout = snap.val();
+
+    const __kennelLayoutChanged = changedSince('kennelLayout', __rawKennelLayout);
+
+    kennelLayout = __rawKennelLayout || {};
 
     kennelLayoutLoaded = true;
 
-    if(document.getElementById('tab-kennels') && !document.getElementById('tab-kennels').classList.contains('hidden') && typeof window.renderKennelMap==='function' && !kennelMapEditMode) window.renderKennelMap();
+    if (__kennelLayoutChanged) {
+      if(document.getElementById('tab-kennels') && !document.getElementById('tab-kennels').classList.contains('hidden') && typeof window.renderKennelMap==='function' && !kennelMapEditMode) window.renderKennelMap();
+    }
 
   }, error => {
 
