@@ -215,14 +215,14 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <!-- TAB3 -->
 <div class="tab-panel" id="tab-db">
+  <div class="stitle">📊 이번 달 통계 & 📅 잔금(배송) 예정 캘린더</div>
+  <div class="cal-nav">
+    <button class="btn btn-gray btn-sm" onclick="changeDbTabMonth(-1)">◀</button>
+    <div class="cal-nav-center"><h2 id="dbCalTitle"></h2></div>
+    <button class="btn btn-gray btn-sm" onclick="changeDbTabMonth(1)">▶</button>
+  </div>
   <div id="dbAnalytics" style="margin-bottom:14px;"></div>
 
-  <div class="stitle">📅 잔금(배송) 예정 캘린더</div>
-  <div class="cal-nav">
-    <button class="btn btn-gray btn-sm" onclick="changeDbCalMonth(-1)">◀</button>
-    <div class="cal-nav-center"><h2 id="dbCalTitle"></h2></div>
-    <button class="btn btn-gray btn-sm" onclick="changeDbCalMonth(1)">▶</button>
-  </div>
   <div class="cal-grid" id="dbCalGrid"></div>
 
   <div class="search-row">
@@ -863,10 +863,13 @@ window.contractStatus = c => {
   return { label: '🟡 잔금 대기중', color: '#E67E22' };
 };
 
-window._analyticsDate = new Date();
-window.changeAnalyticsMonth = offset => {
-  window._analyticsDate.setMonth(window._analyticsDate.getMonth() + offset);
+// 통계 카드와 잔금 캘린더가 같은 달을 함께 보도록 날짜 상태를 하나로 공유한다.
+// (예전엔 _analyticsDate/_dbCalDate가 따로 있어서 캘린더만 달을 넘기면 통계는 그대로였음)
+window._dbTabDate = new Date();
+window.changeDbTabMonth = offset => {
+  window._dbTabDate.setMonth(window._dbTabDate.getMonth() + offset);
   window.renderContractAnalytics();
+  window.renderDbCalendar();
 };
 
 window.renderContractAnalytics = () => {
@@ -875,7 +878,7 @@ window.renderContractAnalytics = () => {
   const rawAll = Object.entries(window._contracts || {});
   const all = rawAll.filter(([, c]) => !window.isGhostContract(c)); // 정보 누락 계약은 전부 집계에서 제외
 
-  const base = window._analyticsDate;
+  const base = window._dbTabDate;
   const ym = base.toISOString().slice(0, 7);
   const prevDate = new Date(base.getFullYear(), base.getMonth() - 1, 1);
   const prevYm = prevDate.toISOString().slice(0, 7);
@@ -904,13 +907,7 @@ window.renderContractAnalytics = () => {
   const completionRate = all.length ? Math.round((paidCount / all.length) * 100) : 0;
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const navHtml = `
-    <div class="cal-nav" style="margin-bottom:10px;">
-      <button class="btn btn-gray btn-sm" onclick="changeAnalyticsMonth(-1)">◀</button>
-      <div class="cal-nav-center"><h2>${base.getFullYear()}년 ${base.getMonth() + 1}월 통계</h2></div>
-      <button class="btn btn-gray btn-sm" onclick="changeAnalyticsMonth(1)">▶</button>
-    </div>
-  `;
+  const sectionTitleHtml = `<div class="stitle" style="margin-top:0;">📊 ${base.getFullYear()}년 ${base.getMonth() + 1}월 통계</div>`;
 
   const cardsHtml = `
     <div class="fgrid" style="grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px;">
@@ -959,22 +956,18 @@ window.renderContractAnalytics = () => {
     `;
   }
 
-  el.innerHTML = navHtml + cardsHtml + unpaidHtml;
+  el.innerHTML = sectionTitleHtml + cardsHtml + unpaidHtml;
 };
 
 // 계약 예정 캘린더 — 계약체결일(📝) + 잔금(배송)예정일(💰, 완납되면 자동소멸)
-window._dbCalDate = new Date();
-window.changeDbCalMonth = offset => {
-  window._dbCalDate.setMonth(window._dbCalDate.getMonth() + offset);
-  window.renderDbCalendar();
-};
+// (월 이동은 changeDbTabMonth가 통계와 함께 처리하므로, 이 함수 자체는 렌더링만 담당)
 window.renderDbCalendar = () => {
   const grid = document.getElementById('dbCalGrid');
   const titleEl = document.getElementById('dbCalTitle');
   if (!grid || !titleEl) return;
 
-  const year = window._dbCalDate.getFullYear();
-  const month = window._dbCalDate.getMonth();
+  const year = window._dbTabDate.getFullYear();
+  const month = window._dbTabDate.getMonth();
   titleEl.textContent = `${year}년 ${month + 1}월`;
 
   const validContracts = Object.entries(window._contracts || {}).filter(([, c]) => !window.isGhostContract(c));
@@ -1026,15 +1019,25 @@ window.renderDbCalendar = () => {
   grid.innerHTML = html;
 };
 
-// 캘린더 날짜 클릭 → 그날 계약체결/잔금예정 목록 표시
+// 캘린더 날짜 클릭 → 그날 계약체결/잔금예정 목록 표시 (구매자/강아지 + 분양가/상태까지 바로 보이게)
 window.showDbCalDay = dateStr => {
   const events = (window._dbCalEvents || []).filter(e => e.date === dateStr);
   if (!events.length) return;
-  const rows = events.map(e => `
+  const rows = events.map(e => {
+    const c = window._contracts[e.id];
+    const st = c ? window.contractStatus(c) : null;
+    const priceTxt = c && c.price ? numFmt(c.price) : '—';
+    return `
     <div class="detail-row" style="cursor:pointer;" onclick="showDetail('${e.id}')">
       <span class="detail-key">${e.kind === 'sign' ? '📝 계약체결' : '💰 잔금예정'}</span>
-      <span class="detail-val" style="text-decoration:underline; color:var(--br);">${e.buyer}${e.dogname ? ` (${e.dogname})` : ''}</span>
-    </div>`).join('');
+      <span class="detail-val" style="text-decoration:underline; color:var(--br);">
+        ${e.buyer}${e.dogname ? ` (${e.dogname})` : ''}
+        <div style="font-size:11px; font-weight:700; color:var(--gray); text-decoration:none; margin-top:2px;">
+          ${priceTxt}${st ? ` · <span style="color:${st.color};">${st.label}</span>` : ''}
+        </div>
+      </span>
+    </div>`;
+  }).join('');
   document.getElementById('modalBody').innerHTML = `<div class="stitle" style="margin-top:0;">${fmt(dateStr)} 일정 (눌러서 상세보기)</div>` + rows;
   document.getElementById('detailModal').classList.add('open');
 };
