@@ -1308,7 +1308,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-    min-height: 58px;
+    min-height: 52px;
 
 
 
@@ -1536,7 +1536,9 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-  min-height: 85px;
+  min-height: 70px;
+  aspect-ratio: 0.85 / 1;
+  overflow-y: auto;
 
 
 
@@ -2089,10 +2091,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-    <div class="tab" onclick="showTab('move')">🔄 이동</div>
-
-
-
     <div class="tab" onclick="showTab('delivery')">🚗 배송</div>
 
 
@@ -2175,6 +2173,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
           <button type="button" class="btn-outline btn-sm" id="kennel-map-edit-btn" onclick="toggleKennelMapEdit()">✏️ 편집</button>
           <button type="button" class="btn btn-sm hidden" id="kennel-map-save-btn" onclick="saveKennelLayout()">💾 저장</button>
           <button type="button" class="btn-outline btn-sm hidden" id="kennel-map-reset-btn" onclick="resetKennelLayout()">↺ 기본 배치로 초기화</button>
+          <button type="button" class="btn-outline btn-sm" onclick="openMoveLogModal()">📋 이동 내역</button>
         </div>
         <div id="kennel-map-hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;"></div>
         <div id="kennel-map-canvas-outer" style="border:2px solid var(--border); border-radius:12px; background:var(--kennel-bg);">
@@ -2273,51 +2272,6 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-    <!-- 이동 탭 -->
-
-
-
-    <div id="tab-move" class="hidden">
-
-
-
-      <div class="sec-title">🔄 견사 이동</div>
-
-
-
-      <div class="form-card">
-
-
-
-        <div class="form-group"><label>이동할 아이</label><select id="m-dog"></select></div>
-
-
-
-        <div class="form-group"><label>이동할 견사</label><select id="m-kennel"></select></div>
-
-
-
-        <div class="form-group"><label>이동 날짜</label><input type="date" id="m-date"></div>
-
-
-
-        <button class="btn" onclick="moveKennel()">이동 완료</button>
-
-
-
-      </div>
-
-
-
-      <div class="sec-title">📋 이동 기록</div>
-
-
-
-      <div class="move-log" id="move-log"></div>
-
-
-
-    </div>
 
 
 
@@ -3177,6 +3131,17 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div class="dog-grid hidden" id="pedigree-male-grid"></div>
 
       <div id="pedigree-detail" style="margin-top:16px;"></div>
+    </div>
+
+    <!-- 견사 이동 내역 모달 (배치도 드래그앤드롭으로 옮긴 기록을 확인용으로 보여줌) -->
+    <div class="modal-overlay" id="move-log-modal" onclick="handleMoveLogModalOverlay(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>📋 이동 내역</h2>
+          <button class="modal-close" onclick="closeMoveLogModal()">✕</button>
+        </div>
+        <div class="move-log" id="move-log" style="max-height:60vh; overflow-y:auto;"></div>
+      </div>
     </div>
 
     <!-- 계보도 조상 선택 모달 -->
@@ -4663,7 +4628,7 @@ function startAllListeners(){
 
 
 
-    if(!document.getElementById('tab-move').classList.contains('hidden'))renderMoveLog();
+    if(document.getElementById('move-log-modal')&&document.getElementById('move-log-modal').classList.contains('open'))renderMoveLog();
 
 
 
@@ -4808,7 +4773,6 @@ window.renderDogs = renderDogs;
 window.renderKennels = renderKennels;
 window.renderBreeding = renderBreeding;
 window.renderPuppies = renderPuppies;
-window.renderMove = renderMove;
 if (typeof renderDeliveryCalendar === 'function') { window.renderDeliveryCalendar = renderDeliveryCalendar; }
 
 function getLocalCache(key) {
@@ -4960,7 +4924,7 @@ window.currentTab = 'dogs';
 
 window.showTab = function(tab) {
   window.currentTab = tab;
-  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'move', 'delivery', 'treatment', 'pedigree'];
+  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'delivery', 'treatment', 'pedigree'];
   
   // 1. 탭 콘텐츠 가시성 전환 (.hidden 클래스 및 style.display 동시 제어)
   tabIds.forEach(t => {
@@ -6442,7 +6406,7 @@ function computeKennelBoundingBox(layout) {
 }
 
 // 배치도에서 이름 태그를 드래그해 다른 견사로 놓았을 때 실제로 배정을 바꾸는 함수
-// (이동 탭의 moveKennel()과 동일한 효과: 이동 기록 남기고 개체의 소속 견사 갱신.
+// (이동 기록(moveLog)을 남기고 개체의 소속 견사를 갱신함 — 견사 탭 "📋 이동 내역"에서 확인 가능.
 //  females/males 갱신은 기존 실시간 리스너가 알아서 배치도/목록/개체 탭 등을 다시 그려준다.)
 window.moveDogToKennel = async function(dogKey, sex, toKennel) {
   const dog = allDogs().find(d => d._key === dogKey);
@@ -8474,7 +8438,7 @@ window.closeVaxPopup=function(){
 
 
 
-//  이동 탭
+//  견사 이동 내역 (배치도 드래그앤드롭 기록 조회용 모달)
 
 
 
@@ -8482,81 +8446,18 @@ window.closeVaxPopup=function(){
 
 
 
-function renderMove(){
-
-
-
-  document.getElementById('m-dog').innerHTML=allDogs().map(d=>`<option value="${d._key}|${d.sex}">${d.code} (현재: ${d.kennel})</option>`).join('');
-
-
-
-  document.getElementById('m-kennel').innerHTML=KENNELS.map(k=>`<option>${k}</option>`).join('');
-
-
-
-  document.getElementById('m-date').value=today();
-
-
-
+window.openMoveLogModal = function() {
+  document.getElementById('move-log-modal').classList.add('open');
   renderMoveLog();
-
-
-
-}
-
-
-
-window.moveKennel=async function(){
-
-
-
-  const val=document.getElementById('m-dog').value;
-
-
-
-  const [key,sex]=val.split('|');
-
-
-
-  const to=document.getElementById('m-kennel').value;
-
-
-
-  const date=document.getElementById('m-date').value;
-
-
-
-  const dog=allDogs().find(d=>d._key===key);
-
-
-
-  if(!dog)return;
-
-
-
-  const from=dog.kennel;
-
-
-
-  if(from===to){showToast('같은 견사입니다');return;}
-
-
-
-  await fbPush('moveLog',{code:dog.code,sex:dog.sex,from,to,date});
-
-
-
-  await fbUpdate(`${sex==='female'?'females':'males'}/${key}`,{kennel:to});
-
-
-
-  showToast(`✅ ${dog.code}: ${from} → ${to} 이동 완료`);
-
-
-
 };
 
+window.closeMoveLogModal = function() {
+  document.getElementById('move-log-modal').classList.remove('open');
+};
 
+window.handleMoveLogModalOverlay = function(e) {
+  if (e.target === document.getElementById('move-log-modal')) closeMoveLogModal();
+};
 
 function renderMoveLog(){
 
