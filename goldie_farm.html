@@ -3311,7 +3311,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-      <div class="form-group"><label>이름</label><input type="text" id="dm-name" placeholder="예: 순심이"></div>
+      <div class="form-group"><label>이름 *</label><input type="text" id="dm-name" placeholder="예: 순심이"></div>
 
 
 
@@ -3927,6 +3927,18 @@ function kennelDogDisplayName(d) {
   return cleanDogName(d.code, d.code);
 }
 
+// 이동 내역(moveLog)의 옛 기록은 이름이 저장되어 있지 않을 수 있어, 코드로 현재 개체 목록에서 찾아 이름을 보여준다.
+// (성별을 알면 그 성별 목록에서만, 모르면 males/females 둘 다에서 찾는다. 못 찾으면 코드 그대로 표시.)
+function moveLogDogNameByCode(code, sex) {
+  if (!code) return '?';
+  const pools = sex === 'female' ? [females] : sex === 'male' ? [males] : [females, males];
+  for (const pool of pools) {
+    const found = (pool || []).find(d => d && d.code === code);
+    if (found) return kennelDogDisplayName(found);
+  }
+  return code;
+}
+
 
 
 function today(){return new Date().toISOString().slice(0,10);}
@@ -4347,8 +4359,8 @@ window.checkVaxAlerts = function() {
     const alerts = [];
     (litters || []).forEach(lt => {
       if (!lt) return;
-      const femaleName = lt.femaleCode || '?';
-      const maleName = lt.maleCode || '?';
+      const femaleName = lt.femaleCode ? getMotherInfo(lt.femaleCode).name : '?';
+      const maleName = lt.maleCode ? getSireInfo(lt.maleCode).name : '?';
       [
         { date: lt.vax1, label: `${femaleName}×${maleName} 💉 1차 백신` },
         { date: lt.vax2, label: `${femaleName}×${maleName} 💉 2차 백신` },
@@ -4995,11 +5007,11 @@ function populateParentSelects(sireKey, damKey, excludeKey) {
   const damSel = document.getElementById('dm-dam');
   if (sireSel) {
     sireSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
-      sireOptions.map(d => `<option value="${d._key}" ${d._key === sireKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}${tag(d)}</option>`).join('');
+      sireOptions.map(d => `<option value="${d._key}" ${d._key === sireKey ? 'selected' : ''}>${esc(kennelDogDisplayName(d))}${tag(d)}</option>`).join('');
   }
   if (damSel) {
     damSel.innerHTML = '<option value="">-- 미상 (모름) --</option>' +
-      damOptions.map(d => `<option value="${d._key}" ${d._key === damKey ? 'selected' : ''}>${esc(d.code)}${d.name ? ' ('+esc(d.name)+')' : ''}${tag(d)}</option>`).join('');
+      damOptions.map(d => `<option value="${d._key}" ${d._key === damKey ? 'selected' : ''}>${esc(kennelDogDisplayName(d))}${tag(d)}</option>`).join('');
   }
 }
 
@@ -5115,12 +5127,12 @@ function renderPedigreeGenderGrid(sex) {
   const dogs = allDogs().filter(d => d.sex === sex);
   grid.innerHTML = dogs.map(dog => {
     const photoEl = dog.photo
-      ? `<img class="dog-photo" loading="lazy" decoding="async" src="${dog.photo}" alt="${esc(dog.code)}">`
+      ? `<img class="dog-photo" loading="lazy" decoding="async" src="${dog.photo}" alt="${esc(kennelDogDisplayName(dog))}">`
       : `<div class="dog-photo-placeholder">${dog.sex === 'female' ? '🐕‍🦺' : '🐕'}</div>`;
     return `<div class="dog-card ${dog.sex}${window._pedigreeSelectedKey === dog._key ? ' selected' : ''}" onclick="selectPedigreeDog('${dog._key}')">
       ${photoEl}
       <div class="dog-card-body">
-        <div class="code">${esc(dog.code)}</div>
+        <div class="code">${esc(kennelDogDisplayName(dog))}</div>
         <div class="kennel-tag">${esc(dog.kennel || '')}</div>
       </div>
     </div>`;
@@ -5210,7 +5222,7 @@ function buildBirthHistoryHtml(dog, matched) {
 
 function dogLabel(dog) {
   if (!dog) return '미상';
-  return `${esc(dog.code)}${dog.name ? ' (' + esc(dog.name) + ')' : ''}`;
+  return esc(kennelDogDisplayName(dog));
 }
 
 // 3대 계보 트리 HTML (본인 → 부/모 → 조부모 → 증조부모)
@@ -5287,7 +5299,7 @@ window.openAncestorPicker = function(ownerKey, ownerSex, slot, label) {
   const listEl = document.getElementById('ancestor-picker-list');
   listEl.innerHTML = `
     <div onclick="pickAncestor(null)" style="padding:10px 12px; border-bottom:1px solid #F1F5F9; cursor:pointer; font-size:13px; ${!currentVal ? 'font-weight:800; color:var(--brown);' : 'color:#94A3B8;'}">-- 미상 (비우기) --</div>
-    ${options.map(d => `<div onclick="pickAncestor('${d._key}')" style="padding:10px 12px; border-bottom:1px solid #F1F5F9; cursor:pointer; font-size:13px; ${currentVal === d._key ? 'font-weight:800; color:var(--brown); background:var(--gold-pale);' : ''}">${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${d.archived ? ' <span style="color:#94A3B8; font-size:11px;">(보관됨)</span>' : ''}</div>`).join('') || '<div style="padding:16px; text-align:center; color:#94A3B8; font-size:12px;">등록된 개체가 없습니다.</div>'}
+    ${options.map(d => `<div onclick="pickAncestor('${d._key}')" style="padding:10px 12px; border-bottom:1px solid #F1F5F9; cursor:pointer; font-size:13px; ${currentVal === d._key ? 'font-weight:800; color:var(--brown); background:var(--gold-pale);' : ''}">${esc(kennelDogDisplayName(d))}${d.archived ? ' <span style="color:#94A3B8; font-size:11px;">(보관됨)</span>' : ''}</div>`).join('') || '<div style="padding:16px; text-align:center; color:#94A3B8; font-size:12px;">등록된 개체가 없습니다.</div>'}
   `;
   document.getElementById('ancestor-picker-modal').classList.add('open');
 };
@@ -6083,13 +6095,13 @@ window.removeExistingDogMedia = function(key) {
 
 window.saveDog = async function() {
   const code = (document.getElementById('dm-code') ? document.getElementById('dm-code').value : '').trim();
-  if (!code) { showToast('개체 번호/코드를 입력해주세요.'); return; }
+  const name = (document.getElementById('dm-name') ? document.getElementById('dm-name').value : '').trim();
+  if (!name) { showToast('이름을 입력해주세요.'); return; }
 
   // path 선언을 함수 앞부분에 둬서 ReferenceError 방지
   const path = dogSelectedSex === 'female' ? 'females' : 'males';
 
   const kennel = document.getElementById('dm-kennel') ? document.getElementById('dm-kennel').value : '';
-  const name = (document.getElementById('dm-name') ? document.getElementById('dm-name').value : '').trim();
   const birth = document.getElementById('dm-birth') ? document.getElementById('dm-birth').value : '';
   const sireKey = document.getElementById('dm-sire') ? document.getElementById('dm-sire').value : '';
   const damKey = document.getElementById('dm-dam') ? document.getElementById('dm-dam').value : '';
@@ -6105,7 +6117,7 @@ window.saveDog = async function() {
     // 1. 대표 사진 업로드 (dogPendingPhoto는 handleDogPhoto에서 이미 압축된 data URL)
     let coverUrl = '';
     if (dogPendingPhoto) {
-      const coverPath = `${path}/${dogEditCode || code}/cover_${Date.now()}.jpg`;
+      const coverPath = `${path}/${dogEditCode || code || name || ('new_' + Date.now())}/cover_${Date.now()}.jpg`;
       coverUrl = await uploadImageAndGetUrl(dogPendingPhoto, coverPath);
     } else if (dogModalMode !== 'edit' && window._promotePhotoUrl) {
       // 새끼 → 개체 승격 시: 이미 Storage에 있는 새끼 사진 URL을 그대로 재사용 (재업로드 안 함)
@@ -6413,9 +6425,9 @@ window.moveDogToKennel = async function(dogKey, sex, toKennel) {
   if (!dog) return;
   const from = dog.kennel;
   if (from === toKennel) return;
-  const label = dog.name || dog.code;
+  const label = kennelDogDisplayName(dog);
   try {
-    await fbPush('moveLog', { code: dog.code, sex: dog.sex, from, to: toKennel, date: today() });
+    await fbPush('moveLog', { code: dog.code, name: label, sex: dog.sex, from, to: toKennel, date: today() });
     await fbUpdate(`${sex === 'female' ? 'females' : 'males'}/${dogKey}`, { kennel: toKennel });
     showToast(`✅ ${label}: ${from} → ${toKennel} 이동 완료`);
   } catch (e) {
@@ -6646,11 +6658,11 @@ function renderBreeding(){
 
 
 
-  document.getElementById('b-female').innerHTML=allDogs().filter(d=>d.sex==='female').map(f=>`<option value="${f._key}">${f.code} (${f.kennel})</option>`).join('');
+  document.getElementById('b-female').innerHTML=allDogs().filter(d=>d.sex==='female').map(f=>`<option value="${f._key}">${esc(kennelDogDisplayName(f))} (${f.kennel})</option>`).join('');
 
 
 
-  document.getElementById('b-male').innerHTML=allDogs().filter(d=>d.sex==='male').map(m=>`<option value="${m._key}">${m.code} (${m.kennel})</option>`).join('');
+  document.getElementById('b-male').innerHTML=allDogs().filter(d=>d.sex==='male').map(m=>`<option value="${m._key}">${esc(kennelDogDisplayName(m))} (${m.kennel})</option>`).join('');
 
 
 
@@ -6718,7 +6730,7 @@ function renderBreeding(){
 
 
 
-          <div class="bc-title">🐕‍🦺 ${b.femaleCode} × 🐕 ${b.maleCode}</div>
+          <div class="bc-title">🐕‍🦺 ${b.femaleCode ? esc(getMotherInfo(b.femaleCode).name) : '?'} × 🐕 ${b.maleCode ? esc(getSireInfo(b.maleCode).name) : '?'}</div>
 
 
 
@@ -6802,7 +6814,7 @@ function renderBreeding(){
 
 
 
-          <h3>🌸 ${b.femaleCode} × ${b.maleCode} 상세</h3>
+          <h3>🌸 ${b.femaleCode ? esc(getMotherInfo(b.femaleCode).name) : '?'} × ${b.maleCode ? esc(getSireInfo(b.maleCode).name) : '?'} 상세</h3>
 
           <div style="display:flex; gap:6px; align-items:center;">
             <button class="bd-close" style="width:auto; border-radius:8px; padding:0 10px; font-size:12px; font-weight:700;" onclick="event.stopPropagation(); openBreedingEditModal('${b._key}')">✏️ 수정</button>
@@ -7184,7 +7196,7 @@ window.registerBreeding=async function(){
 
 
 
-  showToast(`✅ ${fDog.code} 출산 예정일: ${fmtDate(due)} (교배 ${matingDates.length}회 평균 기준)`);
+  showToast(`✅ ${kennelDogDisplayName(fDog)} 출산 예정일: ${fmtDate(due)} (교배 ${matingDates.length}회 평균 기준)`);
 
   resetBreedingDateInputs();
 
@@ -7211,9 +7223,9 @@ window.openBreedingEditModal = function(key) {
   const tag = d => d.archived ? ' (보관됨)' : '';
 
   document.getElementById('be-female').innerHTML = femaleOptions.map(d =>
-    `<option value="${d._key}" ${curFemale && d._key === curFemale._key ? 'selected' : ''}>${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${tag(d)}</option>`).join('');
+    `<option value="${d._key}" ${curFemale && d._key === curFemale._key ? 'selected' : ''}>${esc(kennelDogDisplayName(d))}${tag(d)}</option>`).join('');
   document.getElementById('be-male').innerHTML = maleOptions.map(d =>
-    `<option value="${d._key}" ${curMale && d._key === curMale._key ? 'selected' : ''}>${esc(d.code)}${d.name ? ' (' + esc(d.name) + ')' : ''}${tag(d)}</option>`).join('');
+    `<option value="${d._key}" ${curMale && d._key === curMale._key ? 'selected' : ''}>${esc(kennelDogDisplayName(d))}${tag(d)}</option>`).join('');
 
   const existingDates = (b.matingDates && b.matingDates.length) ? b.matingDates : (b.matingDate ? [b.matingDate] : []);
   resetBreedingDateInputs(existingDates, 'be-date-list');
@@ -7402,10 +7414,10 @@ function renderPuppies(){
   list.innerHTML = '';
 
   const lmFemale = document.getElementById('lm-female');
-  if (lmFemale) lmFemale.innerHTML = (females || []).map(f => `<option value="${f._key}">${f.code}</option>`).join('');
+  if (lmFemale) lmFemale.innerHTML = (females || []).map(f => `<option value="${f._key}">${esc(kennelDogDisplayName(f))}</option>`).join('');
 
   const lmMale = document.getElementById('lm-male');
-  if (lmMale) lmMale.innerHTML = (males || []).map(m => `<option value="${m._key}">${m.code}</option>`).join('');
+  if (lmMale) lmMale.innerHTML = (males || []).map(m => `<option value="${m._key}">${esc(kennelDogDisplayName(m))}</option>`).join('');
 
   const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
   if (!targetLitters.length) {
@@ -7462,7 +7474,7 @@ function renderPuppies(){
       <div class="litter-header" onclick="toggleLitter(this)">
         <div class="litter-title-wrap">
           <span class="litter-toggle-icon">${isFirst ? '▼' : '▶'}</span>
-          <strong>${getFemaleCode(lt.femaleCode)} × ${getMaleCode(lt.maleCode)}</strong>
+          <strong>${lt.femaleCode ? esc(getMotherInfo(lt.femaleCode).name) : '모견 미지정'} × ${lt.maleCode ? esc(getSireInfo(lt.maleCode).name) : '부견 미지정'}</strong>
           <span class="litter-count">(${puppyEntries.length}마리)</span>
         </div>
         <div class="litter-dates">
@@ -7773,7 +7785,7 @@ window.saveLitter=async function(){
 
 
 
-      showToast(`✅ ${fDog.code} 출산 기록 등록됐어요!`);
+      showToast(`✅ ${kennelDogDisplayName(fDog)} 출산 기록 등록됐어요!`);
 
 
 
@@ -7905,7 +7917,7 @@ window.saveLitter=async function(){
 
 
 
-      showToast(`✅ ${fDog.code} 출산 기록이 수정되었습니다!`);
+      showToast(`✅ ${kennelDogDisplayName(fDog)} 출산 기록이 수정되었습니다!`);
 
 
 
@@ -8320,29 +8332,30 @@ function checkVaxAlerts(){
 
   litters.forEach(lt=>{
 
+    const fName = lt.femaleCode ? getMotherInfo(lt.femaleCode).name : '?';
+    const mName = lt.maleCode ? getSireInfo(lt.maleCode).name : '?';
 
-
-    [{date:lt.vax1,label:`${lt.femaleCode}×${lt.maleCode} 💉1차 백신`},
-
-
-
-     {date:lt.vax2,label:`${lt.femaleCode}×${lt.maleCode} 💉2차 백신`},
+    [{date:lt.vax1,label:`${fName}×${mName} 💉1차 백신`},
 
 
 
-     {date:lt.vax3,label:`${lt.femaleCode}×${lt.maleCode} 💉3차 백신`},
+     {date:lt.vax2,label:`${fName}×${mName} 💉2차 백신`},
 
 
 
-     {date:lt.deworm1,label:`${lt.femaleCode}×${lt.maleCode} 🪱1차 구충`},
+     {date:lt.vax3,label:`${fName}×${mName} 💉3차 백신`},
 
 
 
-     {date:lt.deworm2,label:`${lt.femaleCode}×${lt.maleCode} 🪱2차 구충`},
+     {date:lt.deworm1,label:`${fName}×${mName} 🪱1차 구충`},
 
 
 
-     {date:lt.deworm3,label:`${lt.femaleCode}×${lt.maleCode} 🪱3차 구충`},
+     {date:lt.deworm2,label:`${fName}×${mName} 🪱2차 구충`},
+
+
+
+     {date:lt.deworm3,label:`${fName}×${mName} 🪱3차 구충`},
 
 
 
@@ -8479,7 +8492,7 @@ function renderMoveLog(){
 
 
 
-      <div class="mi-code ${m.sex==='female'?'f':'m'}">${m.code}</div>
+      <div class="mi-code ${m.sex==='female'?'f':'m'}">${esc(m.name || moveLogDogNameByCode(m.code, m.sex))}</div>
 
 
 
@@ -9027,7 +9040,7 @@ window.renderDeliveryCalendar = function() {
 
 
 
-      const parentLabel = `${lt.femaleCode || '?'}×${lt.maleCode || '?'}`;
+      const parentLabel = `${lt.femaleCode ? getMotherInfo(lt.femaleCode).name : '?'}×${lt.maleCode ? getSireInfo(lt.maleCode).name : '?'}`;
 
 
 
@@ -10265,111 +10278,9 @@ function getLitterLabel(l) {
 
 
 
-  // 1. 모견 식별/이름 파싱 (예: 4262/다미)
-
-
-
-  let fCode = (l.femaleCode || '?').trim();
-
-
-
-  const rawFemales = typeof females !== 'undefined' ? females : (window._females || []);
-
-
-
-  const femaleObj = Array.isArray(rawFemales)
-
-
-
-    ? rawFemales.find(f => f && (String(f.code).trim() === fCode || String(f._key) === fCode))
-
-
-
-    : null;
-
-
-
-  if (femaleObj) {
-
-
-
-    const c = (femaleObj.code || '').trim();
-
-
-
-    const n = (femaleObj.name || '').trim();
-
-
-
-    if (c && n && c !== n && !fCode.includes('/')) fCode = `${c}/${n}`;
-
-
-
-    else if (n && !fCode.includes('/')) fCode = n;
-
-
-
-    else if (c && !fCode.includes('/')) fCode = c;
-
-
-
-  }
-
-
-
-
-
-
-
-  // 2. 부견 식별/이름 파싱 (예: 늑구)
-
-
-
-  let mCode = (l.maleCode || '?').trim();
-
-
-
-  const rawMales = typeof males !== 'undefined' ? males : (window._males || []);
-
-
-
-  const maleObj = Array.isArray(rawMales)
-
-
-
-    ? rawMales.find(m => m && (String(m.code).trim() === mCode || String(m._key) === mCode))
-
-
-
-    : null;
-
-
-
-  if (maleObj) {
-
-
-
-    const c = (maleObj.code || '').trim();
-
-
-
-    const n = (maleObj.name || '').trim();
-
-
-
-    if (c && n && c !== n && !mCode.includes('/')) mCode = `${c}/${n}`;
-
-
-
-    else if (n && !mCode.includes('/')) mCode = n;
-
-
-
-    else if (c && !mCode.includes('/')) mCode = c;
-
-
-
-  }
+  // 1. 모견/부견 이름 (이름 없으면 코드에서 이름만 추출, 그것도 없으면 '?')
+  const fCode = l.femaleCode ? getMotherInfo(l.femaleCode).name : '?';
+  const mCode = l.maleCode ? getSireInfo(l.maleCode).name : '?';
 
 
 
@@ -10625,7 +10536,7 @@ function fillTreatmentSelects() {
 
 
 
-      selectHtml += `<option value="${code}">🐕 ${code}</option>`;
+      selectHtml += `<option value="${code}">🐕 ${esc(moveLogDogNameByCode(code))}</option>`;
 
 
 
