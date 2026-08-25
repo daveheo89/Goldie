@@ -1855,6 +1855,12 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 }
 
+.delivery-chip.rmed-chip-cal {
+  background: #FFF3E0;
+  color: #C8860A;
+  border-left-color: #C8860A;
+}
+
 
 
 
@@ -3199,7 +3205,26 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         </div>
         <div class="rmed-tabs" id="rmed-tabs"></div>
         <div style="font-size:.72rem; color:var(--text-muted); margin-bottom:10px;" id="rmed-subtitle"></div>
-        <div class="ivomec-list" id="rmed-list" style="max-height:56vh; overflow-y:auto;"></div>
+
+        <div class="mlt-tabs" style="margin-bottom:10px;">
+          <div class="mlt-tab active" id="rmed-view-tab-calendar" onclick="switchRoutineMedView('calendar')">📅 캘린더</div>
+          <div class="mlt-tab" id="rmed-view-tab-pending" onclick="switchRoutineMedView('pending')">⏰ 미접종</div>
+        </div>
+
+        <div id="rmed-view-calendar">
+          <div class="calendar-container" style="padding:0; box-shadow:none; margin-top:0;">
+            <div class="calendar-header">
+              <button class="btn-outline btn-sm" onclick="changeRoutineMedCalMonth(-1)" style="padding:4px 8px; width:auto;">◀ 이전달</button>
+              <h2 id="rmed-cal-month-year">YYYY년 MM월</h2>
+              <button class="btn-outline btn-sm" onclick="changeRoutineMedCalMonth(1)" style="padding:4px 8px; width:auto;">다음달 ▶</button>
+            </div>
+            <div class="calendar-grid" id="rmed-cal-grid"></div>
+          </div>
+        </div>
+
+        <div id="rmed-view-pending" style="display:none;">
+          <div class="ivomec-list" id="rmed-list" style="max-height:50vh; overflow-y:auto;"></div>
+        </div>
       </div>
     </div>
 
@@ -3893,6 +3918,8 @@ let kennelLayout = {}; // Firebase에 저장된 배치 {견사명:{x,y,w,h}}
 let routineMeds = {}; // 정기 투약 약품 종류 {medKey: {name, intervalDays}}
 let routineMedLog = {}; // 약품별 투여 기록 {medKey: {dogKey: {lastDate}}}
 let __currentRoutineMed = null; // 정기 투약 모달에서 현재 선택된 약품 medKey
+let __routineMedView = 'calendar'; // 'calendar' | 'pending'
+let __routineMedCalDate = new Date(); // 정기 투약 캘린더가 보여주는 달
 let kennelLayoutLoaded = false;
 let kennelMapEditMode = false;
 let __kennelWorkingLayout = null; // 편집 중 임시 작업본 (저장 눌러야 반영)
@@ -4860,7 +4887,7 @@ function startAllListeners(){
     if (__routineMedsChanged) {
       if(document.getElementById('routine-med-modal') && document.getElementById('routine-med-modal').classList.contains('open')) {
         renderRoutineMedTabs();
-        renderRoutineMedList();
+        renderRoutineMedActiveView();
       }
       checkVaxAlerts();
     }
@@ -4881,7 +4908,7 @@ function startAllListeners(){
     routineMedLog = __rawRoutineMedLog || {};
 
     if (__routineMedLogChanged) {
-      if(document.getElementById('routine-med-modal') && document.getElementById('routine-med-modal').classList.contains('open')) renderRoutineMedList();
+      if(document.getElementById('routine-med-modal') && document.getElementById('routine-med-modal').classList.contains('open')) renderRoutineMedActiveView();
       checkVaxAlerts();
     }
 
@@ -8530,11 +8557,11 @@ function checkVaxAlerts(){
   Object.keys(routineMeds).forEach(medKey=>{
     const med = routineMeds[medKey];
     if (!med) return;
-    const log = routineMedLog[medKey] || {};
+    const lastDoseMap = getRoutineMedLastDoseMap(medKey);
     getRoutineMedTargets().forEach(t=>{
-      const rec = log[t.key];
-      if (!rec || !rec.lastDate) return;
-      const nextDate = addDays(rec.lastDate, med.intervalDays);
+      const lastDate = lastDoseMap[t.key];
+      if (!lastDate) return;
+      const nextDate = addDays(lastDate, med.intervalDays);
       const d = daysFrom(nextDate);
       const label = `${t.sex==='female'?'♀':'♂'} ${t.name} ${med.name}`;
       if(d===0)alerts.push({date:nextDate,label,icon:'🩹',type:'today',msg:'오늘이에요!'});
@@ -8852,7 +8879,7 @@ window.openRoutineMedModal = function() {
     __currentRoutineMed = keys.length ? keys[0] : null;
   }
   renderRoutineMedTabs();
-  renderRoutineMedList();
+  renderRoutineMedActiveView();
 };
 
 window.closeRoutineMedModal = function() {
@@ -8866,8 +8893,26 @@ window.handleRoutineMedModalOverlay = function(e) {
 window.switchRoutineMedTab = function(medKey) {
   __currentRoutineMed = medKey;
   renderRoutineMedTabs();
-  renderRoutineMedList();
+  renderRoutineMedActiveView();
 };
+
+window.switchRoutineMedView = function(view) {
+  __routineMedView = view;
+  const calTab = document.getElementById('rmed-view-tab-calendar');
+  const pendTab = document.getElementById('rmed-view-tab-pending');
+  const calWrap = document.getElementById('rmed-view-calendar');
+  const pendWrap = document.getElementById('rmed-view-pending');
+  if (calTab) calTab.classList.toggle('active', view === 'calendar');
+  if (pendTab) pendTab.classList.toggle('active', view === 'pending');
+  if (calWrap) calWrap.style.display = view === 'calendar' ? 'block' : 'none';
+  if (pendWrap) pendWrap.style.display = view === 'pending' ? 'block' : 'none';
+  renderRoutineMedActiveView();
+};
+
+function renderRoutineMedActiveView(){
+  if (__routineMedView === 'calendar') renderRoutineMedCalendar();
+  else renderRoutineMedList();
+}
 
 window.addRoutineMed = async function() {
   const name = prompt('새로 추가할 약품 이름을 입력하세요\n(예: 하트가드, 프론트라인 등)', '');
@@ -8895,6 +8940,17 @@ function renderRoutineMedTabs(){
   }
 }
 
+// 약품별 투여 기록(이력)에서, 개체마다 가장 최근 투여일만 뽑아 맵으로 반환
+function getRoutineMedLastDoseMap(medKey){
+  const map = {};
+  const log = routineMedLog[medKey] || {};
+  Object.values(log).forEach(entry => {
+    if (!entry || !entry.dogKey || !entry.date) return;
+    if (!map[entry.dogKey] || entry.date > map[entry.dogKey]) map[entry.dogKey] = entry.date;
+  });
+  return map;
+}
+
 function renderRoutineMedList(){
   const wrap = document.getElementById('rmed-list');
   if (!wrap) return;
@@ -8903,12 +8959,11 @@ function renderRoutineMedList(){
   if (!med) { wrap.innerHTML = ''; return; }
 
   const interval = med.intervalDays;
-  const log = routineMedLog[__currentRoutineMed] || {};
+  const lastDoseMap = getRoutineMedLastDoseMap(__currentRoutineMed);
   const rank = { overdue:0, today:1, none:2, soon:3, ok:4 };
 
   const rows = getRoutineMedTargets().map(t => {
-    const rec = log[t.key];
-    const lastDate = rec ? rec.lastDate : null;
+    const lastDate = lastDoseMap[t.key] || null;
     const nextDate = lastDate ? addDays(lastDate, interval) : null;
     const d = nextDate ? daysFrom(nextDate) : null;
     let statusLabel, statusClass;
@@ -8935,9 +8990,82 @@ function renderRoutineMedList(){
     </div>`).join('');
 }
 
+function renderRoutineMedCalendar(){
+  const grid = document.getElementById('rmed-cal-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const label = document.getElementById('rmed-cal-month-year');
+  const year = __routineMedCalDate.getFullYear();
+  const month = __routineMedCalDate.getMonth();
+  if (label) label.textContent = `${year}년 ${(month + 1).toString().padStart(2, '0')}월`;
+
+  const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+  daysOfWeek.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'calendar-day-header';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const el = document.createElement('div');
+    el.className = 'calendar-day empty';
+    grid.appendChild(el);
+  }
+
+  const todayStr = today();
+  const med = routineMeds[__currentRoutineMed];
+  const log = routineMedLog[__currentRoutineMed] || {};
+
+  const byDate = {};
+  Object.values(log).forEach(entry => {
+    if (!entry || !entry.date) return;
+    (byDate[entry.date] = byDate[entry.date] || []).push(entry);
+  });
+
+  const targetsByKey = {};
+  getRoutineMedTargets().forEach(t => { targetsByKey[t.key] = t; });
+
+  for (let day = 1; day <= totalDays; day++) {
+    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    const isToday = dayDateStr === todayStr;
+
+    const dayCell = document.createElement('div');
+    dayCell.className = `calendar-day${isToday ? ' today' : ''}`;
+
+    const numEl = document.createElement('div');
+    numEl.className = 'calendar-day-num';
+    numEl.textContent = day;
+    dayCell.appendChild(numEl);
+
+    const chipsContainer = document.createElement('div');
+    chipsContainer.className = 'calendar-chips';
+
+    (byDate[dayDateStr] || []).forEach(entry => {
+      const t = targetsByKey[entry.dogKey];
+      const chip = document.createElement('div');
+      chip.className = 'delivery-chip rmed-chip-cal';
+      const nameLabel = t ? `${t.sex === 'female' ? '♀' : '♂'} ${t.name}` : entry.dogKey;
+      chip.textContent = `${nameLabel}${med ? ' ' + med.name : ''}`;
+      chipsContainer.appendChild(chip);
+    });
+
+    dayCell.appendChild(chipsContainer);
+    grid.appendChild(dayCell);
+  }
+}
+
+window.changeRoutineMedCalMonth = function(delta) {
+  __routineMedCalDate = new Date(__routineMedCalDate.getFullYear(), __routineMedCalDate.getMonth() + delta, 1);
+  renderRoutineMedCalendar();
+};
+
 window.markRoutineMedDone = async function(dogKey){
   if (!__currentRoutineMed) return;
-  await fbSet(`routineMedLog/${__currentRoutineMed}/${dogKey}`, { lastDate: today() });
+  await fbPush(`routineMedLog/${__currentRoutineMed}`, { dogKey, date: today() });
   showToast('✅ 투여 기록됐습니다.');
   renderRoutineMedList();
 };
