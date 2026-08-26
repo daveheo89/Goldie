@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>골디쉼터 관리자</title>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <style>
 :root {
   --gold:#C8931A;--gold-l:#F0BE5A;--gold-p:#FDF5E0;
@@ -2254,6 +2255,14 @@ window.openAddEventModal = function() {
         <input type="text" id="cal_visitor_phone" placeholder="예: 01012345678">
       </div>
     </div>
+    <div class="ffield" id="cal_hv_addr_field" style="margin-bottom:12px; display:none;">
+      <label>방문지 주소 *</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="cal_hv_addr" placeholder="오른쪽 주소 검색 버튼을 눌러 입력해주세요." readonly style="flex:1">
+        <button type="button" class="btn btn-br btn-sm" onclick="window.searchHomevisitAddress()" style="padding:9px 16px;white-space:nowrap">🔍 주소 검색</button>
+      </div>
+      <input id="cal_hv_addr_detail" placeholder="상세 주소 (예: 101동 202호, 놀이터 앞 등)">
+    </div>
     <div id="cal_homevisit_fields" style="display:none;">
       <div class="ffield" style="margin-bottom:12px;">
         <label>방문지 반려동물 유무 *</label>
@@ -2294,7 +2303,7 @@ window.openAddEventModal = function() {
       <div class="ffield"><label>날짜 *</label><input type="date" id="cal_date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div class="ffield"><label>시간 (선택)</label><input type="time" id="cal_time"></div>
     </div>
-    <div class="ffield" style="margin-bottom:12px;">
+    <div class="ffield" id="cal_location_field" style="margin-bottom:12px;">
       <label>장소 / 배송지 주소 (선택)</label>
       <input type="text" id="cal_location" placeholder="예: 서울시 강남구 테헤란로 123">
     </div>
@@ -2356,6 +2365,8 @@ window.onCalTypeChange = function() {
   const rsvFields = document.getElementById('cal_rsv_fields');
   const deliveryFields = document.getElementById('cal_delivery_fields');
   const homevisitFields = document.getElementById('cal_homevisit_fields');
+  const hvAddrField = document.getElementById('cal_hv_addr_field');
+  const locationField = document.getElementById('cal_location_field');
   const puppyField = document.getElementById('cal_puppy_field');
   const puppyLabel = puppyField ? puppyField.querySelector('label') : null;
   const locInput = document.getElementById('cal_location');
@@ -2364,6 +2375,9 @@ window.onCalTypeChange = function() {
   if (rsvFields) rsvFields.style.display = (type === 'rsv' || type === 'homevisit') ? 'block' : 'none';
   if (deliveryFields) deliveryFields.style.display = type === 'delivery' ? 'block' : 'none';
   if (homevisitFields) homevisitFields.style.display = type === 'homevisit' ? 'block' : 'none';
+  // 골디 앰버서더는 전용 주소검색 필드를 쓰므로, 기존 일반 장소 입력칸은 숨겨서 혼동을 막는다
+  if (hvAddrField) hvAddrField.style.display = type === 'homevisit' ? 'block' : 'none';
+  if (locationField) locationField.style.display = type === 'homevisit' ? 'none' : 'block';
 
   if (type === 'rsv' && locInput && !locInput.value.trim()) {
     locInput.value = SHELTER_ADDRESS;
@@ -2417,16 +2431,31 @@ window.updateHomevisitFeeDisplay = function() {
   resultEl.dataset.minutes = minutes;
 };
 
-// "거리/예약금 자동 계산" 버튼: 장소 입력칸의 주소를 카카오 API로 좌표 변환 후 소요시간 추정.
+// 골디 앰버서더 방문지 주소 검색 (Daum 우편번호 서비스) — 정확한 도로명/지번 주소여야
+// 카카오 지오코딩 API가 좌표를 제대로 찾으므로, 자유 입력이 아닌 검색 방식으로 받는다.
+window.searchHomevisitAddress = () => {
+  new window.daum.Postcode({
+    oncomplete: function(data) {
+      const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+      const addrInput = document.getElementById('cal_hv_addr');
+      if (addrInput) addrInput.value = addr;
+      // 주소가 바뀌면 이전 계산 결과는 무효화
+      const resultEl = document.getElementById('cal_hv_result');
+      if (resultEl) { resultEl.textContent = ''; resultEl.dataset.fee = ''; resultEl.dataset.minutes = ''; }
+    }
+  }).open();
+};
+
+// "거리/예약금 자동 계산" 버튼: 주소검색으로 받은 정확한 주소를 카카오 API로 좌표 변환 후 소요시간 추정.
 // KAKAO_REST_API_KEY가 비어있으면 자동 변환이 안 되므로, 소요시간을 직접 입력하도록 안내.
 window.calcHomevisitFee = async function() {
   const resultEl = document.getElementById('cal_hv_result');
   const minutesInput = document.getElementById('cal_hv_minutes');
-  const address = (document.getElementById('cal_location')?.value || '').trim();
+  const address = (document.getElementById('cal_hv_addr')?.value || '').trim();
   if (!resultEl) return;
 
   if (!address) {
-    resultEl.textContent = '⚠️ 먼저 방문지 주소를 입력해주세요.';
+    resultEl.textContent = '⚠️ 먼저 위의 "🔍 주소 검색" 버튼으로 방문지 주소를 입력해주세요.';
     return;
   }
   if (!KAKAO_REST_API_KEY) {
@@ -2437,7 +2466,7 @@ window.calcHomevisitFee = async function() {
   resultEl.textContent = '⏳ 거리 계산 중...';
   const coord = await geocodeAddress(address);
   if (!coord) {
-    resultEl.textContent = '⚠️ 주소를 찾지 못했습니다. 주소를 다시 확인하시거나 소요시간을 직접 입력해주세요.';
+    resultEl.textContent = '⚠️ 주소를 찾지 못했습니다. 주소 검색을 다시 시도하시거나 소요시간을 직접 입력해주세요.';
     return;
   }
   const km = haversineKm(YANGPYEONG_OFFICE_COORD.lat, YANGPYEONG_OFFICE_COORD.lng, coord.lat, coord.lng);
@@ -2450,7 +2479,10 @@ window.saveAddEvent = async function() {
   const type = document.getElementById('cal_type').value;
   const date = document.getElementById('cal_date').value;
   const time = document.getElementById('cal_time')?.value || '';
-  const location = document.getElementById('cal_location').value.trim();
+  // 골디 앰버서더는 전용 주소검색 필드(기본주소+상세주소)를, 그 외 타입은 일반 장소 입력칸을 사용
+  const location = type === 'homevisit'
+    ? [document.getElementById('cal_hv_addr')?.value || '', document.getElementById('cal_hv_addr_detail')?.value || ''].filter(Boolean).join(' ').trim()
+    : document.getElementById('cal_location').value.trim();
   const details = document.getElementById('cal_details').value.trim();
   const contractEl = document.getElementById('cal_contract');
   const contractId = contractEl ? contractEl.value : '';
