@@ -194,6 +194,7 @@ window.addEventListener('DOMContentLoaded', function(){
   <div class="card" id="sendForm" style="display:none">
     <div class="stitle">분양 조건 입력</div>
     <div class="info-chips" id="selectedInfo"></div>
+    <div id="ambMatchInfo" style="display:none; margin-bottom:14px; padding:10px 12px; background:var(--gold-p); border:1.5px solid var(--gold-l); border-radius:8px; font-size:12px;"></div>
     <div class="fgrid" style="margin-bottom:14px">
       <div class="ffield"><label>분양가 (원) *</label><input type="number" id="s_price" placeholder="예: 1500000"></div>
       <div class="ffield"><label>분양 예정일 *</label><input type="date" id="s_saledate"></div>
@@ -593,6 +594,29 @@ window.selectPuppy=(lid,pid)=>{
     <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
     <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
+
+  // 🐾 골디 앰버서더 방문(선택완료) 기록과 매칭 확인 — 예약금 자동 반영 + 다마리 할인 대상 여부 안내
+  window._selectedAmbassadorMatch = null;
+  const ambEntry = Object.entries(window._schedules || {}).find(([, s]) =>
+    s && s.type === 'homevisit' && s.hvResult === '선택완료' &&
+    Array.isArray(s.puppies) && s.puppies.some(pp => pp.lid === lid && pp.pid === pid)
+  );
+  const ambInfoEl = document.getElementById('ambMatchInfo');
+  if (ambEntry) {
+    const [ambScheduleId, ambData] = ambEntry;
+    const ambFee = ambData.hvFee || 0;
+    const ambMultiCount = ambData.hvMultiCount || 1;
+    window._selectedAmbassadorMatch = { scheduleId: ambScheduleId, fee: ambFee, multiCount: ambMultiCount };
+    ambInfoEl.style.display = 'block';
+    ambInfoEl.innerHTML = `🐾 <strong>골디 앰버서더 방문 기록 확인됨</strong> — 예약금 ${ambFee.toLocaleString()}원 (계약금으로 자동 반영됩니다)` +
+      (ambMultiCount > 1
+        ? `<div style="margin-top:8px;"><label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700;"><input type="checkbox" id="s_amb_discount" style="width:16px; height:16px;">이 아이에게 다마리 할인(10%) 적용</label></div>`
+        : '');
+  } else {
+    ambInfoEl.style.display = 'none';
+    ambInfoEl.innerHTML = '';
+  }
+
   document.getElementById('sendForm').style.display='block';
   document.getElementById('linkCard').style.display='none';
   document.getElementById('sendForm').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -606,7 +630,7 @@ window.generateLink=()=>{
   if(!price||!saledate){toast('분양가와 분양 예정일을 입력해주세요.');return;}
 
   const {litterId:lid,puppyId:pid,litter:l,puppy:p}=sel;
-  const params=new URLSearchParams({
+  const paramObj={
     litter:lid, puppy:pid,
     dogname:p.name||pid,
     sex:p.sex||'',
@@ -616,7 +640,15 @@ window.generateLink=()=>{
     femaleCode:l.femaleCode||'',
     maleCode:l.maleCode||'',
     price, saledate
-  });
+  };
+  // 🐾 골디 앰버서더 방문 기록 매칭 시: 이미 낸 예약금 + 다마리 할인 여부를 계약서 폼으로 전달
+  const ambMatch = window._selectedAmbassadorMatch;
+  if (ambMatch) {
+    paramObj.amb_deposit = String(ambMatch.fee || 0);
+    const discountChecked = document.getElementById('s_amb_discount')?.checked;
+    if (discountChecked) paramObj.amb_discount = '1';
+  }
+  const params=new URLSearchParams(paramObj);
   // 안전한 URL 생성 (hash/query 오염 방지)
   const baseUrl=new URL('goldi_contract_form.html',location.href.split('?')[0].split('#')[0]);
   baseUrl.search=params.toString();
@@ -1705,9 +1737,19 @@ window.renderSelectedDayEvents = function(dateStr) {
       const hv = s.raw || {};
       const resultLabelMap = { '예정': '⏳ 예정', '선택완료': '✅ 선택완료', '미선택': '➖ 미선택(크레딧)', '노쇼': '🚫 노쇼' };
       const resultLabel = resultLabelMap[hv.hvResult] || '⏳ 예정';
-      catBadge = `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 골디 앰버서더</span> <span class="badge" style="background:#F4F4F4; color:#555; border:1px solid #ddd; margin-left:4px;">${resultLabel}</span>`;
+      const consentBadge = hv.consentSigned
+        ? `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; margin-left:4px;">✅ 동의서 서명완료</span>`
+        : `<span class="badge" style="background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7; margin-left:4px;">✍️ 서명 대기</span>`;
+      const depositBadge = hv.depositConfirmed
+        ? `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; margin-left:4px;">💰 입금확인</span>`
+        : '';
+      catBadge = `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 골디 앰버서더</span> <span class="badge" style="background:#F4F4F4; color:#555; border:1px solid #ddd; margin-left:4px;">${resultLabel}</span>${consentBadge}${depositBadge}`;
+      const puppyList = s.puppies || hv.puppies || [];
+      const puppyLine = (Array.isArray(puppyList) && puppyList.length)
+        ? `🐾 비교하실 아이들: ${puppyList.map(p => p.name).filter(Boolean).join(', ')} · `
+        : '';
       hvDetailHtml = `<div style="font-size:12px; color:var(--gray); margin-bottom:4px;">
-        💰 예약금 ${hv.hvFee ? Number(hv.hvFee).toLocaleString() + '원' : '-'} · ⏱ 편도 약 ${hv.hvMinutes || '-'}분 · 🐕 방문지 반려동물: ${hv.hvPetAtLocation === 'yes' ? '있음(대체장소)' : '없음'}${hv.hvMultiCount > 1 ? ` · 👬 다마리(${hv.hvMultiCount}마리, 2번째부터 10%할인)` : ''}
+        ${puppyLine}💰 예약금 ${hv.hvFee ? Number(hv.hvFee).toLocaleString() + '원' : '-'} · ⏱ 편도 약 ${hv.hvMinutes || '-'}분 · 🐕 방문지 반려동물: ${hv.hvPetAtLocation === 'yes' ? '있음(대체장소)' : '없음'}${hv.hvMultiCount > 1 ? ` · 👬 다마리(${hv.hvMultiCount}마리, 2번째부터 10%할인)` : ''}
       </div>`;
       isGCalSyncable = true;
     } else {
@@ -1733,6 +1775,17 @@ window.renderSelectedDayEvents = function(dateStr) {
     let kakaoBtn = '';
     if (type === 'delivery' || type === 'rsv' || type === 'homevisit' || s.tmapUrl) {
       kakaoBtn = `<button class="btn btn-sm" onclick="shareEventKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 카톡 안내 전송</button>`;
+    }
+
+    // 🟢 골디 앰버서더 전용: 동의서 링크 복사 + 예약금 입금확인 토글
+    let ambConsentBtn = '';
+    let ambDepositBtn = '';
+    if (type === 'homevisit') {
+      ambConsentBtn = `<button class="btn btn-br btn-sm" onclick="copyConsentLink('${s.dbKey}')">🔗 동의서 링크 복사</button>`;
+      const hv = s.raw || {};
+      ambDepositBtn = hv.depositConfirmed
+        ? `<button class="btn btn-gray btn-sm" onclick="toggleAmbassadorDeposit('${s.dbPath}', false)">입금 확인 취소</button>`
+        : `<button class="btn btn-sm" onclick="toggleAmbassadorDeposit('${s.dbPath}', true)" style="background:#27AE60; color:#fff; font-weight:700; border:none;">💰 예약금 입금 확인</button>`;
     }
 
     // 배송 카드에 연결된 계약의 잔금 완납 상태 버튼
@@ -1768,6 +1821,8 @@ window.renderSelectedDayEvents = function(dateStr) {
             ${tmapBtn}
             ${kakaoBtn}
             ${settleBtn}
+            ${ambConsentBtn}
+            ${ambDepositBtn}
           </div>
           <div style="display:flex; gap:6px;">
             <button class="btn btn-gold btn-sm" onclick="openEditCalendarEventModal('${s.id}')">✏️ 수정</button>
@@ -1777,6 +1832,27 @@ window.renderSelectedDayEvents = function(dateStr) {
       </div>
     `;
   }).join('');
+};
+
+// 🔗 골디 앰버서더 동의서 링크 복사 (scheduleId 기반, 자세한 정보는 동의서 페이지가 Firebase에서 직접 조회)
+window.copyConsentLink = async (scheduleId) => {
+  if (!scheduleId) { toast('일정 정보를 찾을 수 없습니다.'); return; }
+  const baseUrl = new URL('goldi_ambassador_consent.html', location.href.split('?')[0].split('#')[0]);
+  baseUrl.search = new URLSearchParams({ scheduleId }).toString();
+  const url = baseUrl.href;
+  const ok = await safeCopy(url);
+  toast(ok ? '🔗 동의서 링크가 복사됐습니다.' : '위 창에서 직접 복사해주세요.');
+};
+
+// 💰 골디 앰버서더 예약금 입금 확인 수동 토글 (계좌이체는 앱 밖에서 이뤄지므로 수동 확인)
+window.toggleAmbassadorDeposit = async (dbPath, confirmed) => {
+  if (!dbPath) return;
+  if (!confirm(confirmed ? '예약금 입금을 확인 처리하시겠습니까?' : '입금 확인을 취소하시겠습니까?')) return;
+  await update(ref(db, dbPath), {
+    depositConfirmed: confirmed,
+    depositConfirmedAt: confirmed ? new Date().toISOString() : ''
+  });
+  toast(confirmed ? '💰 예약금 입금이 확인 처리되었습니다.' : '입금 확인이 취소되었습니다.');
 };
 
 // 배송 카드에서 바로 잔금 완납 처리 (계약과 연결된 경우)
@@ -1816,8 +1892,51 @@ window.shareEventKakao = async function(eventId) {
   const rawMemo = raw.memo || raw.details || event.details || '';
   const memoStr = rawMemo || '특이사항 없음';
 
+  const isHomevisit = event.type === 'homevisit';
+
   let kakaoMsg, shareTitle;
-  if (isDelivery) {
+  if (isHomevisit) {
+    const hv = raw || {};
+    if (!hv.consentSigned) {
+      // ① 서명 전: 동의서 링크 안내문자
+      const consentUrl = new URL('goldi_ambassador_consent.html', location.href.split('?')[0].split('#')[0]);
+      consentUrl.search = new URLSearchParams({ scheduleId: event.dbKey }).toString();
+      shareTitle = '[골디쉼터] 골디 앰버서더 방문 안내';
+      kakaoMsg = `${shareTitle}
+
+안녕하세요, ${buyerName}님
+골디쉼터를 대표하는 아이들이 직접 찾아가 인사드리는 골디 앰버서더 서비스를 신청해주셔서 감사합니다.
+
+아래 링크에서 방문 동의서 내용을 확인하시고 서명해주세요.
+${consentUrl.href}
+
+서명이 완료되고 예약금 입금까지 확인되면 방문 일정이 최종 확정됩니다.
+예약금 계좌는 서명 완료 후 별도로 안내드릴게요.
+
+궁금하신 점 있으시면 언제든 편하게 말씀해주세요 🐾`;
+    } else {
+      // ② 서명 + 입금 확인 후: 방문 확정문자
+      const puppyList = event.puppies || hv.puppies || [];
+      const puppyNames = (Array.isArray(puppyList) && puppyList.length) ? puppyList.map(p => p.name).filter(Boolean).join(', ') : '추후 안내';
+      shareTitle = '[골디쉼터] 🐶 골디 앰버서더 방문이 확정되었습니다';
+      kakaoMsg = `${shareTitle}
+
+안녕하세요, ${buyerName}님
+서명과 예약금 입금이 확인되어 방문 일정이 아래와 같이 확정되었습니다.
+
+📅 방문 일시: ${dateTimeStr}
+🐾 만나보실 아이들: ${puppyNames}
+📍 방문 장소: ${addressStr}
+⏱ 미팅 시간: 최대 1시간
+
+🚙 오시는 길: 티맵에서 "${addressStr}" 검색하시면 편하게 오실 수 있어요!
+
+* 방문 장소에 다른 반려동물이 있는 경우 미리 말씀해주신 대로 인근 대체 장소에서 진행됩니다.
+* 일정 변경/취소는 방문 당일 오전 9시까지 가능합니다.
+
+곧 뵙겠습니다 🐾`;
+    }
+  } else if (isDelivery) {
     const dogName = event.dogname || raw.dogname || raw.puppy || raw.puppyName || raw.dogName || '자견';
     shareTitle = '[골디쉼터] 🚗 배송 일정 안내';
     kakaoMsg = `${shareTitle}
