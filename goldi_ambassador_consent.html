@@ -550,27 +550,80 @@ window.submitConsent = async () => {
   }
 };
 
+// data URI(base64)를 실제 파일(Blob/File)로 변환 — 공유시트/저장창에 넘기려면 파일 형태가 필요함
+function pdfDataUriToFile(dataUri, fname) {
+  const base64 = dataUri.split(',')[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  return new File([blob], fname, { type: 'application/pdf' });
+}
+
+// data: URI를 <a download>로 바로 클릭하는 방식은 특히 모바일 브라우저에서 "다운로드 중"
+// 표시만 뜨고 실제로는 어디에도 저장되지 않는 경우가 많다(브라우저가 조용히 무시).
+// 그래서 실제 파일(File)을 만들어 (1) 모바일 공유시트 → 저장 위치 선택 가능
+// (2) 데스크톱 "다른 이름으로 저장" 창 → 저장 위치 직접 선택
+// (3) 위 둘 다 안 되면 새 탭으로 열어서 브라우저 메뉴로 직접 저장하게 안내, 순으로 시도한다.
+async function deliverPdfFile(file) {
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: file.name });
+      toast('공유 시트에서 저장 위치를 선택해주세요. 🐾');
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // 사용자가 취소한 경우 - 에러 아님
+      console.warn('[공유 실패, 다음 방식 시도]:', e);
+    }
+  }
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: file.name,
+        types: [{ description: 'PDF 파일', accept: { 'application/pdf': ['.pdf'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(file);
+      await writable.close();
+      toast('선택하신 위치에 저장되었습니다! 🐾');
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // 사용자가 저장 취소
+      console.warn('[저장창 실패, 다음 방식 시도]:', e);
+    }
+  }
+  const blobUrl = URL.createObjectURL(file);
+  window.open(blobUrl, '_blank');
+  toast('새 탭에 PDF가 열렸습니다. 브라우저 메뉴에서 저장해주세요. 🐾');
+}
+
 window.downloadPDF = async () => {
-  const btn=document.getElementById('pdfBtn');
-  if(window._savedPdf){
-    const a=document.createElement('a');
-    a.href=window._savedPdf;
-    a.download='골디앰버서더_동의서_'+(S?.buyer_name||'')+'_'+today()+'.pdf';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    toast('기기의 기본 다운로드 폴더에 저장되었습니다! 🐾');
-    return;
+  const btn = document.getElementById('pdfBtn');
+  const fname = '골디앰버서더_동의서_' + (S?.buyer_name || '') + '_' + today() + '.pdf';
+
+  let pdfDataUri = window._savedPdf;
+  if (!pdfDataUri) {
+    btn.textContent = '⏳ PDF 생성 중...'; btn.disabled = true;
+    try {
+      const pdf = await captureConsentPdf();
+      pdfDataUri = pdf.output('datauristring');
+    } catch (e) {
+      toast('PDF 생성 중 오류가 발생했습니다.');
+      console.error(e);
+      btn.textContent = '📄 동의서 사본 (PDF) 다운로드'; btn.disabled = false;
+      return;
+    }
   }
-  btn.textContent='⏳ PDF 생성 중...'; btn.disabled=true;
-  try{
-    const pdf = await captureConsentPdf();
-    const fname='골디앰버서더_동의서_'+(S?.buyer_name||'')+'_'+today()+'.pdf';
-    pdf.save(fname);
-    toast('기기의 기본 다운로드 폴더에 저장되었습니다! 🐾');
-  }catch(e){
-    toast('PDF 생성 중 오류가 발생했습니다.');
-    console.error(e);
+
+  btn.textContent = '⏳ 저장 준비 중...'; btn.disabled = true;
+  try {
+    const file = pdfDataUriToFile(pdfDataUri, fname);
+    await deliverPdfFile(file);
+  } catch (e) {
+    console.error('PDF 저장 실패:', e);
+    toast('저장에 실패했습니다. 다시 시도해주세요.');
   }
-  btn.textContent='📄 동의서 사본 (PDF) 다운로드'; btn.disabled=false;
+  btn.textContent = '📄 동의서 사본 (PDF) 다운로드'; btn.disabled = false;
 };
 </script>
 </body>
