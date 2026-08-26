@@ -244,9 +244,9 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     <div class="card">
       <div class="card-title">분양 조건</div>
       <div class="fgrid">
-        <div class="ffield"><label>분양가 (원)</label><input id="f_price" readonly></div>
+        <div class="ffield"><label>분양가 (원)</label><input id="f_price" readonly><span id="ambDiscountNote" style="display:none;font-size:11px;color:#27AE60;font-weight:700;margin-top:2px"></span></div>
         <div class="ffield"><label>분양 예정일</label><input id="f_saledate" readonly></div>
-        <div class="ffield"><label>계약금 (원)</label><input type="number" id="b_deposit" placeholder="예: 300000"></div>
+        <div class="ffield"><label>계약금 (원)</label><input type="number" id="b_deposit" placeholder="예: 300000"><span id="ambDepositNote" style="display:none;font-size:11px;color:#C8931A;font-weight:700;margin-top:2px"></span></div>
         <div class="ffield"><label>잔금 납부일</label><input type="date" id="b_balance_date"></div>
       </div>
     </div>
@@ -375,7 +375,9 @@ let G = {
   maleCode:  P.get('maleCode')||'',
   price:     P.get('price')||'',
   saledate:  P.get('saledate')||'',
-  memo:      P.get('memo')||''
+  memo:      P.get('memo')||'',
+  amb_deposit:  P.get('amb_deposit')||'',
+  amb_discount: P.get('amb_discount')||''
 };
 
 // [안심 예외 복원 가드] 표준 파서에서 필수값이 유실된 경우에만 자가 치유(Self-healing) 가동
@@ -397,7 +399,9 @@ if (!G.litter || !G.puppy) {
         maleCode:  P2.get('maleCode')||G.maleCode,
         price:     P2.get('price')||G.price,
         saledate:  P2.get('saledate')||G.saledate,
-        memo:      P2.get('memo')||G.memo
+        memo:      P2.get('memo')||G.memo,
+        amb_deposit:  P2.get('amb_deposit')||G.amb_deposit,
+        amb_discount: P2.get('amb_discount')||G.amb_discount
       };
     } catch(e) {
       console.warn('URL 자가 복구 실패:', e);
@@ -510,6 +514,22 @@ async function init(){
   const calcDeworm1 = G.birthB ? addDays(G.birthB, 25) : (G.deworm1 || '');
   const calcDeworm2 = G.birthB ? addDays(G.birthB, 40) : (G.deworm2 || '');
   const calcDeworm3 = G.birthB ? addDays(G.birthB, 55) : (G.deworm3 || '');
+
+  // 🐾 골디 앰버서더 연동: 다마리 할인(10%)은 분양가에 미리 반영, 예약금은 계약금 입력칸에 자동 채움
+  if (G.amb_discount === '1' && G.price) {
+    G.price = String(Math.round(Number(G.price) * 0.9));
+    window._ambDiscountApplied = true;
+  }
+  if (G.amb_deposit) {
+    const depositInput = document.getElementById('b_deposit');
+    if (depositInput) depositInput.value = G.amb_deposit;
+    const depositNote = document.getElementById('ambDepositNote');
+    if (depositNote) { depositNote.textContent = '🐾 골디 앰버서더 방문 예약금이 반영되었습니다'; depositNote.style.display = 'block'; }
+  }
+  if (window._ambDiscountApplied) {
+    const discountNote = document.getElementById('ambDiscountNote');
+    if (discountNote) { discountNote.textContent = '🐾 다마리 방문 할인(10%) 적용된 금액입니다'; discountNote.style.display = 'block'; }
+  }
 
   // 1. URL 파라미터로 즉시 0.01초 만에 강아지 정보 채우기
   document.getElementById('f_dogname').value = G.dogname;
@@ -701,7 +721,7 @@ window.goStep2=(isCompletedLoad)=>{
 <div class="cv-section">4. 분양 조건</div>
 <table class="cv-table cv-table-kv">
   <tr><th>분양일</th><td>${fmt(G.saledate)}</td><th>결제방법</th><td>${esc(payment)}${transfer?' (이체자: '+esc(transfer)+')':''}</td></tr>
-  <tr><th>분양금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
+  <tr><th>분양금액</th><td colspan="3"><strong>${numFmt(G.price)}</strong>${window._ambDiscountApplied?' <span style="color:#27AE60;font-size:10px;font-weight:700">(다마리 방문 할인 10% 적용)</span>':''}${deposit?' (계약금: '+numFmt(deposit)+', 잔금납부일: '+fmt(balDate)+')':''}</td></tr>
 </table>
 
 <div class="cv-section">5. 품질 보증 및 분쟁 해결 조항</div>
