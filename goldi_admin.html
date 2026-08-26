@@ -365,18 +365,28 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 // 카카오 주소검색 API로 주소 → 좌표 변환 (KAKAO_REST_API_KEY 필요)
+// 실패 원인을 window.__lastGeocodeReason에 남겨서, 호출부에서 "진짜 주소를 못 찾음"과
+// "네트워크/CORS/인증 문제로 아예 응답을 못 받음"을 구분해 서로 다른 안내를 줄 수 있게 한다.
+window.__lastGeocodeReason = '';
 async function geocodeAddress(address) {
-  if (!KAKAO_REST_API_KEY || !address) return null;
+  if (!KAKAO_REST_API_KEY || !address) { window.__lastGeocodeReason = 'no-key-or-address'; return null; }
   try {
     const res = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
       headers: { Authorization: `KakaoAK ${KAKAO_REST_API_KEY}` }
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      window.__lastGeocodeReason = 'http-' + res.status;
+      console.error('[geocodeAddress] API 응답 오류, status:', res.status);
+      return null;
+    }
     const data = await res.json();
     const doc = data.documents && data.documents[0];
-    if (!doc) return null;
+    if (!doc) { window.__lastGeocodeReason = 'not-found'; return null; }
+    window.__lastGeocodeReason = 'ok';
     return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
   } catch (e) {
+    // 브라우저에서 dapi.kakao.com 호출이 CORS/도메인 미등록 등으로 아예 막히면 여기로 온다
+    window.__lastGeocodeReason = 'network-error';
     console.error('[geocodeAddress 오류]:', e);
     return null;
   }
@@ -2323,11 +2333,21 @@ window.openAddEventModal = function() {
 
 // 예약 등록 시 "보러 오실 자견"을 배(모견×부견/출생일) 단위로 묶어 체크박스로 보여준다
 // (분양완료 상태인 자견은 이미 나갔으므로 목록에서 제외)
-// "보러 오실 아이" 표시를 "해리네 새끼1"처럼 배(litter)의 모견 코드를 접두어로 붙여서 보여준다.
-// (모견 코드는 femaleCode 필드에 저장돼 있고, Dave가 지어준 배 이름이 그대로 들어있음 — 예: "해리")
+// "보러 오실 아이" 표시를 "해리네 새끼1"처럼 배(litter)의 모견 이름을 접두어로 붙여서 보여준다.
+// femaleCode 필드가 "4351/포순이"처럼 "번호/이름" 형식으로 저장된 경우가 있어서,
+// 슬래시가 있으면 뒤쪽 이름 부분만 쓰고 번호는 화면에 노출하지 않는다.
+function cleanMomDisplayName(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.includes('/')) {
+    const parts = s.split('/');
+    return parts[parts.length - 1].trim();
+  }
+  return s;
+}
 function litterPuppyDisplayName(l, p, pid) {
   const base = p.name || pid;
-  const mom = (l.femaleCode || '').trim();
+  const mom = cleanMomDisplayName(l.femaleCode);
   return mom && mom !== '—' ? `${mom}네 ${base}` : base;
 }
 
@@ -2466,7 +2486,14 @@ window.calcHomevisitFee = async function() {
   resultEl.textContent = '⏳ 거리 계산 중...';
   const coord = await geocodeAddress(address);
   if (!coord) {
-    resultEl.textContent = '⚠️ 주소를 찾지 못했습니다. 주소 검색을 다시 시도하시거나 소요시간을 직접 입력해주세요.';
+    const reason = window.__lastGeocodeReason || '';
+    if (reason === 'not-found') {
+      resultEl.textContent = '⚠️ 주소를 찾지 못했습니다. 주소 검색을 다시 시도하시거나 소요시간을 직접 입력해주세요.';
+    } else {
+      // 카카오 서버 응답 자체를 못 받은 경우 (네트워크 차단/CORS/도메인 미등록/인증오류 등) —
+      // 실제로 가장 흔한 원인은 카카오 디벨로퍼스에 이 사이트 도메인이 플랫폼으로 등록 안 된 경우다.
+      resultEl.textContent = '⚠️ 카카오 서버 연결에 실패했습니다 (' + reason + '). 카카오 디벨로퍼스 앱의 "플랫폼" 설정에 이 사이트 도메인(https://daveheo89.github.io)이 Web 플랫폼으로 등록되어 있는지 확인해주세요. 그래도 안 되면 소요시간을 직접 입력해주세요.';
+    }
     return;
   }
   const km = haversineKm(YANGPYEONG_OFFICE_COORD.lat, YANGPYEONG_OFFICE_COORD.lng, coord.lat, coord.lng);
