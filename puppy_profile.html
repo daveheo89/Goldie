@@ -151,7 +151,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, get, query, orderByChild, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     // Standardized Firebase Config (goldie_farm.html과 동일)
     const firebaseConfig = {
@@ -246,12 +246,11 @@
 
       try {
         console.log('[분양프로필] 데이터 조회 시작', { litterKey, puppyId });
-        const [litterSnap, malesSnap, femalesSnap] = await Promise.all([
-          withTimeout(get(ref(db, `litters/${litterKey}`)), 10000, 'litters 조회'),
-          withTimeout(get(ref(db, 'males')), 10000, 'males 조회'),
-          withTimeout(get(ref(db, 'females')), 10000, 'females 조회')
-        ]);
-        console.log('[분양프로필] 데이터 조회 완료');
+        // ⚡ litters만 먼저 받는다 — males/females를 통째로 받으면 다른 개체들 사진까지
+        // 전부 딸려와서(특히 예전 base64 사진이 남아있는 경우) 느려지므로, 부모견 코드가
+        // 확인된 다음에 그 코드에 해당하는 딱 1건만 서버에서 걸러서 받는다.
+        const litterSnap = await withTimeout(get(ref(db, `litters/${litterKey}`)), 10000, 'litters 조회');
+        console.log('[분양프로필] litters 조회 완료');
 
         if (!litterSnap.exists()) {
           document.getElementById('loading-overlay').innerHTML = '<div style="padding:20px; text-align:center;">강아지 정보를 찾을 수 없습니다.</div>';
@@ -276,30 +275,31 @@
         // ③ 성별 표시
         document.getElementById('disp-sex').textContent = p.sex === 'female' ? '♀ 암컷 (공주님)' : p.sex === 'male' ? '♂ 수컷 (왕자님)' : '미정';
 
-        // ④ 부/모견 정규화 매칭 및 노출 설정 판단
-        const malesMap = {};
-        if (malesSnap.exists()) {
-          malesSnap.forEach(c => {
-            const v = c.val();
-            const cleaned = cleanDogName(v.code);
-            if (cleaned) malesMap[cleaned] = { _key: c.key, ...v };
-          });
-        }
+        // 핵심 정보(사진/출생일/성별)는 다 준비됐으니 로딩 화면을 여기서 바로 닫는다.
+        // 부모견 카드는 아래에서 이어서 비동기로 채운다(화면이 훨씬 빨리 뜬 것처럼 느껴짐).
+        document.getElementById('loading-overlay').style.display = 'none';
 
-        const femalesMap = {};
-        if (femalesSnap.exists()) {
-          femalesSnap.forEach(c => {
-            const v = c.val();
-            const cleaned = cleanDogName(v.code);
-            if (cleaned) femalesMap[cleaned] = { _key: c.key, ...v };
-          });
-        }
-
+        // ④ 부/모견 정보 — 코드가 일치하는 딱 1건만 서버에서 걸러서 조회
         const maleCleanCode = cleanDogName(lt.maleCode);
         const femaleCleanCode = cleanDogName(lt.femaleCode);
 
-        const sireData = malesMap[maleCleanCode];
-        const damData = femalesMap[femaleCleanCode];
+        const [sireSnap, damSnap] = await Promise.all([
+          maleCleanCode
+            ? withTimeout(get(query(ref(db, 'males'), orderByChild('code'), startAt(maleCleanCode), endAt(maleCleanCode + '\uf8ff'))), 10000, '부견 조회').catch(e => { console.warn('[부견 조회 실패]:', e); return null; })
+            : Promise.resolve(null),
+          femaleCleanCode
+            ? withTimeout(get(query(ref(db, 'females'), orderByChild('code'), startAt(femaleCleanCode), endAt(femaleCleanCode + '\uf8ff'))), 10000, '모견 조회').catch(e => { console.warn('[모견 조회 실패]:', e); return null; })
+            : Promise.resolve(null)
+        ]);
+
+        let sireData = null;
+        if (sireSnap && sireSnap.exists()) {
+          sireSnap.forEach(c => { if (!sireData) sireData = { _key: c.key, ...c.val() }; });
+        }
+        let damData = null;
+        if (damSnap && damSnap.exists()) {
+          damSnap.forEach(c => { if (!damData) damData = { _key: c.key, ...c.val() }; });
+        }
 
         const showSire = p.showSireInProfile !== false;
         const showDam = p.showDamInProfile !== false;
@@ -321,8 +321,6 @@
         if (parentCount > 0) {
           document.getElementById('parent-section-wrap').style.display = 'block';
         }
-
-        document.getElementById('loading-overlay').style.display = 'none';
 
       } catch (err) {
         console.error('[분양프로필] 로딩 오류:', err);
@@ -347,7 +345,7 @@
         if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')))) {
           item.innerHTML = `<video src="${m.src}" controls preload="metadata" playsinline></video>`;
         } else {
-          item.innerHTML = `<img src="${m.src}" alt="Puppy Photo" onclick="openLightboxGallery('main', ${idx})">`;
+          item.innerHTML = `<img src="${m.src}" alt="Puppy Photo" loading="${idx === 0 ? 'eager' : 'lazy'}" onclick="openLightboxGallery('main', ${idx})">`;
         }
 
         track.appendChild(item);
@@ -400,7 +398,7 @@
           if (m.type === 'video' || (m.src && (m.src.includes('.mp4') || m.src.includes('.mov')))) {
             return `<div class="slide-item"><video src="${m.src}" controls preload="metadata" playsinline></video></div>`;
           }
-          return `<div class="slide-item"><img src="${m.src}" alt="${roleTitle}" onclick="openLightboxGallery('${roleKey}', ${idx})"></div>`;
+          return `<div class="slide-item"><img src="${m.src}" alt="${roleTitle}" loading="${idx === 0 ? 'eager' : 'lazy'}" onclick="openLightboxGallery('${roleKey}', ${idx})"></div>`;
         }).join('');
 
         parentMediaHtml = `
