@@ -127,6 +127,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
 .cal-chip.rsv { background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7; }
 .cal-chip.delivery { background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1; }
 .cal-chip.care { background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; }
+.cal-chip.homevisit { background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9; }
 @media(max-width:560px){.fgrid{grid-template-columns:1fr}.tab-btn{padding:10px 14px;font-size:12px}.cal-cell{min-height:50px;padding:3px}.cal-day{font-size:11px}.cal-chip{font-size:8px;padding:1px 2px}}
 </style>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -180,6 +181,7 @@ window.addEventListener('DOMContentLoaded', function(){
   <button class="tab-btn active" onclick="switchTab(this,'send')">📨 계약서 발송</button>
   <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
   <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 일정 & Google 캘린더</button>
+  <button class="tab-btn" onclick="switchTab(this,'credits')">🎟 크레딧 관리</button>
   <button class="tab-btn" onclick="window.open('https://daveheo89.github.io/Goldie/goldie_farm.html','_blank')" style="color:var(--gold-l);">🏡 농장 관리 페이지 ↗</button>
 </div>
 
@@ -246,9 +248,10 @@ window.addEventListener('DOMContentLoaded', function(){
     </div>
     
     <div class="status-sel">
-      <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기 (🟡예약 & 🔵배송)</button>
+      <button class="status-opt active" id="cal-filter-all" onclick="filterCalCategory('all')">전체 보기 (🟡예약 & 🔵배송 & 🟢골디앰버서더)</button>
       <button class="status-opt" id="cal-filter-rsv" onclick="filterCalCategory('rsv')">🟡 방문 예약</button>
       <button class="status-opt" id="cal-filter-delivery" onclick="filterCalCategory('delivery')">🔵 자택 배송</button>
+      <button class="status-opt" id="cal-filter-homevisit" onclick="filterCalCategory('homevisit')">🟢 골디 앰버서더</button>
     </div>
 
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -264,6 +267,18 @@ window.addEventListener('DOMContentLoaded', function(){
   <div class="stitle" id="selectedDayTitle">📅 선택된 날짜의 일정</div>
   <div id="dayDetailsContainer"></div>
 
+</div>
+
+<!-- TAB5: 골디 앰버서더 크레딧 관리 (미선택 시 발급되는 3개월 유효 예약금 크레딧) -->
+<div class="tab-panel" id="tab-credits">
+  <div class="stitle">🎟 골디 앰버서더 크레딧 관리</div>
+  <div style="font-size:12px; color:var(--gray); margin-bottom:14px;">
+    골디 앰버서더 방문 후 미선택으로 종료된 건은 예약금이 발급일로부터 3개월간 유효한 크레딧으로 자동 전환됩니다. 만료 임박 건은 빨간색으로 강조 표시됩니다.
+  </div>
+  <div class="search-row">
+    <input type="text" id="creditSearch" placeholder="고객명, 연락처 검색..." oninput="renderCreditsList()">
+  </div>
+  <div id="creditsList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
 <div class="modal-bg" id="detailModal">
@@ -322,6 +337,60 @@ loadLastDeployTime('goldi_admin.html', 'deploy-time-info');
 // ── 🔐 실제 Firebase 로그인 (goldie_farm.html과 동일 계정 사용) ──
 const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
 const SHELTER_ADDRESS = '충북 음성군 감곡면 가곡로532번길 15-17'; // 방문 예약 시 장소 칸 자동 입력용
+
+// ── 골디 앰버서더(방문형 이동분양) 설정 ──────────────────────────────
+// 양평군청 대략 좌표(참고용). 실제 운영 전 카카오맵/네이버맵에서 정확한 좌표로 재확인 권장.
+const YANGPYEONG_OFFICE_COORD = { lat: 37.4916, lng: 127.4874 };
+// 카카오 디벨로퍼스(https://developers.kakao.com)에서 REST API 키 발급 후 아래에 입력하면
+// 주소 → 좌표 자동 변환이 활성화됨. 비워두면 소요시간을 직접 입력하는 방식으로 동작.
+const KAKAO_REST_API_KEY = '';
+// 편도 소요시간(분) 기준 예약금 구간 (양평군청 기준)
+const HOMEVISIT_TIERS = [
+  { maxMinutes: 90,  fee: 50000 },
+  { maxMinutes: 150, fee: 100000 },
+  { maxMinutes: 180, fee: 150000 }
+];
+const HOMEVISIT_MULTI_DISCOUNT = 0.10; // 다마리 분양 시 2번째 마리부터 할인율
+const HOMEVISIT_CREDIT_MONTHS = 3;     // 미선택 시 발급되는 크레딧 유효기간(개월)
+
+// 두 좌표 사이 직선거리(km) 계산 (Haversine)
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// 카카오 주소검색 API로 주소 → 좌표 변환 (KAKAO_REST_API_KEY 필요)
+async function geocodeAddress(address) {
+  if (!KAKAO_REST_API_KEY || !address) return null;
+  try {
+    const res = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
+      headers: { Authorization: `KakaoAK ${KAKAO_REST_API_KEY}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const doc = data.documents && data.documents[0];
+    if (!doc) return null;
+    return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
+  } catch (e) {
+    console.error('[geocodeAddress 오류]:', e);
+    return null;
+  }
+}
+
+// 직선거리(km) → 예상 소요시간(분) 추정 (평균 시속 55km + 여유 10분 가정. 실제와 차이 있을 수 있음)
+function estimateDriveMinutes(km) {
+  return Math.round((km / 55) * 60) + 10;
+}
+
+// 소요시간(분) → 예약금 구간 매칭. null이면 3시간 초과(서비스 불가 범위)
+function homevisitFeeByMinutes(minutes) {
+  const tier = HOMEVISIT_TIERS.find(t => minutes <= t.maxMinutes);
+  return tier ? tier.fee : null;
+}
+window.__homevisitHelpers = { haversineKm, geocodeAddress, estimateDriveMinutes, homevisitFeeByMinutes };
 setPersistence(auth, browserLocalPersistence).catch(()=>{});
 
 // 🗓️ 당일 로그인 유지: goldie_farm.html과 같은 localStorage 키를 공유해서
@@ -1220,6 +1289,7 @@ window.toggleContractPdf = (id) => {
 window._schedules = {};
 window._deliveries = {};
 window._reservations = {};
+window._credits = {};
 
 window._litters = {};
 window._calFilter = 'all';
@@ -1261,6 +1331,15 @@ function startAdminCalendarListeners() {
   }, error => {
     console.error('[reservations 구독 오류]:', error);
     if (typeof toast === 'function') toast('⚠️ 예약 데이터 연결 오류: ' + (error.code || error.message));
+  });
+  onValue(ref(db, 'credits'), snap => {
+    const val = snap.val() || {};
+    window._credits = val;
+    try { localStorage.setItem('goldi_cache_credits', JSON.stringify(val)); } catch(e){}
+    if (typeof window.renderCreditsList === 'function') window.renderCreditsList();
+  }, error => {
+    console.error('[credits 구독 오류]:', error);
+    if (typeof toast === 'function') toast('⚠️ 크레딧 데이터 연결 오류: ' + (error.code || error.message));
   });
 }
 window.startAdminCalendarListeners = startAdminCalendarListeners;
@@ -1526,6 +1605,7 @@ window.renderMonthlyGridCalendar = function() {
     const type = e.type || 'rsv';
     if (filter === 'rsv') return type === 'rsv';
     if (filter === 'delivery') return type === 'delivery';
+    if (filter === 'homevisit') return type === 'homevisit';
     return true;
   });
 
@@ -1553,9 +1633,11 @@ window.renderMonthlyGridCalendar = function() {
       chipsHtml = '<div class="cal-chips">';
       const rsvCount = dayEvents.filter(e => e.type === 'rsv').length;
       const delCount = dayEvents.filter(e => e.type === 'delivery').length;
+      const hvCount = dayEvents.filter(e => e.type === 'homevisit').length;
 
       if (rsvCount > 0) chipsHtml += `<div class="cal-chip rsv">🟡 예약 ${rsvCount}</div>`;
       if (delCount > 0) chipsHtml += `<div class="cal-chip delivery">🔵 배송 ${delCount}</div>`;
+      if (hvCount > 0) chipsHtml += `<div class="cal-chip homevisit">🟢 골디앰버서더 ${hvCount}</div>`;
       chipsHtml += '</div>';
     }
 
@@ -1596,6 +1678,7 @@ window.renderSelectedDayEvents = function(dateStr) {
     const type = e.type || 'rsv';
     if (filter === 'rsv') return type === 'rsv';
     if (filter === 'delivery') return type === 'delivery';
+    if (filter === 'homevisit') return type === 'homevisit';
     return true;
   });
 
@@ -1613,10 +1696,20 @@ window.renderSelectedDayEvents = function(dateStr) {
     let catBadge = '';
     let isGCalSyncable = true;
 
+    let hvDetailHtml = '';
     if (type === 'rsv') {
       catBadge = '<span class="badge" style="background:#FFF3E0; color:#E67E22; border:1px solid #F5CBA7;">🟡 예약</span>';
     } else if (type === 'delivery') {
       catBadge = '<span class="badge" style="background:#EBF5FB; color:#2980B9; border:1px solid #AED6F1;">🔵 배송</span>';
+    } else if (type === 'homevisit') {
+      const hv = s.raw || {};
+      const resultLabelMap = { '예정': '⏳ 예정', '선택완료': '✅ 선택완료', '미선택': '➖ 미선택(크레딧)', '노쇼': '🚫 노쇼' };
+      const resultLabel = resultLabelMap[hv.hvResult] || '⏳ 예정';
+      catBadge = `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 골디 앰버서더</span> <span class="badge" style="background:#F4F4F4; color:#555; border:1px solid #ddd; margin-left:4px;">${resultLabel}</span>`;
+      hvDetailHtml = `<div style="font-size:12px; color:var(--gray); margin-bottom:4px;">
+        💰 예약금 ${hv.hvFee ? Number(hv.hvFee).toLocaleString() + '원' : '-'} · ⏱ 편도 약 ${hv.hvMinutes || '-'}분 · 🐕 방문지 반려동물: ${hv.hvPetAtLocation === 'yes' ? '있음(대체장소)' : '없음'}${hv.hvMultiCount > 1 ? ` · 👬 다마리(${hv.hvMultiCount}마리, 2번째부터 10%할인)` : ''}
+      </div>`;
+      isGCalSyncable = true;
     } else {
       catBadge = '<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 방역/치료 (독립)</span>';
       isGCalSyncable = false;
@@ -1638,7 +1731,7 @@ window.renderSelectedDayEvents = function(dateStr) {
     }
 
     let kakaoBtn = '';
-    if (type === 'delivery' || type === 'rsv' || s.tmapUrl) {
+    if (type === 'delivery' || type === 'rsv' || type === 'homevisit' || s.tmapUrl) {
       kakaoBtn = `<button class="btn btn-sm" onclick="shareEventKakao('${s.id}')" style="background:#FEE500; color:#191919; font-weight:700; border:none; text-decoration:none; cursor:pointer;">💬 카톡 안내 전송</button>`;
     }
 
@@ -1658,7 +1751,7 @@ window.renderSelectedDayEvents = function(dateStr) {
     }
 
     return `
-      <div class="card" style="margin-bottom:10px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':'#10B981')}">
+      <div class="card" style="margin-bottom:10px; border-left: 5px solid ${type==='rsv'?'#F59E0B':(type==='delivery'?'#3B82F6':(type==='homevisit'?'#27AE60':'#10B981'))}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
           <div>
             ${catBadge}${settledBadge}
@@ -1666,6 +1759,7 @@ window.renderSelectedDayEvents = function(dateStr) {
           </div>
           <span style="font-size:12px; color:var(--gray); font-weight:600;">📅 ${fmt(s.date)}${s.time ? ` ⏰ ${s.time}` : ''}</span>
         </div>
+        ${hvDetailHtml}
         ${s.location ? `<div style="font-size:12px; color:var(--br-l); margin-bottom:4px; word-break:break-all;">📍 <strong>장소/주소:</strong> ${s.location}</div>` : ''}
         ${s.details ? `<div style="font-size:12px; color:var(--gray); margin-bottom:10px; word-break:break-all;">📝 <strong>상세내용:</strong> ${s.details}</div>` : ''}
         <div class="btn-row" style="margin-top:10px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -1796,9 +1890,9 @@ window.openEditCalendarEventModal = function(eventId) {
   const location = event.location || raw.address || raw.buyer_addr || raw.location || '';
   const details = raw.memo || raw.details || event.details || '';
 
-  const puppyOrDognameField = type === 'rsv'
+  const puppyOrDognameField = (type === 'rsv' || type === 'homevisit')
     ? `<div class="ffield" id="edit_puppy_field" style="margin-bottom:12px;">
-        <label>보러 오실 자견 선택 (여러 마리 가능, 분양완료 제외)</label>
+        <label>${type === 'homevisit' ? '비교하신 아이들' : '보러 오실 자견 선택 (여러 마리 가능, 분양완료 제외)'}</label>
         <div id="edit_puppy_list" style="max-height:220px; overflow-y:auto; border:1.5px solid var(--gray-l); border-radius:8px; padding:10px; background:#fafafa;"></div>
       </div>`
     : `<div class="ffield" style="margin-bottom:12px;">
@@ -1806,15 +1900,38 @@ window.openEditCalendarEventModal = function(eventId) {
         <input type="text" id="edit_dogname" value="${dogname}" placeholder="예: 빨강이">
       </div>`;
 
+  const hv = raw || {};
+  const homevisitFields = type === 'homevisit' ? `
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>방문 결과</label>
+      <select id="edit_hv_result" style="padding:10px;">
+        <option value="예정" ${hv.hvResult==='예정'?'selected':''}>⏳ 예정</option>
+        <option value="선택완료" ${hv.hvResult==='선택완료'?'selected':''}>✅ 선택완료 (본계약 진행)</option>
+        <option value="미선택" ${hv.hvResult==='미선택'?'selected':''}>➖ 미선택 (크레딧 전환)</option>
+        <option value="노쇼" ${hv.hvResult==='노쇼'?'selected':''}>🚫 노쇼</option>
+      </select>
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>선택 마리 수 (2마리 이상 시 2번째부터 10% 할인)</label>
+      <input type="number" id="edit_hv_multicount" min="1" value="${hv.hvMultiCount || 1}">
+    </div>
+    <div class="ffield" style="margin-bottom:12px;">
+      <label>예약금 (원)</label>
+      <input type="number" id="edit_hv_fee" value="${hv.hvFee || ''}">
+    </div>
+  ` : '';
+
   const html = `
     <div class="ffield" style="margin-bottom:12px;">
       <label>카테고리</label>
       <select id="edit_cal_type" disabled style="padding:10px; font-weight:700; background:var(--gray-ll);">
         <option value="delivery" ${type==='delivery'?'selected':''}>🔵 자택 배송</option>
         <option value="rsv" ${type==='rsv'?'selected':''}>🟡 방문 예약</option>
+        <option value="homevisit" ${type==='homevisit'?'selected':''}>🟢 골디 앰버서더</option>
       </select>
     </div>
     ${puppyOrDognameField}
+    ${homevisitFields}
     <div class="ffield" style="margin-bottom:12px;">
       <label>수령인 / 방문자 성함 *</label>
       <input type="text" id="edit_buyer_name" value="${buyer_name}" placeholder="예: 양경모">
@@ -1841,11 +1958,11 @@ window.openEditCalendarEventModal = function(eventId) {
     </div>
   `;
 
-  document.getElementById('modalTitle').textContent = `✏️ 일정 수정 — ${type === 'delivery' ? '🔵 배송' : '🟡 예약'}`;
+  document.getElementById('modalTitle').textContent = `✏️ 일정 수정 — ${type === 'delivery' ? '🔵 배송' : (type === 'homevisit' ? '🟢 골디 앰버서더' : '🟡 예약')}`;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('detailModal').classList.add('open');
 
-  if (type === 'rsv') {
+  if (type === 'rsv' || type === 'homevisit') {
     window.renderEditPuppyChecklist(existingPuppies);
   }
 };
@@ -1885,8 +2002,9 @@ window.saveEditCalendarEvent = async function(eventId) {
   if (!event) return;
 
   const isRsv = event.type === 'rsv';
+  const isHomevisit = event.type === 'homevisit';
   const dogname = (document.getElementById('edit_dogname')?.value || '').trim();
-  const selectedPuppies = isRsv
+  const selectedPuppies = (isRsv || isHomevisit)
     ? Array.from(document.querySelectorAll('.edit-puppy-check:checked')).map(cb => ({
         lid: cb.dataset.lid,
         pid: cb.dataset.pid,
@@ -1900,6 +2018,14 @@ window.saveEditCalendarEvent = async function(eventId) {
   const time = document.getElementById('edit_time')?.value || '';
   const location = (document.getElementById('edit_location')?.value || '').trim();
   const details = (document.getElementById('edit_details')?.value || '').trim();
+
+  let hvResult = '', hvMultiCount = 1, hvFee = null;
+  if (isHomevisit) {
+    hvResult = document.getElementById('edit_hv_result')?.value || '예정';
+    hvMultiCount = parseInt(document.getElementById('edit_hv_multicount')?.value, 10) || 1;
+    const feeRaw = document.getElementById('edit_hv_fee')?.value;
+    hvFee = feeRaw ? parseInt(feeRaw, 10) : null;
+  }
 
   if (!date) {
     toast('일자를 입력해주세요.');
@@ -1930,17 +2056,47 @@ window.saveEditCalendarEvent = async function(eventId) {
       if (isRsv) reservationUpdates.puppies = selectedPuppies;
       await update(ref(db, dbPath), reservationUpdates);
     } else if (dbPath.startsWith('schedules/')) {
-      const newTitle = event.type === 'delivery' ? `🚚 [배송] ${buyer_name || '수령인'} 님` : `🟡 [예약] ${buyer_name || '방문자'} 님`;
+      const newTitle = event.type === 'delivery'
+        ? `🚚 [배송] ${buyer_name || '수령인'} 님`
+        : isHomevisit
+          ? `🟢 [골디앰버서더] ${buyer_name || '방문자'} 님 (예약금 ${(hvFee || 0).toLocaleString()}원)`
+          : `🟡 [예약] ${buyer_name || '방문자'} 님`;
       const scheduleUpdates = {
         title: newTitle,
+        buyer_name: buyer_name,
+        buyer_phone: buyer_phone,
         date: date,
         time: time,
         location: location,
         details: details,
         tmapUrl: location ? `https://daveheo89.github.io/Goldie/tmap.html?q=${encodeURIComponent(location)}` : ''
       };
-      if (isRsv) scheduleUpdates.puppies = selectedPuppies;
+      if (isRsv || isHomevisit) scheduleUpdates.puppies = selectedPuppies;
+      if (isHomevisit) {
+        scheduleUpdates.hvResult = hvResult;
+        scheduleUpdates.hvMultiCount = hvMultiCount;
+        if (hvFee !== null) scheduleUpdates.hvFee = hvFee;
+      }
       await update(ref(db, dbPath), scheduleUpdates);
+
+      // 방문 결과가 "미선택"으로 처음 기록되는 순간에만 3개월 유효 크레딧을 1회 발급한다.
+      // (이미 크레딧이 발급된 건에서 다시 저장을 눌러도 중복 발급되지 않도록 raw.hvCreditIssued로 방지)
+      if (isHomevisit && hvResult === '미선택' && !event.raw?.hvCreditIssued) {
+        const issuedAt = Date.now();
+        const expiry = new Date(issuedAt);
+        expiry.setMonth(expiry.getMonth() + HOMEVISIT_CREDIT_MONTHS);
+        const creditRef = fbPush(ref(db, 'credits'));
+        await update(creditRef, {
+          buyer_name: buyer_name,
+          buyer_phone: buyer_phone,
+          sourceSchedulePath: dbPath,
+          amount: hvFee || event.raw?.hvFee || 0,
+          issuedAt: issuedAt,
+          expiresAt: expiry.getTime(),
+          status: '보유중' // '보유중' | '사용완료' | '만료'
+        });
+        await update(ref(db, dbPath), { hvCreditIssued: true });
+      }
     } else if (dbPath.startsWith('contracts/')) {
       await update(ref(db, dbPath), {
         balance_date: date,
@@ -1966,6 +2122,7 @@ window.openAddEventModal = function() {
       <select id="cal_type" onchange="window.onCalTypeChange()" style="padding:10px; font-weight:700;">
         <option value="rsv">🟡 예약 (방문/상담 - Google 캘린더 연동)</option>
         <option value="delivery">🔵 배송 (분양 인도 - Google 캘린더 연동)</option>
+        <option value="homevisit">🟢 골디 앰버서더</option>
       </select>
     </div>
     <div id="cal_rsv_fields">
@@ -1976,6 +2133,23 @@ window.openAddEventModal = function() {
       <div class="ffield" style="margin-bottom:12px;">
         <label>연락처</label>
         <input type="text" id="cal_visitor_phone" placeholder="예: 01012345678">
+      </div>
+    </div>
+    <div id="cal_homevisit_fields" style="display:none;">
+      <div class="ffield" style="margin-bottom:12px;">
+        <label>방문지 반려동물 유무 *</label>
+        <select id="cal_hv_pet" style="padding:10px;">
+          <option value="no">없음</option>
+          <option value="yes">있음 (인근 놀이터 등 대체 장소로 진행)</option>
+        </select>
+      </div>
+      <div class="ffield" style="margin-bottom:6px;">
+        <button type="button" class="btn btn-br btn-sm" onclick="window.calcHomevisitFee()">📍 거리/예약금 자동 계산</button>
+        <span id="cal_hv_result" style="display:block; margin-top:8px; font-size:13px; font-weight:700; color:var(--gold-l);"></span>
+      </div>
+      <div class="ffield" style="margin-bottom:12px;">
+        <label>편도 소요시간(분) — 자동계산 실패 시 직접 입력</label>
+        <input type="number" id="cal_hv_minutes" placeholder="예: 80" oninput="window.updateHomevisitFeeDisplay()">
       </div>
     </div>
     <div id="cal_delivery_fields" style="display:none;">
@@ -2062,18 +2236,23 @@ window.onCalTypeChange = function() {
   const type = document.getElementById('cal_type').value;
   const rsvFields = document.getElementById('cal_rsv_fields');
   const deliveryFields = document.getElementById('cal_delivery_fields');
+  const homevisitFields = document.getElementById('cal_homevisit_fields');
   const puppyField = document.getElementById('cal_puppy_field');
+  const puppyLabel = puppyField ? puppyField.querySelector('label') : null;
   const locInput = document.getElementById('cal_location');
 
-  if (rsvFields) rsvFields.style.display = type === 'rsv' ? 'block' : 'none';
+  // 방문자 성명/연락처 입력은 예약(rsv)과 골디 앰버서더(homevisit) 둘 다 필요
+  if (rsvFields) rsvFields.style.display = (type === 'rsv' || type === 'homevisit') ? 'block' : 'none';
   if (deliveryFields) deliveryFields.style.display = type === 'delivery' ? 'block' : 'none';
+  if (homevisitFields) homevisitFields.style.display = type === 'homevisit' ? 'block' : 'none';
 
   if (type === 'rsv' && locInput && !locInput.value.trim()) {
     locInput.value = SHELTER_ADDRESS;
   }
   if (puppyField) {
-    puppyField.style.display = type === 'rsv' ? 'block' : 'none';
-    if (type === 'rsv') window.renderCalPuppyChecklist();
+    puppyField.style.display = (type === 'rsv' || type === 'homevisit') ? 'block' : 'none';
+    if (puppyLabel) puppyLabel.textContent = type === 'homevisit' ? '비교하실 아이들 선택 (여러 마리 가능)' : '보러 오실 자견 선택 (여러 마리 가능, 분양완료 제외)';
+    if (type === 'rsv' || type === 'homevisit') window.renderCalPuppyChecklist();
   }
   if (type !== 'delivery') return;
 
@@ -2101,6 +2280,53 @@ window.onCalContractSelect = function() {
   document.getElementById('cal_details').value = `수령인: ${c.buyer_name || ''} (${c.buyer_phone || ''}) | 강아지: ${dogLabel} | 계약ID: ${contractId}`;
 };
 
+// 골디 앰버서더 예약금 결과를 화면에 표시하고, 저장 시 쓸 수 있도록 데이터셋에 저장
+window.updateHomevisitFeeDisplay = function() {
+  const resultEl = document.getElementById('cal_hv_result');
+  const minutesInput = document.getElementById('cal_hv_minutes');
+  if (!resultEl || !minutesInput) return;
+  const minutes = parseInt(minutesInput.value, 10);
+  if (!minutes || minutes <= 0) { resultEl.textContent = ''; resultEl.dataset.fee = ''; return; }
+  const fee = homevisitFeeByMinutes(minutes);
+  if (fee === null) {
+    resultEl.textContent = `⚠️ 편도 약 ${minutes}분 — 양평 기준 3시간(180분) 초과 지역은 별도 문의로 진행합니다.`;
+    resultEl.dataset.fee = '';
+  } else {
+    resultEl.textContent = `편도 약 ${minutes}분 → 예약금 ${fee.toLocaleString()}원`;
+    resultEl.dataset.fee = fee;
+  }
+  resultEl.dataset.minutes = minutes;
+};
+
+// "거리/예약금 자동 계산" 버튼: 장소 입력칸의 주소를 카카오 API로 좌표 변환 후 소요시간 추정.
+// KAKAO_REST_API_KEY가 비어있으면 자동 변환이 안 되므로, 소요시간을 직접 입력하도록 안내.
+window.calcHomevisitFee = async function() {
+  const resultEl = document.getElementById('cal_hv_result');
+  const minutesInput = document.getElementById('cal_hv_minutes');
+  const address = (document.getElementById('cal_location')?.value || '').trim();
+  if (!resultEl) return;
+
+  if (!address) {
+    resultEl.textContent = '⚠️ 먼저 방문지 주소를 입력해주세요.';
+    return;
+  }
+  if (!KAKAO_REST_API_KEY) {
+    resultEl.textContent = '⚠️ 주소 자동 거리계산 기능이 아직 설정되지 않았습니다. 아래 "편도 소요시간" 칸에 직접 입력해주세요.';
+    return;
+  }
+
+  resultEl.textContent = '⏳ 거리 계산 중...';
+  const coord = await geocodeAddress(address);
+  if (!coord) {
+    resultEl.textContent = '⚠️ 주소를 찾지 못했습니다. 주소를 다시 확인하시거나 소요시간을 직접 입력해주세요.';
+    return;
+  }
+  const km = haversineKm(YANGPYEONG_OFFICE_COORD.lat, YANGPYEONG_OFFICE_COORD.lng, coord.lat, coord.lng);
+  const minutes = estimateDriveMinutes(km);
+  if (minutesInput) minutesInput.value = minutes;
+  window.updateHomevisitFeeDisplay();
+};
+
 window.saveAddEvent = async function() {
   const type = document.getElementById('cal_type').value;
   const date = document.getElementById('cal_date').value;
@@ -2117,18 +2343,32 @@ window.saveAddEvent = async function() {
   }));
 
   let buyer_name = '', buyer_phone = '';
-  if (type === 'rsv') {
+  if (type === 'rsv' || type === 'homevisit') {
     buyer_name = (document.getElementById('cal_visitor_name')?.value || '').trim();
     buyer_phone = (document.getElementById('cal_visitor_phone')?.value || '').trim();
   }
   const balanceStatus = type === 'delivery' ? (document.getElementById('cal_balance_status')?.value || 'unpaid') : '';
 
+  // 골디 앰버서더 전용 값
+  let hvPetAtLocation = '', hvMinutes = null, hvFee = null;
+  if (type === 'homevisit') {
+    hvPetAtLocation = document.getElementById('cal_hv_pet')?.value || 'no';
+    const resultEl = document.getElementById('cal_hv_result');
+    const rawMinutes = resultEl?.dataset.minutes || document.getElementById('cal_hv_minutes')?.value;
+    hvMinutes = rawMinutes ? parseInt(rawMinutes, 10) : null;
+    hvFee = hvMinutes ? homevisitFeeByMinutes(hvMinutes) : null;
+  }
+
   if (!date) {
     toast('날짜를 입력해주세요.');
     return;
   }
-  if (type === 'rsv' && !buyer_name) {
+  if ((type === 'rsv' || type === 'homevisit') && !buyer_name) {
     toast('방문자 성명을 입력해주세요.');
+    return;
+  }
+  if (type === 'homevisit' && (!hvMinutes || hvFee === null)) {
+    toast('편도 소요시간을 입력하거나 자동계산해주세요. (3시간 초과 지역은 별도 문의 대상입니다)');
     return;
   }
 
@@ -2139,7 +2379,7 @@ window.saveAddEvent = async function() {
   if (selectedPuppies.length) {
     payload.puppies = selectedPuppies;
   }
-  if (type === 'rsv') {
+  if (type === 'rsv' || type === 'homevisit') {
     payload.buyer_name = buyer_name;
     payload.buyer_phone = buyer_phone;
   }
@@ -2154,11 +2394,20 @@ window.saveAddEvent = async function() {
       }
     }
   }
+  if (type === 'homevisit') {
+    payload.hvPetAtLocation = hvPetAtLocation; // 'yes' | 'no'
+    payload.hvMinutes = hvMinutes;
+    payload.hvFee = hvFee;
+    payload.hvResult = '예정'; // '예정' | '선택완료' | '미선택' | '노쇼'
+    payload.hvMultiCount = 1;  // 최종 선택 마리 수 (방문 후 결과 수정 시 갱신)
+  }
 
   // 일정 제목은 직접 입력받지 않고, 확정된 정보로 자동 생성한다
   payload.title = type === 'delivery'
     ? `🚚 [배송] ${payload.buyer_name || '수령인'} 님 (${balanceStatus === 'paid' ? '완납' : '미납'})`
-    : `🟡 [예약] ${buyer_name} 님 방문`;
+    : type === 'homevisit'
+      ? `🟢 [골디앰버서더] ${buyer_name} 님 (예약금 ${(hvFee || 0).toLocaleString()}원)`
+      : `🟡 [예약] ${buyer_name} 님 방문`;
 
   const newRef = fbPush(ref(db, 'schedules'));
   await update(newRef, payload);
@@ -2183,6 +2432,72 @@ window.deleteCalendarEvent = async function(dbPath) {
     await fbRemove(ref(db, dbPath));
     toast('일정이 삭제되었습니다.');
   }
+};
+
+// ── 🎟 골디 앰버서더 크레딧 관리 ─────────────────────────────
+// 미선택 방문 건에서 자동 발급된 크레딧(예약금 → 3개월 유효 크레딧)을 목록으로 보여준다.
+// 만료일이 지난 크레딧은 화면에 그릴 때 자동으로 "만료" 취급하고(문구만 표시, DB는 실사용 시에만 갱신),
+// 7일 이내 만료 예정인 건은 빨간색으로 강조해서 상담 때 놓치지 않도록 한다.
+window.renderCreditsList = function() {
+  const container = document.getElementById('creditsList');
+  if (!container) return;
+
+  const searchEl = document.getElementById('creditSearch');
+  const q = (searchEl?.value || '').trim().toLowerCase();
+
+  const now = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  let rows = Object.entries(window._credits || {}).map(([id, c]) => ({ id, ...c }));
+
+  if (q) {
+    rows = rows.filter(c =>
+      (c.buyer_name || '').toLowerCase().includes(q) ||
+      (c.buyer_phone || '').toLowerCase().includes(q)
+    );
+  }
+
+  // 최신 발급건이 위로 오도록 정렬
+  rows.sort((a, b) => (b.issuedAt || 0) - (a.issuedAt || 0));
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="loading">등록된 크레딧이 없습니다.</div>';
+    return;
+  }
+
+  container.innerHTML = `<table class="tbl"><thead><tr>
+      <th>고객명</th><th>연락처</th><th>발급일</th><th>만료일</th><th>금액</th><th>상태</th><th></th>
+    </tr></thead><tbody>` +
+    rows.map(c => {
+      const isExpired = c.status !== '사용완료' && c.expiresAt && c.expiresAt < now;
+      const isExpiringSoon = !isExpired && c.status === '보유중' && c.expiresAt && (c.expiresAt - now) <= sevenDaysMs;
+      const statusLabel = c.status === '사용완료' ? '✅ 사용완료' : (isExpired ? '⌛ 만료' : '🎟 보유중');
+      const rowStyle = isExpired ? 'opacity:0.55;' : (isExpiringSoon ? 'background:#FDEDEC;' : '');
+      const actionBtn = (c.status === '보유중' && !isExpired)
+        ? `<button class="btn btn-green btn-sm" onclick="window.markCreditUsed('${c.id}')">사용완료 처리</button>`
+        : '';
+      return `<tr style="${rowStyle}">
+          <td>${c.buyer_name || '-'}</td>
+          <td>${c.buyer_phone || '-'}</td>
+          <td>${c.issuedAt ? fmt(new Date(c.issuedAt).toISOString().slice(0,10)) : '-'}</td>
+          <td>${c.expiresAt ? fmt(new Date(c.expiresAt).toISOString().slice(0,10)) : '-'}${isExpiringSoon ? ' <span style="color:#E74C3C; font-weight:700;">(만료 임박)</span>' : ''}</td>
+          <td>${c.amount ? Number(c.amount).toLocaleString() + '원' : '-'}</td>
+          <td>${statusLabel}</td>
+          <td>${actionBtn}</td>
+        </tr>`;
+    }).join('') +
+    '</tbody></table>';
+};
+
+// 크레딧을 실제로 재방문에 사용 처리(수동) — 상담 중 크레딧으로 재방문이 확정되면 여기서 소진 처리
+window.markCreditUsed = async function(creditId) {
+  if (!creditId) return;
+  if (!confirm('이 크레딧을 사용완료 처리하시겠습니까? (재방문 예약금으로 사용됨)')) return;
+  await update(ref(db, `credits/${creditId}`), {
+    status: '사용완료',
+    usedAt: Date.now()
+  });
+  toast('🎟 크레딧이 사용완료 처리되었습니다.');
 };
 </script>
 </div><!-- /adminWrap -->
