@@ -18,6 +18,7 @@
 
 
 <title>골디쉼터 농장 관리</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 
 
@@ -2343,7 +2344,28 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+      
+      <div id="gcal-panel" style="background:#fff;border:1.5px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:2px;">📅 백신/구충 구글 캘린더 동기화</div>
+            <div style="font-size:11px;color:#64748B;" id="gcal-status-text">구글 계정에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <div id="gcal-user-info" style="display:none;font-size:11px;font-weight:700;color:#27AE60;padding:4px 10px;background:#E8F8EF;border-radius:12px;border:1px solid #A8DDB9;"></div>
+            <button class="btn btn-outline btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()" style="margin:0;width:auto;">🔗 구글 연결</button>
+            <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="margin:0;width:auto;display:none;">📅 전체 동기화</button>
+            <button class="btn btn-outline btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="margin:0;width:auto;display:none;font-size:11px;color:#E74C3C;">연결 해제</button>
+          </div>
+        </div>
+        <div id="gcal-progress" style="display:none;margin-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;" id="gcal-progress-text">동기화 중...</div>
+          <div style="background:#F1F5F9;border-radius:99px;height:6px;overflow:hidden;">
+            <div id="gcal-progress-bar" style="background:linear-gradient(90deg,#C8931A,#27AE60);height:100%;width:0%;transition:width .3s;border-radius:99px;"></div>
+          </div>
+        </div>
       </div>
+</div>
 
 
 
@@ -8549,18 +8571,6 @@ function checkVaxAlerts(){
 
 
 
-     {date:lt.deworm1,label:`${fName}×${mName} 🪱1차 구충`},
-
-
-
-     {date:lt.deworm2,label:`${fName}×${mName} 🪱2차 구충`},
-
-
-
-     {date:lt.deworm3,label:`${fName}×${mName} 🪱3차 구충`},
-
-
-
     ].forEach(c=>{
 
 
@@ -8589,6 +8599,22 @@ function checkVaxAlerts(){
 
 
 
+    // 🪱 구충제·메트로니다졸 14일 릴레이 알림 (완료 체크 안 된 날짜만, 실제 투약 기준 B안)
+    const dwBase = getDewormRelayBaseDate(lt);
+    if (dwBase) {
+      const doneMap = lt.dewormRelayDone || {};
+      for (let off = DEWORM_RELAY_START_OFFSET; off < DEWORM_RELAY_START_OFFSET + DEWORM_RELAY_DAYS; off++) {
+        if (doneMap[off]) continue;
+        const relayDate = dateToStr(addDaysDate(dwBase, off));
+        if (!relayDate) continue;
+        const info = getDewormRelayInfo(off);
+        const dd = daysFrom(relayDate);
+        const rc = { date: relayDate, label: `${fName}×${mName} ${info.icon}${info.label}(D+${off})`, icon: info.icon };
+        if (dd===0) alerts.push({...rc, type:'today', msg:'오늘이에요!'});
+        else if (dd===-1) alerts.push({...rc, type:'overdue', msg:'어제였어요!'});
+        else if (dd<0 && dd>=-3) alerts.push({...rc, type:'overdue', msg:`${Math.abs(dd)}일 지났어요`});
+      }
+    }
   });
 
 
@@ -9754,15 +9780,15 @@ window.renderDeliveryCalendar = function() {
 
 
 
-      const vax1 = dateToStr(addDaysDate(lt.birthA, 25));
+      const vax1 = lt.vax1 || dateToStr(addDaysDate(lt.birthA, 25));
 
 
 
-      const vax2 = dateToStr(addDaysDate(lt.birthA, 35));
+      const vax2 = lt.vax2 || dateToStr(addDaysDate(lt.birthA, 35));
 
 
 
-      const vax3 = dateToStr(addDaysDate(lt.birthA, 45));
+      const vax3 = lt.vax3 || dateToStr(addDaysDate(lt.birthA, 45));
 
 
 
@@ -9834,62 +9860,26 @@ window.renderDeliveryCalendar = function() {
 
 
 
-      // 구충일 (생후 30~43일 짝수날)
-
-
-
-      for (let i = 0; i < 14; i += 2) {
-
-
-
-        const dwDate = dateToStr(addDaysDate(lt.birthA, 30 + i));
-
-
-
-        if (dwDate === dayDateStr) {
-
-
-
+      // 🪱 구충제 & 메트로니다졸 14일 교대 릴레이 (D+30~D+43) — 실제 투약 기준(B안).
+      // 계약서에 적히는 deworm1/2/3(25/40/55일, A안)과는 별개의 운영용 일정이다.
+      const dwBase = getDewormRelayBaseDate(lt);
+      if (dwBase) {
+        for (let off = DEWORM_RELAY_START_OFFSET; off < DEWORM_RELAY_START_OFFSET + DEWORM_RELAY_DAYS; off++) {
+          const dwDate = dateToStr(addDaysDate(dwBase, off));
+          if (dwDate !== dayDateStr) continue;
+          const info = getDewormRelayInfo(off);
+          const isDone = !!((lt.dewormRelayDone || {})[off]);
           const chip = document.createElement('div');
-
-
-
-          chip.className = 'delivery-chip vax-chip-cal';
-
-
-
-          chip.textContent = `🪱 구충 (${parentLabel})`;
-
-
-
+          chip.className = 'delivery-chip vax-chip-cal' + (isDone ? ' completed' : '');
+          chip.textContent = `${info.icon} ${info.label} (${parentLabel})${isDone ? ' ✓' : ''}`;
+          chip.title = '클릭하면 완료 체크 전환';
           chip.onclick = (e) => {
-
-
-
             e.stopPropagation();
-
-
-
-            showTab('puppies');
-
-
-
+            window.toggleDewormRelayDone(lt._key, off, !isDone);
           };
-
-
-
           chipsContainer.appendChild(chip);
-
-
-
           break;
-
-
-
         }
-
-
-
       }
 
 
@@ -10779,6 +10769,228 @@ function dateToStr(d) {
 
 
 }
+
+// 🐛 구충제 & 메트로니다졸 14일 교대 릴레이 (GOLDIE_HEALTH_QUARANTINE_SPEC.md 기준)
+// D+30,32,34...42(짝수) = 구충제 / D+31,33,35...43(홀수) = 메트로니다졸
+const DEWORM_RELAY_START_OFFSET = 30;
+const DEWORM_RELAY_DAYS = 14;
+function getDewormRelayInfo(dayOffset) {
+  const i = dayOffset - DEWORM_RELAY_START_OFFSET;
+  const isDewormer = i % 2 === 0;
+  return { dayOffset, isDewormer, label: isDewormer ? '구충제' : '메트로니다졸', icon: isDewormer ? '🟢' : '🩷' };
+}
+function getDewormRelayBaseDate(lt) {
+  return (lt && (lt.birthA || lt.birthB)) || null;
+}
+
+// 캘린더 칩 클릭 시 14일 릴레이 특정 날짜의 완료 여부를 토글 (litters/{key}/dewormRelayDone/{offset})
+window.toggleDewormRelayDone = async function(litterKey, offset, done) {
+  if (!litterKey) return;
+  try {
+    await fbUpdate(`litters/${litterKey}/dewormRelayDone`, { [offset]: done });
+    if (typeof showToast === 'function') showToast(done ? `✅ D+${offset} 투약 완료 처리했어요.` : `↩ D+${offset} 완료 취소했어요.`);
+  } catch (err) {
+    console.error('구충 릴레이 완료 처리 실패:', err);
+    if (typeof showToast === 'function') showToast('⚠ 저장 실패: ' + err.message);
+  }
+};
+
+// ══════════════════════════════════════════
+// 📅 구글 캘린더 자동 동기화 (백신 3회 + 구충 14일 릴레이) — 이전에 실제로 작동했던 방식 복원
+// ══════════════════════════════════════════
+const GCAL_CLIENT_ID = '46302512505-08lqedhch6tbvnq6nu31spupuaq2g6bu.apps.googleusercontent.com';
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
+let gcalAccessToken = null;
+let gcalUserEmail = null;
+let gcalTokenClient = null;
+
+function updateGcalPanelUI() {
+  const statusText = document.getElementById('gcal-status-text');
+  const userInfo = document.getElementById('gcal-user-info');
+  const connectBtn = document.getElementById('gcal-connect-btn');
+  const syncBtn = document.getElementById('gcal-sync-btn');
+  const disconnectBtn = document.getElementById('gcal-disconnect-btn');
+  if (!statusText) return;
+  if (gcalAccessToken) {
+    statusText.textContent = '구글 캘린더에 연결되어 있습니다.';
+    if (userInfo) { userInfo.style.display = 'inline-block'; userInfo.textContent = gcalUserEmail || '연결됨'; }
+    if (connectBtn) connectBtn.style.display = 'none';
+    if (syncBtn) syncBtn.style.display = 'inline-flex';
+    if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
+  } else {
+    statusText.textContent = '구글 계정에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.';
+    if (userInfo) userInfo.style.display = 'none';
+    if (connectBtn) connectBtn.style.display = 'inline-flex';
+    if (syncBtn) syncBtn.style.display = 'none';
+    if (disconnectBtn) disconnectBtn.style.display = 'none';
+  }
+}
+
+window.connectGoogleCalendar = function() {
+  if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+    if (typeof showToast === 'function') showToast('⚠ 구글 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  try {
+    gcalTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: GCAL_SCOPE,
+      callback: async (resp) => {
+        if (resp.error) {
+          if (typeof showToast === 'function') showToast('⚠ 로그인 실패: ' + resp.error);
+          return;
+        }
+        gcalAccessToken = resp.access_token;
+        try {
+          const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + gcalAccessToken }
+          });
+          const info = await r.json();
+          gcalUserEmail = info.email || '';
+        } catch (e) { gcalUserEmail = ''; }
+        updateGcalPanelUI();
+        if (typeof showToast === 'function') showToast('✅ 구글 캘린더에 연결되었습니다!');
+      }
+    });
+    gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch (e) {
+    console.error('GCal connect error:', e);
+    if (typeof showToast === 'function') showToast('⚠ 연결 실패: ' + (e.message || String(e)));
+  }
+};
+
+window.disconnectGoogleCalendar = function() {
+  if (gcalAccessToken && typeof google !== 'undefined') {
+    google.accounts.oauth2.revoke(gcalAccessToken, () => {});
+  }
+  gcalAccessToken = null;
+  gcalUserEmail = null;
+  gcalTokenClient = null;
+  updateGcalPanelUI();
+  if (typeof showToast === 'function') showToast('🔔 구글 캘린더 연결이 해제되었습니다.');
+};
+
+async function createGcalEvent(eventObj) {
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + gcalAccessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(eventObj)
+    }
+  );
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+window.syncAllToGoogleCalendar = async function() {
+  if (!gcalAccessToken) { if (typeof showToast === 'function') showToast('⚠ 먼저 구글 연결을 해주세요.'); return; }
+
+  const entries = (litters || []).filter(l => l.birthA || l.birthB);
+  if (!entries.length) {
+    if (typeof showToast === 'function') showToast('동기화할 출산 기록이 없습니다. (출산일 A 또는 B가 필요합니다.)');
+    return;
+  }
+
+  const progressEl  = document.getElementById('gcal-progress');
+  const progressTxt = document.getElementById('gcal-progress-text');
+  const progressBar = document.getElementById('gcal-progress-bar');
+  const syncBtn     = document.getElementById('gcal-sync-btn');
+  if (progressEl)  progressEl.style.display = 'block';
+  if (syncBtn)     { syncBtn.disabled = true; syncBtn.textContent = '동기화 중...'; }
+
+  const events = [];
+  for (const l of entries) {
+    const label = `${l.femaleCode ? getMotherInfo(l.femaleCode).name : '?'}×${l.maleCode ? getSireInfo(l.maleCode).name : '?'}`;
+    const base = l.birthA || l.birthB;
+
+    [
+      { n: 1, date: l.vax1 || dateToStr(addDaysDate(base, 25)), color: '5' },
+      { n: 2, date: l.vax2 || dateToStr(addDaysDate(base, 35)), color: '5' },
+      { n: 3, date: l.vax3 || dateToStr(addDaysDate(base, 45)), color: '11' }
+    ].forEach(v => {
+      if (!v.date) return;
+      events.push({
+        summary: `💉 [골디] ${label} ${v.n}차 백신`,
+        description: `골디쉼터 백신 일정\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n\n※ 골디쉼터 자동 등록`,
+        start: { date: v.date, timeZone: 'Asia/Seoul' },
+        end:   { date: v.date, timeZone: 'Asia/Seoul' },
+        colorId: v.color,
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 540 },
+            { method: 'popup', minutes: 1440 }
+          ]
+        }
+      });
+    });
+
+    const dwBase = getDewormRelayBaseDate(l);
+    if (dwBase) {
+      const doneMap = l.dewormRelayDone || {};
+      for (let off = DEWORM_RELAY_START_OFFSET; off < DEWORM_RELAY_START_OFFSET + DEWORM_RELAY_DAYS; off++) {
+        if (doneMap[off]) continue;
+        const d = dateToStr(addDaysDate(dwBase, off));
+        if (!d) continue;
+        const info = getDewormRelayInfo(off);
+        events.push({
+          summary: `${info.icon} [골디] ${label} ${info.label} (D+${off})`,
+          description: `골디쉼터 구충 일정 (D+${off}일)\n${info.isDewormer ? '🟢 구충제 (Drontal 계열)' : '🩷 메트로니다졸 (Metronidazole)'}\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n\n※ 골디쉼터 자동 등록`,
+          start: { date: d, timeZone: 'Asia/Seoul' },
+          end:   { date: d, timeZone: 'Asia/Seoul' },
+          colorId: info.isDewormer ? '2' : '4',
+          reminders: {
+            useDefault: false,
+            overrides: [{ method: 'popup', minutes: 540 }]
+          }
+        });
+      }
+    }
+  }
+
+  let created = 0;
+  let failed  = 0;
+  const total = events.length;
+  let tokenExpired = false;
+
+  for (const ev of events) {
+    if (tokenExpired) break;
+    try {
+      await createGcalEvent(ev);
+      created++;
+    } catch (e) {
+      const msg = e.message || '';
+      if (msg.includes('401') || msg.toLowerCase().includes('invalid')) {
+        if (typeof showToast === 'function') showToast('⚠ 토큰 만료. 구글 재연결 후 다시 시도해주세요.');
+        gcalAccessToken = null;
+        updateGcalPanelUI();
+        tokenExpired = true;
+        break;
+      }
+      console.warn('Event failed:', ev.summary, e.message);
+      failed++;
+    }
+    const pct = total ? Math.round((created + failed) / total * 100) : 100;
+    if (progressBar) progressBar.style.width = pct + '%';
+    if (progressTxt) progressTxt.textContent = `동기화 중... ${created + failed}/${total}개 (${pct}%)`;
+    await new Promise(r => setTimeout(r, 120));
+  }
+
+  if (syncBtn) { syncBtn.disabled = false; syncBtn.textContent = '📅 전체 동기화'; }
+  if (progressEl) setTimeout(() => { progressEl.style.display = 'none'; }, 1500);
+  if (!tokenExpired) {
+    if (typeof showToast === 'function') showToast(`✅ 구글 캘린더 동기화 완료! (성공 ${created}건${failed ? `, 실패 ${failed}건` : ''})`);
+  }
+};
+
+if (typeof window !== 'undefined') { setTimeout(updateGcalPanelUI, 0); }
 
 
 
@@ -11753,15 +11965,15 @@ window.checkBaytrilWarning = function() {
 
 
 
-        const vax1 = dateToStr(addDaysDate(litter.birthA, 25));
+        const vax1 = litter.vax1 || dateToStr(addDaysDate(litter.birthA, 25));
 
 
 
-        const vax2 = dateToStr(addDaysDate(litter.birthA, 35));
+        const vax2 = litter.vax2 || dateToStr(addDaysDate(litter.birthA, 35));
 
 
 
-        const vax3 = dateToStr(addDaysDate(litter.birthA, 45));
+        const vax3 = litter.vax3 || dateToStr(addDaysDate(litter.birthA, 45));
 
 
 
