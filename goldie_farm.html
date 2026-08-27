@@ -11231,6 +11231,39 @@ window.confirmGoldieCleanup = async function() {
   closeGoldieCleanupModal();
 };
 
+async function findExistingBangyukEvents() {
+  const timeMin = '2024-01-01T00:00:00Z';
+  const timeMaxDate = new Date();
+  timeMaxDate.setFullYear(timeMaxDate.getFullYear() + 5);
+  const timeMax = timeMaxDate.toISOString();
+  const found = [];
+  let pageToken = '';
+  do {
+    const params = new URLSearchParams({
+      timeMin, timeMax,
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '250',
+      q: '방역 일정'
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+    const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gcalCalendarId)}/events?${params.toString()}`, {
+      headers: { Authorization: 'Bearer ' + gcalAccessToken }
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `이벤트 조회 실패 (HTTP ${resp.status})`);
+    }
+    const data = await resp.json();
+    for (const ev of (data.items || [])) {
+      // q 검색은 부분/유사 일치도 걸릴 수 있으므로, 제목이 정확히 "방역 일정"인 것만 대상으로 한다.
+      if (ev.summary === '방역 일정') found.push(ev);
+    }
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return found;
+}
+
 async function ensureGoldieCalendarId() {
   const cached = localStorage.getItem(GCAL_CALENDAR_ID_CACHE_KEY);
   if (cached) { gcalCalendarId = cached; return gcalCalendarId; }
@@ -11309,6 +11342,32 @@ window.syncAllToGoogleCalendar = async function() {
   const syncBtn     = document.getElementById('gcal-sync-btn');
   if (progressEl)  progressEl.style.display = 'block';
   if (syncBtn)     { syncBtn.disabled = true; syncBtn.textContent = '동기화 중...'; }
+
+  // 1단계: 기존 "방역 일정" 이벤트를 전부 삭제한다.
+  // (매번 새로 계산해서 만드는 방식이라, 지우지 않고 그냥 추가만 하면 중복이 계속 쌓이기 때문)
+  if (progressTxt) progressTxt.textContent = '기존 일정 정리 중...';
+  let existingEvents = [];
+  try {
+    existingEvents = await findExistingBangyukEvents();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('⚠ 기존 일정 조회 실패: ' + (e.message || String(e)));
+    if (syncBtn) { syncBtn.disabled = false; syncBtn.textContent = '📅 전체 동기화'; }
+    if (progressEl) progressEl.style.display = 'none';
+    return;
+  }
+  for (let i = 0; i < existingEvents.length; i++) {
+    const ev = existingEvents[i];
+    try {
+      await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gcalCalendarId)}/events/${encodeURIComponent(ev.id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + gcalAccessToken }
+      });
+    } catch (e) { /* 개별 삭제 실패는 무시하고 계속 진행 (2단계에서 다시 채워짐) */ }
+    const pct = existingEvents.length ? Math.round((i + 1) / existingEvents.length * 100) : 100;
+    if (progressBar) progressBar.style.width = pct + '%';
+    if (progressTxt) progressTxt.textContent = `기존 일정 정리 중... ${i + 1}/${existingEvents.length}개`;
+    await new Promise(r => setTimeout(r, 80));
+  }
 
   // 날짜별로 백신/구충 항목을 모아서 하루에 캘린더 이벤트 1건만 생성한다.
   // 같은 날짜 안에서는 백신 항목을 먼저, 구충 항목을 나중에 배치한다.
@@ -11399,7 +11458,7 @@ window.syncAllToGoogleCalendar = async function() {
     }
     const pct = total ? Math.round((created + failed) / total * 100) : 100;
     if (progressBar) progressBar.style.width = pct + '%';
-    if (progressTxt) progressTxt.textContent = `동기화 중... ${created + failed}/${total}개 (${pct}%)`;
+    if (progressTxt) progressTxt.textContent = `새로 등록 중... ${created + failed}/${total}개 (${pct}%)`;
     await new Promise(r => setTimeout(r, 120));
   }
 
