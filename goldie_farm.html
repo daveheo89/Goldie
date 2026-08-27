@@ -2357,6 +2357,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
             <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="margin:0;width:auto;display:none;">📅 전체 동기화</button>
             <button class="btn btn-outline btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="margin:0;width:auto;display:none;font-size:11px;color:#E74C3C;">연결 해제</button>
             <button class="btn btn-outline btn-sm" id="gcal-cleanup-btn" onclick="openGcalCleanupModal()" style="margin:0;width:auto;display:none;font-size:11px;color:#B45309;">🧹 Dave 캘린더 정리</button>
+            <button class="btn btn-outline btn-sm" id="goldie-cleanup-btn" onclick="openGoldieCleanupModal()" style="margin:0;width:auto;display:none;font-size:11px;color:#B45309;">🧹 예전 형식 정리 (골디쉼터)</button>
           </div>
         </div>
         <div id="gcal-progress" style="display:none;margin-top:12px;">
@@ -3313,6 +3314,32 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         <div class="modal-actions">
           <button class="btn btn-cancel" onclick="closeGcalCleanupModal()" style="flex:1;">닫기</button>
           <button class="btn btn-danger" id="gcal-cleanup-confirm-btn" onclick="confirmGcalCleanup()" style="flex:1;display:none;">🗑 전부 삭제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- '골디쉼터' 캘린더 안에 남아있는 예전 방식(litter별 개별) [골디] 이벤트 일괄 정리 모달 -->
+    <div class="modal-overlay" id="goldie-cleanup-modal" onclick="handleGoldieCleanupModalOverlay(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>🧹 예전 형식 정리 (골디쉼터)</h2>
+          <button class="modal-close" onclick="closeGoldieCleanupModal()">✕</button>
+        </div>
+        <p style="font-size:12px; color:#64748B; margin:-6px 0 14px;">'골디쉼터' 캘린더 안에 예전 방식(litter별로 따로따로)으로 등록된 "[골디]" 일정을 찾아서 목록으로 보여드립니다. 새로 합쳐진 "방역 일정" 이벤트에는 영향이 없습니다.</p>
+        <div id="goldie-cleanup-body">
+          <div id="goldie-cleanup-loading" style="font-size:13px;color:#64748B;padding:20px 0;text-align:center;">🔍 검색 중...</div>
+          <div id="goldie-cleanup-count" style="display:none;font-size:13px;font-weight:800;color:#334155;margin-bottom:10px;"></div>
+          <div id="goldie-cleanup-list" style="max-height:260px;overflow-y:auto;border:1.5px solid #E2E8F0;border-radius:9px;display:none;"></div>
+        </div>
+        <div id="goldie-cleanup-progress" style="display:none;margin-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;" id="goldie-cleanup-progress-text">삭제 중...</div>
+          <div style="background:#F1F5F9;border-radius:99px;height:6px;overflow:hidden;">
+            <div id="goldie-cleanup-progress-bar" style="background:linear-gradient(90deg,#E74C3C,#C8931A);height:100%;width:0%;transition:width .3s;border-radius:99px;"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-cancel" onclick="closeGoldieCleanupModal()" style="flex:1;">닫기</button>
+          <button class="btn btn-danger" id="goldie-cleanup-confirm-btn" onclick="confirmGoldieCleanup()" style="flex:1;display:none;">🗑 전부 삭제</button>
         </div>
       </div>
     </div>
@@ -10841,6 +10868,7 @@ function updateGcalPanelUI() {
   const syncBtn = document.getElementById('gcal-sync-btn');
   const disconnectBtn = document.getElementById('gcal-disconnect-btn');
   const cleanupBtn = document.getElementById('gcal-cleanup-btn');
+  const goldieCleanupBtn = document.getElementById('goldie-cleanup-btn');
   if (!statusText) return;
   if (gcalAccessToken) {
     statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결되어 있습니다.`;
@@ -10849,6 +10877,7 @@ function updateGcalPanelUI() {
     if (syncBtn) syncBtn.style.display = 'inline-flex';
     if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
     if (cleanupBtn) cleanupBtn.style.display = 'inline-flex';
+    if (goldieCleanupBtn) goldieCleanupBtn.style.display = 'inline-flex';
   } else {
     statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.`;
     if (userInfo) userInfo.style.display = 'none';
@@ -10856,6 +10885,7 @@ function updateGcalPanelUI() {
     if (syncBtn) syncBtn.style.display = 'none';
     if (disconnectBtn) disconnectBtn.style.display = 'none';
     if (cleanupBtn) cleanupBtn.style.display = 'none';
+    if (goldieCleanupBtn) goldieCleanupBtn.style.display = 'none';
   }
 }
 
@@ -11049,6 +11079,156 @@ window.confirmGcalCleanup = async function() {
   if (typeof showToast === 'function') showToast(`✅ Dave 캘린더 정리 완료! (삭제 ${done}건${failed ? `, 실패 ${failed}건` : ''})`);
   _gcalCleanupFoundEvents = [];
   closeGcalCleanupModal();
+};
+
+let _goldieCleanupFoundEvents = [];
+
+async function findGoldieOldFormatEvents() {
+  const timeMin = '2024-01-01T00:00:00Z';
+  const timeMaxDate = new Date();
+  timeMaxDate.setFullYear(timeMaxDate.getFullYear() + 5);
+  const timeMax = timeMaxDate.toISOString();
+  const found = [];
+  let pageToken = '';
+  do {
+    const params = new URLSearchParams({
+      timeMin, timeMax,
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '250',
+      q: '[골디]'
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+    const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gcalCalendarId)}/events?${params.toString()}`, {
+      headers: { Authorization: 'Bearer ' + gcalAccessToken }
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `이벤트 조회 실패 (HTTP ${resp.status})`);
+    }
+    const data = await resp.json();
+    for (const ev of (data.items || [])) {
+      // 예전 방식은 제목에 "[골디]"가 들어있고, 새 통합 이벤트("방역 일정")는 이 태그가 없으므로
+      // 이 필터만으로 예전 이벤트만 정확히 걸러진다.
+      if (ev.summary && ev.summary.includes('[골디]')) found.push(ev);
+    }
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return found;
+}
+
+function renderGoldieCleanupList(events) {
+  const loadingEl = document.getElementById('goldie-cleanup-loading');
+  const countEl = document.getElementById('goldie-cleanup-count');
+  const listEl = document.getElementById('goldie-cleanup-list');
+  const confirmBtn = document.getElementById('goldie-cleanup-confirm-btn');
+  if (loadingEl) loadingEl.style.display = 'none';
+
+  if (!events.length) {
+    if (countEl) { countEl.style.display = 'block'; countEl.textContent = '✅ 골디쉼터 캘린더에 남아있는 예전 방식 [골디] 일정이 없습니다.'; }
+    if (listEl) listEl.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    return;
+  }
+
+  if (countEl) { countEl.style.display = 'block'; countEl.textContent = `⚠ 총 ${events.length}건의 예전 방식 [골디] 일정이 발견되었습니다.`; }
+  if (listEl) {
+    listEl.style.display = 'block';
+    listEl.innerHTML = events.map(ev => {
+      const start = ev.start?.dateTime || ev.start?.date || '';
+      const dateStr = start ? start.slice(0, 10) : '(날짜 없음)';
+      const title = (ev.summary || '(제목 없음)').replace(/</g, '&lt;');
+      return `<div style="padding:8px 12px;border-bottom:1px solid #F1F5F9;font-size:12px;display:flex;gap:10px;">
+        <span style="color:#94A3B8;white-space:nowrap;">${dateStr}</span>
+        <span style="color:#334155;">${title}</span>
+      </div>`;
+    }).join('');
+  }
+  if (confirmBtn) { confirmBtn.style.display = 'inline-flex'; confirmBtn.textContent = `🗑 전부 삭제 (${events.length}건)`; }
+}
+
+window.openGoldieCleanupModal = async function() {
+  if (!gcalAccessToken) { if (typeof showToast === 'function') showToast('⚠ 먼저 구글 연결을 해주세요.'); return; }
+
+  try {
+    await ensureGoldieCalendarId();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('⚠ 캘린더 준비 실패: ' + (e.message || String(e)));
+    return;
+  }
+
+  const modal = document.getElementById('goldie-cleanup-modal');
+  const loadingEl = document.getElementById('goldie-cleanup-loading');
+  const countEl = document.getElementById('goldie-cleanup-count');
+  const listEl = document.getElementById('goldie-cleanup-list');
+  const confirmBtn = document.getElementById('goldie-cleanup-confirm-btn');
+  const progressEl = document.getElementById('goldie-cleanup-progress');
+
+  if (loadingEl) { loadingEl.style.display = 'block'; loadingEl.textContent = '🔍 검색 중...'; }
+  if (countEl) countEl.style.display = 'none';
+  if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+  if (confirmBtn) confirmBtn.style.display = 'none';
+  if (progressEl) progressEl.style.display = 'none';
+  _goldieCleanupFoundEvents = [];
+
+  if (modal) modal.classList.add('open');
+
+  try {
+    const events = await findGoldieOldFormatEvents();
+    _goldieCleanupFoundEvents = events;
+    renderGoldieCleanupList(events);
+  } catch (e) {
+    if (loadingEl) { loadingEl.style.display = 'block'; loadingEl.textContent = '⚠ 검색 실패: ' + (e.message || String(e)); }
+  }
+};
+
+window.closeGoldieCleanupModal = function() {
+  document.getElementById('goldie-cleanup-modal').classList.remove('open');
+  _goldieCleanupFoundEvents = [];
+};
+
+window.handleGoldieCleanupModalOverlay = function(e) {
+  if (e.target === document.getElementById('goldie-cleanup-modal')) closeGoldieCleanupModal();
+};
+
+window.confirmGoldieCleanup = async function() {
+  const events = _goldieCleanupFoundEvents;
+  if (!events.length) return;
+  if (!confirm(`골디쉼터 캘린더에서 예전 방식 [골디] 일정 ${events.length}건을 정말 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+
+  const confirmBtn = document.getElementById('goldie-cleanup-confirm-btn');
+  const progressEl = document.getElementById('goldie-cleanup-progress');
+  const progressTxt = document.getElementById('goldie-cleanup-progress-text');
+  const progressBar = document.getElementById('goldie-cleanup-progress-bar');
+  if (confirmBtn) confirmBtn.disabled = true;
+  if (progressEl) progressEl.style.display = 'block';
+
+  let done = 0, failed = 0;
+  const total = events.length;
+  for (const ev of events) {
+    try {
+      const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gcalCalendarId)}/events/${encodeURIComponent(ev.id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + gcalAccessToken }
+      });
+      if (!resp.ok && resp.status !== 410 && resp.status !== 404) {
+        failed++;
+      } else {
+        done++;
+      }
+    } catch (e) {
+      failed++;
+    }
+    const pct = total ? Math.round((done + failed) / total * 100) : 100;
+    if (progressBar) progressBar.style.width = pct + '%';
+    if (progressTxt) progressTxt.textContent = `삭제 중... ${done + failed}/${total}개 (${pct}%)`;
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  if (confirmBtn) confirmBtn.disabled = false;
+  if (typeof showToast === 'function') showToast(`✅ 골디쉼터 예전 형식 정리 완료! (삭제 ${done}건${failed ? `, 실패 ${failed}건` : ''})`);
+  _goldieCleanupFoundEvents = [];
+  closeGoldieCleanupModal();
 };
 
 async function ensureGoldieCalendarId() {
