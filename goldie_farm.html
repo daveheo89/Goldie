@@ -11130,31 +11130,31 @@ window.syncAllToGoogleCalendar = async function() {
   if (progressEl)  progressEl.style.display = 'block';
   if (syncBtn)     { syncBtn.disabled = true; syncBtn.textContent = '동기화 중...'; }
 
-  const events = [];
+  // 날짜별로 백신/구충 항목을 모아서 하루에 캘린더 이벤트 1건만 생성한다.
+  // 같은 날짜 안에서는 백신 항목을 먼저, 구충 항목을 나중에 배치한다.
+  function getLitterPuppyCount(l) {
+    return l.count || (l.puppies ? Object.keys(l.puppies).length : 0) || 1;
+  }
+
+  const dailyItems = {}; // { 'YYYY-MM-DD': [ { type:'vaccine'|'deworm', text:'...' } ] }
+  function pushDailyItem(dateStr, type, text) {
+    if (!dateStr) return;
+    if (!dailyItems[dateStr]) dailyItems[dateStr] = [];
+    dailyItems[dateStr].push({ type, text });
+  }
+
   for (const l of entries) {
-    const label = `${l.femaleCode ? getMotherInfo(l.femaleCode).name : '?'}×${l.maleCode ? getSireInfo(l.maleCode).name : '?'}`;
+    const motherName = l.femaleCode ? getMotherInfo(l.femaleCode).name : '모견미정';
+    const puppyCount = getLitterPuppyCount(l);
     const base = l.birthA || l.birthB;
 
     [
-      { n: 1, date: l.vax1 || dateToStr(addDaysDate(base, 25)), color: '5' },
-      { n: 2, date: l.vax2 || dateToStr(addDaysDate(base, 35)), color: '5' },
-      { n: 3, date: l.vax3 || dateToStr(addDaysDate(base, 45)), color: '11' }
+      { n: 1, date: l.vax1 || dateToStr(addDaysDate(base, 25)) },
+      { n: 2, date: l.vax2 || dateToStr(addDaysDate(base, 35)) },
+      { n: 3, date: l.vax3 || dateToStr(addDaysDate(base, 45)) }
     ].forEach(v => {
       if (!v.date) return;
-      events.push({
-        summary: `💉 [골디] ${label} ${v.n}차 백신`,
-        description: `골디쉼터 백신 일정\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n\n※ 골디쉼터 자동 등록`,
-        start: { date: v.date, timeZone: 'Asia/Seoul' },
-        end:   { date: v.date, timeZone: 'Asia/Seoul' },
-        colorId: v.color,
-        reminders: {
-          useDefault: false,
-          overrides: [
-            { method: 'popup', minutes: 540 },
-            { method: 'popup', minutes: 1440 }
-          ]
-        }
-      });
+      pushDailyItem(v.date, 'vaccine', `${motherName}네 ${puppyCount}마리 백신 ${v.n}차`);
     });
 
     const dwBase = getDewormRelayBaseDate(l);
@@ -11165,20 +11165,28 @@ window.syncAllToGoogleCalendar = async function() {
         const d = dateToStr(addDaysDate(dwBase, off));
         if (!d) continue;
         const info = getDewormRelayInfo(off);
-        events.push({
-          summary: `${info.icon} [골디] ${label} ${info.label} (D+${off})`,
-          description: `골디쉼터 구충 일정 (D+${off}일)\n${info.isDewormer ? '🟢 구충제 (Drontal 계열)' : '🩷 메트로니다졸 (Metronidazole)'}\n모견: ${l.femaleCode||'-'} × 부견: ${l.maleCode||'-'}\n\n※ 골디쉼터 자동 등록`,
-          start: { date: d, timeZone: 'Asia/Seoul' },
-          end:   { date: d, timeZone: 'Asia/Seoul' },
-          colorId: info.isDewormer ? '2' : '4',
-          reminders: {
-            useDefault: false,
-            overrides: [{ method: 'popup', minutes: 540 }]
-          }
-        });
+        const itemLabel = info.isDewormer ? '구충제' : '메트로니다졸';
+        pushDailyItem(d, 'deworm', `${motherName}네 ${puppyCount}마리 ${itemLabel}`);
       }
     }
   }
+
+  const typeOrder = { vaccine: 0, deworm: 1 };
+  const events = Object.keys(dailyItems).sort().map(dateStr => {
+    const items = dailyItems[dateStr]
+      .map((item, idx) => ({ ...item, idx }))
+      .sort((a, b) => (typeOrder[a.type] - typeOrder[b.type]) || (a.idx - b.idx));
+    return {
+      summary: '방역 일정',
+      description: `${items.map(i => i.text).join('\n')}\n\n※ 골디쉼터 자동 등록`,
+      start: { date: dateStr, timeZone: 'Asia/Seoul' },
+      end:   { date: dateStr, timeZone: 'Asia/Seoul' },
+      reminders: {
+        useDefault: false,
+        overrides: [{ method: 'popup', minutes: 540 }]
+      }
+    };
+  });
 
   let created = 0;
   let failed  = 0;
