@@ -2337,6 +2337,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+        <button class="btn btn-outline btn-sm" onclick="window.forceRefreshDeliveryCalendar()" style="margin:0; width:auto; font-size:12px;" title="백신/구충 일정 등 새끼 정보를 수정했는데 캘린더에 바로 안 보일 때 눌러주세요">🔄 캘린더 새로고침</button>
+
         <button class="btn btn-outline btn-sm" onclick="openAddDeliveryModal()" style="margin:0; width:auto; font-size:12px;">＋ 배송 일정 추가</button>
 
 
@@ -4639,6 +4641,14 @@ function startAllListeners(){
       checkVaxAlerts();
 
       fillTreatmentSelects();
+
+      // ⚠️ 백신/구충 일정은 litters의 vax1~3(또는 birthA)에서 계산돼 배송 캘린더에 표시되는데,
+      // 정작 이 litters 리스너에서는 캘린더 재렌더 호출이 빠져있어서 새끼 정보를 수정해도
+      // 캘린더 탭이 열려있는 동안은 반영이 안 되고 있었다. deliveries/treatments 리스너와
+      // 동일하게 여기서도 캘린더를 갱신한다.
+      if (!document.getElementById('tab-delivery').classList.contains('hidden')) {
+        if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+      }
 
     }
 
@@ -9370,6 +9380,14 @@ window.showToast=function(msg){
 // ═══════════════════════════════════════
 
 
+
+// 🔄 "캘린더 새로고침" 버튼 — 방금 고친 자동 갱신 외에, 혹시 모를 경우를 대비한 수동 안전장치.
+// 화면에 남아있는 캐시가 아니라 지금 메모리에 있는 최신 litters/deliveries/treatments 기준으로
+// 캘린더를 강제로 다시 그린다.
+window.forceRefreshDeliveryCalendar = function() {
+  if (typeof window.renderDeliveryCalendar === 'function') window.renderDeliveryCalendar();
+  if (typeof showToast === 'function') showToast('🔄 캘린더를 새로고침했습니다.');
+};
 
 window.renderDeliveryCalendar = function() {
 
