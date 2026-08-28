@@ -2367,6 +2367,24 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
           </div>
         </div>
       </div>
+
+      <div id="backup-panel" style="background:#fff;border:1.5px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:2px;">💾 데이터 백업 (구글 드라이브)</div>
+            <div style="font-size:11px;color:#64748B;" id="backup-status-text">구글 연결 후 이용 가능합니다. 연결 시 7일이 지났다면 자동으로 1회 백업됩니다.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-gold btn-sm" id="backup-run-btn" onclick="runManualBackup()" style="margin:0;width:auto;display:none;">💾 지금 바로 백업하기</button>
+          </div>
+        </div>
+        <div id="backup-progress" style="display:none;margin-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;" id="backup-progress-text">백업 중...</div>
+          <div style="background:#F1F5F9;border-radius:99px;height:6px;overflow:hidden;">
+            <div id="backup-progress-bar" style="background:linear-gradient(90deg,#4285F4,#34A853);height:100%;width:0%;transition:width .3s;border-radius:99px;"></div>
+          </div>
+        </div>
+      </div>
 </div>
 
 
@@ -10853,7 +10871,12 @@ window.toggleDewormRelayDone = async function(litterKey, offset, done) {
 // 📅 구글 캘린더 자동 동기화 (백신 3회 + 구충 14일 릴레이) — 이전에 실제로 작동했던 방식 복원
 // ══════════════════════════════════════════
 const GCAL_CLIENT_ID = '46302512505-08lqedhch6tbvnq6nu31spupuaq2g6bu.apps.googleusercontent.com';
-const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+const BACKUP_FOLDER_NAME = '골디쉼터 백업';
+const BACKUP_FOLDER_ID_CACHE_KEY = 'goldie_backup_folder_id';
+const BACKUP_LAST_RUN_CACHE_KEY = 'goldie_backup_last_run';
+const BACKUP_AUTO_INTERVAL_DAYS = 7;
+let backupFolderId = null;
 const GCAL_CALENDAR_NAME = '골디쉼터';
 const GCAL_CALENDAR_ID_CACHE_KEY = 'goldie_gcal_calendar_id';
 let gcalAccessToken = null;
@@ -10869,6 +10892,8 @@ function updateGcalPanelUI() {
   const disconnectBtn = document.getElementById('gcal-disconnect-btn');
   const cleanupBtn = document.getElementById('gcal-cleanup-btn');
   const goldieCleanupBtn = document.getElementById('goldie-cleanup-btn');
+  const backupStatusText = document.getElementById('backup-status-text');
+  const backupRunBtn = document.getElementById('backup-run-btn');
   if (!statusText) return;
   if (gcalAccessToken) {
     statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결되어 있습니다.`;
@@ -10878,6 +10903,8 @@ function updateGcalPanelUI() {
     if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
     if (cleanupBtn) cleanupBtn.style.display = 'inline-flex';
     if (goldieCleanupBtn) goldieCleanupBtn.style.display = 'inline-flex';
+    if (backupRunBtn) backupRunBtn.style.display = 'inline-flex';
+    updateBackupStatusText();
   } else {
     statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.`;
     if (userInfo) userInfo.style.display = 'none';
@@ -10886,7 +10913,22 @@ function updateGcalPanelUI() {
     if (disconnectBtn) disconnectBtn.style.display = 'none';
     if (cleanupBtn) cleanupBtn.style.display = 'none';
     if (goldieCleanupBtn) goldieCleanupBtn.style.display = 'none';
+    if (backupRunBtn) backupRunBtn.style.display = 'none';
+    if (backupStatusText) backupStatusText.textContent = '구글 연결 후 이용 가능합니다. 연결 시 7일이 지났다면 자동으로 1회 백업됩니다.';
   }
+}
+
+function updateBackupStatusText() {
+  const backupStatusText = document.getElementById('backup-status-text');
+  if (!backupStatusText) return;
+  const lastRun = localStorage.getItem(BACKUP_LAST_RUN_CACHE_KEY);
+  if (!lastRun) {
+    backupStatusText.textContent = '아직 백업 기록이 없습니다.';
+    return;
+  }
+  const d = new Date(lastRun);
+  const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  backupStatusText.textContent = `마지막 백업: ${dateStr} (7일마다 자동, 언제든 수동 백업 가능)`;
 }
 
 window.connectGoogleCalendar = function() {
@@ -10920,6 +10962,8 @@ window.connectGoogleCalendar = function() {
           updateGcalPanelUI();
           if (typeof showToast === 'function') showToast('⚠ 캘린더 준비 실패: ' + (e.message || String(e)));
         }
+        // 연결될 때마다, 마지막 백업이 7일 이상 지났으면 조용히 자동 백업 1회 실행
+        checkAndMaybeAutoBackup();
       }
     });
     gcalTokenClient.requestAccessToken({ prompt: 'consent' });
@@ -10928,6 +10972,170 @@ window.connectGoogleCalendar = function() {
     if (typeof showToast === 'function') showToast('⚠ 연결 실패: ' + (e.message || String(e)));
   }
 };
+
+const BACKUP_NODES = ['females','males','litters','breeding','moveLog','deliveries','kennelLayout','treatments','contracts','schedules','reservations','routineMeds','routineMedLog','credits'];
+
+async function ensureBackupFolderId() {
+  const cached = localStorage.getItem(BACKUP_FOLDER_ID_CACHE_KEY);
+  if (cached) { backupFolderId = cached; return backupFolderId; }
+
+  const q = `mimeType='application/vnd.google-apps.folder' and name='${BACKUP_FOLDER_NAME}' and trashed=false`;
+  const listResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('files(id,name)')}&spaces=drive`, {
+    headers: { Authorization: 'Bearer ' + gcalAccessToken }
+  });
+  if (!listResp.ok) {
+    const errData = await listResp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `백업 폴더 조회 실패 (HTTP ${listResp.status})`);
+  }
+  const listData = await listResp.json();
+  if (listData.files && listData.files.length > 0) {
+    backupFolderId = listData.files[0].id;
+    localStorage.setItem(BACKUP_FOLDER_ID_CACHE_KEY, backupFolderId);
+    return backupFolderId;
+  }
+
+  const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + gcalAccessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: BACKUP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  if (!createResp.ok) {
+    const errData = await createResp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `백업 폴더 생성 실패 (HTTP ${createResp.status})`);
+  }
+  const created = await createResp.json();
+  backupFolderId = created.id;
+  localStorage.setItem(BACKUP_FOLDER_ID_CACHE_KEY, backupFolderId);
+  return backupFolderId;
+}
+
+async function findLatestBackupFile() {
+  if (!backupFolderId) return null;
+  const q = `'${backupFolderId}' in parents and trashed=false`;
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime desc&pageSize=1&fields=${encodeURIComponent('files(id,name,createdTime)')}`, {
+    headers: { Authorization: 'Bearer ' + gcalAccessToken }
+  });
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `최근 백업 조회 실패 (HTTP ${resp.status})`);
+  }
+  const data = await resp.json();
+  return (data.files && data.files[0]) ? data.files[0] : null;
+}
+
+async function collectAllFirebaseData() {
+  const result = {
+    _backupCreatedAt: new Date().toISOString(),
+    _source: 'goldie_farm.html'
+  };
+  for (const node of BACKUP_NODES) {
+    const snap = await get(ref(db, node));
+    result[node] = snap.exists() ? snap.val() : null;
+  }
+  return result;
+}
+
+async function uploadBackupFile(folderId, filename, jsonString) {
+  const boundary = 'goldie_backup_boundary_' + Date.now();
+  const metadata = JSON.stringify({ name: filename, parents: [folderId] });
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${jsonString}\r\n` +
+    `--${boundary}--`;
+  const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + gcalAccessToken,
+      'Content-Type': `multipart/related; boundary=${boundary}`
+    },
+    body
+  });
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `백업 업로드 실패 (HTTP ${resp.status})`);
+  }
+  return await resp.json();
+}
+
+async function runBackup(isAuto) {
+  const progressEl  = document.getElementById('backup-progress');
+  const progressTxt = document.getElementById('backup-progress-text');
+  const progressBar = document.getElementById('backup-progress-bar');
+  const runBtn = document.getElementById('backup-run-btn');
+
+  if (progressEl) progressEl.style.display = 'block';
+  if (runBtn) runBtn.disabled = true;
+  if (progressBar) progressBar.style.width = '10%';
+
+  try {
+    if (progressTxt) progressTxt.textContent = '백업 폴더 확인 중...';
+    if (!backupFolderId) await ensureBackupFolderId();
+    if (progressBar) progressBar.style.width = '30%';
+
+    if (progressTxt) progressTxt.textContent = '골디쉼터 데이터 수집 중...';
+    const data = await collectAllFirebaseData();
+    if (progressBar) progressBar.style.width = '70%';
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const filename = `골디쉼터_백업_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}.json`;
+
+    if (progressTxt) progressTxt.textContent = '구글 드라이브에 업로드 중...';
+    await uploadBackupFile(backupFolderId, filename, JSON.stringify(data, null, 2));
+    if (progressBar) progressBar.style.width = '100%';
+
+    localStorage.setItem(BACKUP_LAST_RUN_CACHE_KEY, now.toISOString());
+    updateBackupStatusText();
+    if (typeof showToast === 'function') {
+      showToast(isAuto ? `✅ 자동 백업 완료! (${filename})` : `✅ 백업 완료! (${filename})`);
+    }
+  } catch (e) {
+    console.error('백업 실패:', e);
+    if (typeof showToast === 'function') showToast('⚠ 백업 실패: ' + (e.message || String(e)));
+  } finally {
+    if (runBtn) runBtn.disabled = false;
+    if (progressEl) setTimeout(() => { progressEl.style.display = 'none'; }, 1200);
+  }
+}
+
+window.runManualBackup = async function() {
+  if (!gcalAccessToken) {
+    if (typeof showToast === 'function') showToast('⚠ 먼저 구글 연결을 해주세요.');
+    return;
+  }
+  await runBackup(false);
+};
+
+async function checkAndMaybeAutoBackup() {
+  if (!gcalAccessToken) return;
+  try {
+    if (!backupFolderId) await ensureBackupFolderId();
+
+    let shouldRun = false;
+    const lastRunLocal = localStorage.getItem(BACKUP_LAST_RUN_CACHE_KEY);
+
+    if (!lastRunLocal) {
+      // 이 브라우저에 기록이 없으면(다른 기기에서 실행했을 수도 있으므로)
+      // 드라이브에서 실제 최근 백업 파일을 먼저 확인해서 불필요한 중복 백업을 막는다.
+      const latest = await findLatestBackupFile();
+      if (!latest) {
+        shouldRun = true;
+      } else {
+        localStorage.setItem(BACKUP_LAST_RUN_CACHE_KEY, latest.createdTime);
+        const days = (Date.now() - new Date(latest.createdTime).getTime()) / 86400000;
+        shouldRun = days >= BACKUP_AUTO_INTERVAL_DAYS;
+      }
+    } else {
+      const days = (Date.now() - new Date(lastRunLocal).getTime()) / 86400000;
+      shouldRun = days >= BACKUP_AUTO_INTERVAL_DAYS;
+    }
+
+    updateBackupStatusText();
+    if (shouldRun) await runBackup(true);
+  } catch (e) {
+    console.warn('자동 백업 체크 실패:', e);
+  }
+}
 
 window.disconnectGoogleCalendar = function() {
   if (gcalAccessToken && typeof google !== 'undefined') {
