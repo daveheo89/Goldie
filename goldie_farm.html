@@ -2118,7 +2118,11 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
-    <div class="tab active" onclick="showTab('dogs')">🐶 개체</div>
+    <div class="tab active" onclick="showTab('today')">☀️ 오늘</div>
+
+
+
+    <div class="tab" onclick="showTab('dogs')">🐶 개체</div>
 
 
 
@@ -2154,11 +2158,25 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 
+    <!-- 오늘의 할 일 대시보드 -->
+
+
+
+    <div id="tab-today">
+
+      <div class="sec-title">☀️ 오늘의 할 일</div>
+
+      <div id="today-dashboard-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+    </div>
+
+
+
     <!-- 개체 탭 -->
 
 
 
-    <div id="tab-dogs">
+    <div id="tab-dogs" class="hidden">
 
 
 
@@ -2348,16 +2366,14 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div id="gcal-panel" style="background:#fff;border:1.5px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:14px;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
           <div>
-            <div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:2px;">📅 백신/구충 구글 캘린더 동기화</div>
-            <div style="font-size:11px;color:#64748B;" id="gcal-status-text">구글 계정에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.</div>
+            <div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:2px;">📅 방역·치료·정기투약 캘린더 자동화</div>
+            <div style="font-size:11px;color:#64748B;margin-bottom:2px;">구글 앱스크립트가 4시간마다 자동으로 '골디쉼터' 캘린더를 동기화합니다. 여기서 따로 동기화 버튼을 누르실 필요는 없어요.</div>
+            <div style="font-size:11px;color:#94A3B8;" id="gcal-status-text">구글 계정에 연결하면 데이터 백업 기능을 이용할 수 있습니다.</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <div id="gcal-user-info" style="display:none;font-size:11px;font-weight:700;color:#27AE60;padding:4px 10px;background:#E8F8EF;border-radius:12px;border:1px solid #A8DDB9;"></div>
-            <button class="btn btn-outline btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()" style="margin:0;width:auto;">🔗 구글 연결</button>
-            <button class="btn btn-gold btn-sm" id="gcal-sync-btn" onclick="syncAllToGoogleCalendar()" style="margin:0;width:auto;display:none;">📅 전체 동기화</button>
+            <button class="btn btn-outline btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()" style="margin:0;width:auto;">🔗 구글 연결 (백업용)</button>
             <button class="btn btn-outline btn-sm" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()" style="margin:0;width:auto;display:none;font-size:11px;color:#E74C3C;">연결 해제</button>
-            <button class="btn btn-outline btn-sm" id="gcal-cleanup-btn" onclick="openGcalCleanupModal()" style="margin:0;width:auto;display:none;font-size:11px;color:#B45309;">🧹 Dave 캘린더 정리</button>
-            <button class="btn btn-outline btn-sm" id="goldie-cleanup-btn" onclick="openGoldieCleanupModal()" style="margin:0;width:auto;display:none;font-size:11px;color:#B45309;">🧹 예전 형식 정리 (골디쉼터)</button>
           </div>
         </div>
         <div id="gcal-progress" style="display:none;margin-top:12px;">
@@ -4038,6 +4054,7 @@ let contracts=[];
 let kennelLayout = {}; // Firebase에 저장된 배치 {견사명:{x,y,w,h}}
 let routineMeds = {}; // 정기 투약 약품 종류 {medKey: {name, intervalDays}}
 let routineMedLog = {}; // 약품별 투여 기록 {medKey: {dogKey: {lastDate}}}
+let schedules = {}; // 앰버서더/방문 일정 {scheduleId: {date, type, consentSigned, ...}} — 오늘의 할 일 대시보드에서 사용
 let __currentRoutineMed = null; // 정기 투약 날짜 모달에서 현재 선택된 약품 medKey
 let __routineMedCalDate = new Date(); // 정기 투약 캘린더가 보여주는 달
 let __rmedDaySelectedDate = null; // 정기 투약 날짜 모달에서 선택된 날짜(YYYY-MM-DD)
@@ -4960,6 +4977,7 @@ function startAllListeners(){
 
     if (__treatmentsChanged) {
       if(document.getElementById('tab-treatment') && !document.getElementById('tab-treatment').classList.contains('hidden'))renderTreatmentList();
+      if (typeof renderTodayDashboard === 'function') renderTodayDashboard();
     }
 
 
@@ -5044,6 +5062,25 @@ function startAllListeners(){
         renderRmedDayDogChecklist();
       }
       checkVaxAlerts();
+    }
+
+  }, error => {
+
+    showFirebaseError(error);
+
+  });
+
+  // 앰버서더/방문 일정 (오늘의 할 일 대시보드에서 사용)
+  onValue(ref(db,'schedules'), snap=>{
+
+    const __rawSchedules = snap.val();
+
+    const __schedulesChanged = changedSince('schedules', __rawSchedules);
+
+    schedules = __rawSchedules || {};
+
+    if (__schedulesChanged) {
+      if (typeof renderTodayDashboard === 'function') renderTodayDashboard();
     }
 
   }, error => {
@@ -5230,9 +5267,77 @@ async function init(){
 
 window.currentTab = 'dogs';
 
+// ── 오늘의 할 일 대시보드 ──
+function renderTodayCard(opts) {
+  const { icon, title, count, items, emptyMsg, onClick, linkHref } = opts;
+  const itemsHtml = items.length
+    ? items.slice(0, 6).map(t => `<div style="font-size:12px;color:#475569;padding:3px 0;border-bottom:1px dashed #F1F5F9;">${esc(t)}</div>`).join('')
+      + (items.length > 6 ? `<div style="font-size:11px;color:#94A3B8;padding-top:4px;">+${items.length - 6}건 더</div>` : '')
+    : `<div style="font-size:12px;color:#94A3B8;padding:6px 0;">${esc(emptyMsg)}</div>`;
+
+  const clickAttr = linkHref
+    ? `onclick="window.open('${linkHref}', '_blank')"`
+    : (onClick ? `onclick="${onClick}"` : '');
+
+  return `
+    <div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px;cursor:pointer;transition:box-shadow .15s;" ${clickAttr}
+      onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:800;color:#334155;">${icon} ${esc(title)}</div>
+        <div style="font-size:12px;font-weight:800;color:#fff;background:${count > 0 ? '#C8931A' : '#CBD5E1'};border-radius:99px;padding:2px 9px;">${count}</div>
+      </div>
+      ${itemsHtml}
+    </div>`;
+}
+
+window.renderTodayDashboard = function() {
+  const grid = document.getElementById('today-dashboard-grid');
+  if (!grid) return;
+
+  const todayStr = today();
+  const alerts = buildVaxAlerts();
+
+  // 1. 오늘 방역 대상 (백신/구충/정기투약 통합, 오늘 날짜인 것만)
+  const vaxToday = alerts.filter(a => a.type === 'today').map(a => a.label);
+
+  // 2. 오늘 앰버서더 예약
+  const scheduleList = Object.values(schedules || {});
+  const ambToday = scheduleList
+    .filter(s => s && s.type === 'homevisit' && s.date === todayStr)
+    .map(s => `${s.title || (s.buyer_name || s.visitorName || s.name || '방문 고객')} · ${s.time || '시간 미정'}`);
+
+  // 3. 서명 대기 중 (날짜 무관, 전체 미서명 앰버서더 건)
+  const signPending = scheduleList
+    .filter(s => s && s.type === 'homevisit' && !s.consentSigned)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    .map(s => `${fmtDate(s.date)} · ${s.title || (s.buyer_name || s.visitorName || s.name || '방문 고객')}`);
+
+  // 4. 미접종 경고 (예정일 지났는데 아직 완료 안 된 것)
+  const overdue = alerts.filter(a => a.type === 'overdue').map(a => `${a.label} (${a.msg})`);
+
+  grid.innerHTML = [
+    renderTodayCard({
+      icon: '💉', title: '오늘 방역 대상', count: vaxToday.length, items: vaxToday,
+      emptyMsg: '오늘 예정된 백신/구충/투약이 없습니다 🎉', onClick: "showTab('puppies')"
+    }),
+    renderTodayCard({
+      icon: '🚗', title: '오늘 앰버서더 예약', count: ambToday.length, items: ambToday,
+      emptyMsg: '오늘 예정된 방문이 없습니다.', linkHref: 'goldi_admin.html'
+    }),
+    renderTodayCard({
+      icon: '✍️', title: '서명 대기 중', count: signPending.length, items: signPending,
+      emptyMsg: '서명 대기 중인 동의서가 없습니다 🎉', linkHref: 'goldi_admin.html'
+    }),
+    renderTodayCard({
+      icon: '⚠️', title: '미접종 경고', count: overdue.length, items: overdue,
+      emptyMsg: '지연된 방역/투약이 없습니다 🎉', onClick: "showTab('puppies')"
+    })
+  ].join('');
+};
+
 window.showTab = function(tab) {
   window.currentTab = tab;
-  const tabIds = ['dogs', 'kennels', 'breeding', 'puppies', 'delivery', 'treatment', 'pedigree'];
+  const tabIds = ['today', 'dogs', 'kennels', 'breeding', 'puppies', 'delivery', 'treatment', 'pedigree'];
   
   // 1. 탭 콘텐츠 가시성 전환 (.hidden 클래스 및 style.display 동시 제어)
   tabIds.forEach(t => {
@@ -5259,7 +5364,9 @@ window.showTab = function(tab) {
 
   // 3. 탭별 데이터 렌더링 및 파이어베이스 구독
   try {
-    if (tab === 'puppies') {
+    if (tab === 'today') {
+      if (typeof window.renderTodayDashboard === 'function') window.renderTodayDashboard();
+    } else if (tab === 'puppies') {
       if (typeof window.renderPuppies === 'function') window.renderPuppies();
     } else if (tab === 'dogs') {
       if (typeof window.renderDogs === 'function') window.renderDogs();
@@ -8607,21 +8714,7 @@ window.savePuppy = async function() {
 
 
 
-function checkVaxAlerts(){
-
-  const __vaxOverlay = document.getElementById('vax-popup-overlay');
-
-  if (__vaxOverlay && !__vaxOverlay.classList.contains('hidden')) return; // 이미 떠있으면 중복 재실행 방지 (깜빡임 방지)
-
-  const todayStr = today();
-
-  const hideUntil = localStorage.getItem('goldie_hide_vax_popup_date');
-
-  if (hideUntil === todayStr) return; // 오늘 하루 안 보기 체크 시 팝업 방지
-
-
-
-
+function buildVaxAlerts(){
   const alerts=[];
 
 
@@ -8707,6 +8800,28 @@ function checkVaxAlerts(){
       else if(d<0&&d>=-3)alerts.push({date:nextDate,label,icon:'🩹',type:'overdue',msg:`${Math.abs(d)}일 지났어요`});
     });
   });
+
+    return alerts;
+}
+
+function checkVaxAlerts(){
+
+  if (typeof renderTodayDashboard === 'function') renderTodayDashboard();
+
+  const __vaxOverlay = document.getElementById('vax-popup-overlay');
+
+  if (__vaxOverlay && !__vaxOverlay.classList.contains('hidden')) return; // 이미 떠있으면 중복 재실행 방지 (깜빡임 방지)
+
+  const todayStr = today();
+
+  const hideUntil = localStorage.getItem('goldie_hide_vax_popup_date');
+
+  if (hideUntil === todayStr) return; // 오늘 하루 안 보기 체크 시 팝업 방지
+
+
+
+
+  const alerts = buildVaxAlerts();
 
   if(!alerts.length)return;
 
@@ -10896,7 +11011,7 @@ function updateGcalPanelUI() {
   const backupRunBtn = document.getElementById('backup-run-btn');
   if (!statusText) return;
   if (gcalAccessToken) {
-    statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결되어 있습니다.`;
+    statusText.textContent = `구글 계정(${gcalUserEmail || ''})에 연결되어 있습니다. (데이터 백업용)`;
     if (userInfo) { userInfo.style.display = 'inline-block'; userInfo.textContent = gcalUserEmail || '연결됨'; }
     if (connectBtn) connectBtn.style.display = 'none';
     if (syncBtn) syncBtn.style.display = 'inline-flex';
@@ -10906,7 +11021,7 @@ function updateGcalPanelUI() {
     if (backupRunBtn) backupRunBtn.style.display = 'inline-flex';
     updateBackupStatusText();
   } else {
-    statusText.textContent = `'${GCAL_CALENDAR_NAME}' 캘린더에 연결하면 백신 3회 + 구충 14일 릴레이 일정이 자동 등록됩니다.`;
+    statusText.textContent = '구글 계정에 연결하면 데이터 백업 기능을 이용할 수 있습니다.';
     if (userInfo) userInfo.style.display = 'none';
     if (connectBtn) connectBtn.style.display = 'inline-flex';
     if (syncBtn) syncBtn.style.display = 'none';
