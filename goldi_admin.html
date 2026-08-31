@@ -183,6 +183,7 @@ window.addEventListener('DOMContentLoaded', function(){
   <button class="tab-btn" onclick="switchTab(this,'db')">📋 계약 DB</button>
   <button class="tab-btn" onclick="switchTab(this,'calendar')">📅 일정 & Google 캘린더</button>
   <button class="tab-btn" onclick="switchTab(this,'credits')">🎟 크레딧 관리</button>
+  <button class="tab-btn" onclick="switchTab(this,'crm'); renderCrmTab();">👥 고객 CRM</button>
   <button class="tab-btn" onclick="window.open('https://daveheo89.github.io/Goldie/goldie_farm.html','_blank')" style="color:var(--gold-l);">🏡 농장 관리 페이지 ↗</button>
 </div>
 
@@ -281,6 +282,17 @@ window.addEventListener('DOMContentLoaded', function(){
     <input type="text" id="creditSearch" placeholder="고객명, 연락처 검색..." oninput="renderCreditsList()">
   </div>
   <div id="creditsList" class="loading"><div class="spinner"></div>로딩 중...</div>
+</div>
+
+<div class="tab-panel" id="tab-crm">
+  <div class="stitle">👥 고객 CRM (앰버서더 상담 이력)</div>
+  <div style="font-size:12px; color:var(--gray); margin-bottom:14px;">
+    골디 앰버서더 방문 기록과 크레딧 발급 이력을 고객별로 자동으로 모아서 보여줍니다. 별도로 입력하실 내용은 없습니다.
+  </div>
+  <div class="search-row">
+    <input type="text" id="crmSearch" placeholder="고객명, 연락처 검색..." oninput="renderCrmTab()">
+  </div>
+  <div id="crmList" class="loading"><div class="spinner"></div>로딩 중...</div>
 </div>
 
 <div class="modal-bg" id="detailModal">
@@ -2665,6 +2677,117 @@ window.renderCreditsList = function() {
         </tr>`;
     }).join('') +
     '</tbody></table>';
+};
+
+// 고객 CRM: 앰버서더 방문 이력(schedules) + 크레딧 발급 이력(credits)을 고객별로 자동 집계.
+// 새로 입력받는 필드는 없고, 기존 데이터에서만 뽑아서 보여준다.
+window.renderCrmTab = function() {
+  const container = document.getElementById('crmList');
+  if (!container) return;
+
+  const searchEl = document.getElementById('crmSearch');
+  const q = (searchEl?.value || '').trim().toLowerCase();
+
+  // 1. 고객별로 묶기 (연락처 우선, 없으면 이름으로 그룹핑)
+  const customers = {}; // key -> { name, phone, visits: [], credits: [] }
+  function getCustomer(name, phone) {
+    const key = (phone && phone.trim()) || (name && name.trim()) || null;
+    if (!key) return null;
+    if (!customers[key]) customers[key] = { name: name || '', phone: phone || '', visits: [], credits: [] };
+    if (name && !customers[key].name) customers[key].name = name;
+    if (phone && !customers[key].phone) customers[key].phone = phone;
+    return customers[key];
+  }
+
+  Object.values(window._schedules || {}).forEach(s => {
+    if (!s || s.type !== 'homevisit') return;
+    const name = s.buyer_name || s.visitorName || s.name || '';
+    const phone = s.buyer_phone || s.visitorPhone || s.phone || '';
+    const cust = getCustomer(name, phone);
+    if (!cust) return;
+    const puppyNames = (Array.isArray(s.puppies) ? s.puppies : []).map(p => p && p.name).filter(Boolean).join(', ');
+    cust.visits.push({
+      date: s.date || '',
+      result: s.hvResult || '예정',
+      consentSigned: !!s.consentSigned,
+      depositConfirmed: !!s.depositConfirmed,
+      puppies: puppyNames
+    });
+  });
+
+  Object.values(window._credits || {}).forEach(c => {
+    if (!c) return;
+    const cust = getCustomer(c.buyer_name, c.buyer_phone);
+    if (!cust) return;
+    cust.credits.push({
+      amount: c.amount || 0,
+      status: c.status || '보유중',
+      issuedAt: c.issuedAt || null,
+      expiresAt: c.expiresAt || null
+    });
+  });
+
+  let rows = Object.values(customers);
+
+  // 각 고객의 방문 이력을 최신순 정렬
+  rows.forEach(c => c.visits.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+
+  if (q) {
+    rows = rows.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.phone || '').toLowerCase().includes(q)
+    );
+  }
+
+  // 가장 최근 방문일 기준 내림차순 정렬
+  rows.sort((a, b) => {
+    const aDate = a.visits[0]?.date || '';
+    const bDate = b.visits[0]?.date || '';
+    return bDate.localeCompare(aDate);
+  });
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="loading">앰버서더 상담 이력이 없습니다.</div>';
+    return;
+  }
+
+  const resultBadge = (result) => {
+    const map = {
+      '예정': ['⏳ 예정', '#E67E22', '#FFF3E0', '#F5CBA7'],
+      '선택완료': ['✅ 선택완료', '#27AE60', '#E8F8EF', '#A8DDB9'],
+      '미선택': ['➖ 미선택(크레딧)', '#7F8C8D', '#F4F4F4', '#ddd'],
+      '노쇼': ['🚫 노쇼', '#E74C3C', '#FDEDEC', '#F5B7B1']
+    };
+    const [label, color, bg, border] = map[result] || map['예정'];
+    return `<span class="badge" style="color:${color};background:${bg};border:1px solid ${border};">${label}</span>`;
+  };
+
+  container.innerHTML = rows.map(c => {
+    const visitsHtml = c.visits.map(v => `
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0;font-size:12px;">
+        <span style="color:var(--gray);">${fmt(v.date)}</span>
+        ${resultBadge(v.result)}
+        ${v.consentSigned ? '<span class="badge" style="background:#E8F8EF;color:#27AE60;border:1px solid #A8DDB9;">✅ 서명완료</span>' : '<span class="badge" style="background:#FFF3E0;color:#E67E22;border:1px solid #F5CBA7;">✍️ 서명대기</span>'}
+        ${v.puppies ? `<span style="color:var(--gray);">🐾 ${v.puppies}</span>` : ''}
+      </div>`).join('');
+
+    const activeCredits = c.credits.filter(cr => cr.status !== '사용완료');
+    const creditsHtml = activeCredits.length
+      ? activeCredits.map(cr => `
+        <span class="badge" style="background:#FFF9E6;color:#B45309;border:1px solid #F5E1A4;">
+          🎟 ${cr.amount ? Number(cr.amount).toLocaleString() + '원' : ''} 보유 (만료 ${cr.expiresAt ? fmt(new Date(cr.expiresAt).toISOString().slice(0,10)) : '-'})
+        </span>`).join(' ')
+      : '';
+
+    return `<div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+          <div style="font-weight:800;font-size:14px;">${c.name || '이름 미상'} <span style="font-weight:400;font-size:12px;color:var(--gray);">${c.phone || ''}</span></div>
+          <div style="font-size:11px;color:var(--gray);">방문 ${c.visits.length}회</div>
+        </div>
+        ${visitsHtml}
+        ${creditsHtml ? `<div style="margin-top:6px;">${creditsHtml}</div>` : ''}
+      </div>`;
+  }).join('');
 };
 
 // 크레딧을 실제로 재방문에 사용 처리(수동) — 상담 중 크레딧으로 재방문이 확정되면 여기서 소진 처리
