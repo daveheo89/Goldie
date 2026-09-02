@@ -3816,182 +3816,81 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-// ⚡ firebase-storage는 사진/영상 업로드 시점에만 동적 import해서 받는다 (첫 로딩 용량 절감)
-let __storageModPromise = null;
-let storageRef, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, storage;
-async function ensureStorage() {
-  if (storage) return;
-  if (!__storageModPromise) {
-    __storageModPromise = import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
-  }
-  const mod = await __storageModPromise;
-  storage = mod.getStorage(app);
-  storageRef = mod.ref;
-  uploadString = mod.uploadString;
-  uploadBytes = mod.uploadBytes;
-  uploadBytesResumable = mod.uploadBytesResumable;
-  getDownloadURL = mod.getDownloadURL;
-  window.uploadBytesResumable = uploadBytesResumable;
+// ☁️ Cloudinary 업로드 헬퍼 (2026-09: Firebase Storage에서 이전 — 카드 등록 없는 무료 플랜이라
+//    자동 과금이 구조적으로 불가능하다. 무료 한도(월 25GB)를 넘으면 업로드만 막힐 뿐 돈은 안 나간다.
+//    영상도 업로드 시 자동 압축/최적화된다.)
+const CLOUDINARY_CLOUD_NAME = 'gsczj8iv';
+const CLOUDINARY_UPLOAD_PRESET = 'goldie_upload';
+
+function cloudinaryOptimizedUrl(rawUrl) {
+  // 업로드 응답 URL에 자동 최적화 파라미터를 끼워넣어, 볼 때마다 화질은 유지한 채
+  // 파일 크기를 줄여서 전송되게 한다 (대시보드 설정 없이 URL만으로 적용됨)
+  return rawUrl.replace('/upload/', '/upload/q_auto,f_auto/');
 }
 
-let editPuppyLitterKey = null;
-let editPuppyId = null;
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
-  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
-  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
-  projectId: "goldie-shelter-d6c81",
-  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
-  messagingSenderId: "1071275996614",
-  appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-// storage 인스턴스는 ensureStorage()가 첫 호출 시 만든다 (위 module-scope의 storage 변수를 그대로 사용)
-const auth = getAuth(app);
-
-// ── GitHub 최신 배포(커밋) 시각 조회 — Firebase 로그인과 무관하게 페이지 로드 즉시 확인 ──
-async function loadLastDeployTime(filePath, elId) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  try {
-    const res = await fetch(`https://api.github.com/repos/daveheo89/Goldie/commits?path=${encodeURIComponent(filePath)}&per_page=1`);
-    if (!res.ok) throw new Error('GitHub API ' + res.status);
-    const data = await res.json();
-    if (!data || !data[0] || !data[0].commit) throw new Error('커밋 정보 없음');
-    const dateStr = data[0].commit.committer?.date || data[0].commit.author?.date;
-    const kst = new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-    el.textContent = `🕐 최신 배포: ${kst} (GitHub 기준)`;
-  } catch (e) {
-    el.textContent = '🕐 최신 배포 시간 확인 불가';
-    console.warn('[배포 시간 조회 실패]:', e);
-  }
-}
-loadLastDeployTime('goldie_farm.html', 'deploy-time-info');
-
-// ── 🔐 실제 Firebase 로그인 (기존 "5900" 비교는 화면만 가리는 자물쇠였고
-//     데이터베이스 접근 자체는 막지 못했다. 이제 진짜 계정으로 로그인해야
-//     보안 규칙이 관리자와 외부인을 구분할 수 있다.) ──
-// 관리자 화면 로그인 전용 고정 계정 (실제 메일함이 아니어도 됨, Firebase에만 등록)
-const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
-
-// 🗓️ 당일 로그인 유지: 창을 닫아도 그날 안에는 다시 로그인하지 않아도 됨.
-// goldi_admin.html과 같은 localStorage 키('goldie_login_date')를 공유하므로,
-// 한쪽 페이지에서 로그인하면 그날은 두 페이지 모두 로그인 화면을 건너뛴다.
-// 자정(UTC 기준 날짜 문자열)이 지나면 다음 접속 때 자동으로 다시 로그인 화면이 뜬다.
-setPersistence(auth, browserLocalPersistence).catch(()=>{});
-function todayDateStr(){ return new Date().toISOString().slice(0,10); }
-function markLoginToday(){ try { localStorage.setItem('goldie_login_date', todayDateStr()); } catch(_) {} }
-function clearLoginMark(){ try { localStorage.removeItem('goldie_login_date'); } catch(_) {} }
-function isLoginMarkValidToday(){
-  try { return localStorage.getItem('goldie_login_date') === todayDateStr(); } catch(_) { return false; }
+function withHardTimeout(promise, ms, message) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
 }
 
-window.attemptLogin = async function() {
-  const pwInput = document.getElementById('login-password');
-  const pw = pwInput ? pwInput.value.trim() : '';
-  const err = document.getElementById('login-error');
-  const btn = document.querySelector('#login-overlay button');
-  if (err) err.style.display = 'none';
-  if (!pw) return;
-  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
-  try {
-    // ⚠️ onAuthStateChanged가 이 await 완료보다 먼저(또는 동시에) 발동할 수 있어서,
-    // 날짜 마킹을 로그인 성공 이후에 하면 방금 로그인한 사용자가 즉시 재로그아웃되는
-    // 경합이 생길 수 있다. 실패해도 무해하므로 시도 직전에 먼저 찍는다.
-    markLoginToday();
-    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
-    // 화면 전환은 onAuthStateChanged가 처리
-  } catch (e) {
-    console.warn('[관리자 로그인 실패]:', e.code || e.message);
-    if (err) { err.textContent = '⚠️ 비밀번호가 일치하지 않습니다.'; err.style.display = 'block'; }
-    if (pwInput) { pwInput.value = ''; pwInput.focus(); }
-    const overlay = document.getElementById('login-overlay');
-    const card = overlay ? overlay.querySelector('.card') : null;
-    if (card) {
-      card.style.animation = 'none';
-      setTimeout(() => { card.style.animation = 'shake 0.4s ease'; }, 10);
-    }
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '인증하기'; }
-  }
-};
-
-window.adminSignOut = async function() {
-  clearLoginMark();
-  try { await signOut(auth); } catch(e) {}
-};
-
-onAuthStateChanged(auth, (user) => {
-  const overlay = document.getElementById('login-overlay');
-  const main = document.getElementById('main-content');
-  const loader = document.getElementById('loading-screen');
-
-  if (user && !isLoginMarkValidToday()) {
-    // 날짜가 바뀌었는데 세션만 남아있는 경우 → 재로그인 요구
-    clearLoginMark();
-    signOut(auth).catch(()=>{});
-    return;
-  }
-
-  if (user) {
-    document.documentElement.classList.add('authenticated');
-    if (overlay) overlay.style.display = 'none';
-    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
-
-    maybeStartListeners();
-
-    let attempts = 0;
-    (function tryRenderOnLogin() {
-      attempts++;
-      if (typeof window.renderDogs === 'function') {
-        try { window.renderDogs(); } catch(e){}
+function cloudinaryUploadXHR(fileOrDataUrl, resourceType, publicId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const pupTab = document.getElementById('tab-puppies');
-          if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
-            window.renderPuppies();
-          }
-        } catch(e){}
-      } else if (attempts < 30) {
-        setTimeout(tryRenderOnLogin, 100);
+          const data = JSON.parse(xhr.responseText);
+          resolve(cloudinaryOptimizedUrl(data.secure_url));
+        } catch (e) { reject(e); }
+      } else {
+        reject(new Error(`Cloudinary upload failed: ${xhr.status} ${xhr.responseText}`));
       }
-    })();
-  } else {
-    document.documentElement.classList.remove('authenticated');
-    if (overlay) overlay.style.display = 'flex';
-    if (main) { main.style.display = 'none'; }
-    if (loader) { loader.style.display = 'none'; loader.classList.remove('active'); }
-  }
-});
+    };
+    xhr.onerror = () => reject(new Error('Cloudinary upload network error'));
+    const formData = new FormData();
+    formData.append('file', fileOrDataUrl);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    if (publicId) formData.append('public_id', publicId);
+    xhr.send(formData);
+  });
+}
 
-// ☁️ Firebase Storage 업로드 헬퍼
+// path 예: "males/-Orqv.../m_123.jpg" → Cloudinary public_id는 확장자를 떼고 넘긴다
+function pathToPublicId(path) {
+  return path.replace(/\.[^/.]+$/, '');
+}
+
 async function uploadImageAndGetUrl(dataUrl, path) {
   try {
-    await ensureStorage();
-    const r = storageRef(storage, path);
-    await uploadString(r, dataUrl, 'data_url');
-    return await getDownloadURL(r);
+    return await cloudinaryUploadXHR(dataUrl, 'image', pathToPublicId(path));
   } catch (err) {
-    console.error('[Storage Image Upload Error]:', err);
+    console.error('[Cloudinary Image Upload Error]:', err);
     throw err;
   }
 }
 
-async function uploadVideoFileAndGetUrl(file, path) {
+async function uploadVideoFileAndGetUrl(file, path, onProgress) {
   try {
-    await ensureStorage();
-    const r = storageRef(storage, path);
-    await uploadBytes(r, file);
-    return await getDownloadURL(r);
+    return await withHardTimeout(
+      cloudinaryUploadXHR(file, 'video', pathToPublicId(path), onProgress),
+      180000,
+      'upload_hard_timeout'
+    );
   } catch (err) {
-    console.error('[Storage Video Upload Error]:', err);
+    console.error('[Cloudinary Video Upload Error]:', err);
     throw err;
   }
 }
 
-// window.uploadBytesResumable은 ensureStorage()가 실제 로딩 완료 시점에 연결한다
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 
@@ -6593,12 +6492,8 @@ window.saveDog = async function() {
         } else {
           const ext = (item.file.name.split('.').pop() || 'mp4').toLowerCase();
           const storagePath = `${path}/${targetKey}/${mediaKey}.${ext}`;
-          await ensureStorage();
-          const r = storageRef(storage, storagePath);
-          const metadata = { contentType: item.file.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
           try {
-            const result = await uploadBytes(r, item.file, metadata);
-            storageUrl = await getDownloadURL(result.ref);
+            storageUrl = await uploadVideoFileAndGetUrl(item.file, storagePath);
           } catch (uErr) {
             console.error('개체 영상 업로드 실패:', uErr);
             continue;
@@ -14651,60 +14546,16 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
 
         if (overlay) overlay.style.display = 'flex';
         if (progressText) progressText.textContent = `🎥 미디어 업로드 준비 중... (0%)`;
-        await ensureStorage();
 
         let storageUrl = '';
         if (mediaType === 'image') {
           const compressed = await compressImageFile(f);
-          const r = storageRef(storage, storagePath);
-          await uploadString(r, compressed, 'data_url');
-          storageUrl = await getDownloadURL(r);
+          storageUrl = await uploadImageAndGetUrl(compressed, storagePath);
         } else {
-          const r = storageRef(storage, storagePath);
-          const metadata = { contentType: f.type || (ext === 'mov' ? 'video/quicktime' : 'video/mp4') };
-
           if (progressText) progressText.textContent = `🎥 영상 업로드 시작 중... (0%)`;
-
-          try {
-            const task = window.uploadBytesResumable(r, f, metadata);
-            let lastProgressAt = Date.now();
-            const STALL_MS = 8000;   // 8초간 진행 업데이트가 없으면 정지로 간주
-            const HARD_CAP_MS = 180000; // 아무리 길어도 최대 3분 넘기지 않음
-
-            await new Promise((resolve, reject) => {
-              let settled = false;
-              const finish = (fn) => (...args) => { if (!settled) { settled = true; clearInterval(stallTimer); clearTimeout(hardCap); fn(...args); } };
-
-              const stallTimer = setInterval(() => {
-                if (Date.now() - lastProgressAt > STALL_MS) {
-                  try { task.cancel(); } catch(e){}
-                  finish(reject)(new Error('upload_stalled'));
-                }
-              }, 1000);
-              const hardCap = setTimeout(() => {
-                try { task.cancel(); } catch(e){}
-                finish(reject)(new Error('upload_hard_timeout'));
-              }, HARD_CAP_MS);
-
-              task.on('state_changed',
-                (snapshot) => {
-                  lastProgressAt = Date.now();
-                  const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                  if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
-                },
-                finish(reject),
-                finish(async () => {
-                  storageUrl = await getDownloadURL(task.snapshot.ref);
-                  resolve();
-                })
-              );
-            });
-          } catch (resumableErr) {
-            console.warn('[Resumable Upload Fallback to uploadBytes]:', resumableErr);
-            if (progressText) progressText.textContent = `🎥 영상 직접 업로드 중... (잠시만 기다려주세요)`;
-            const result = await uploadBytes(r, f, metadata);
-            storageUrl = await getDownloadURL(result.ref);
-          }
+          storageUrl = await uploadVideoFileAndGetUrl(f, storagePath, (pct) => {
+            if (progressText) progressText.textContent = `🎥 영상 업로드 중... ${pct}%`;
+          });
         }
 
         const mediaItem = {
