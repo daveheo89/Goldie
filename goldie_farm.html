@@ -3894,6 +3894,137 @@ async function uploadVideoFileAndGetUrl(file, path, onProgress) {
 window.uploadImageAndGetUrl = uploadImageAndGetUrl;
 window.uploadVideoFileAndGetUrl = uploadVideoFileAndGetUrl;
 
+let editPuppyLitterKey = null;
+let editPuppyId = null;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+  authDomain: "goldie-shelter-d6c81.firebaseapp.com",
+  databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+  projectId: "goldie-shelter-d6c81",
+  storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
+  messagingSenderId: "1071275996614",
+  appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+// ── GitHub 최신 배포(커밋) 시각 조회 — Firebase 로그인과 무관하게 페이지 로드 즉시 확인 ──
+async function loadLastDeployTime(filePath, elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const res = await fetch(`https://api.github.com/repos/daveheo89/Goldie/commits?path=${encodeURIComponent(filePath)}&per_page=1`);
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const data = await res.json();
+    if (!data || !data[0] || !data[0].commit) throw new Error('커밋 정보 없음');
+    const dateStr = data[0].commit.committer?.date || data[0].commit.author?.date;
+    const kst = new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+    el.textContent = `🕐 최신 배포: ${kst} (GitHub 기준)`;
+  } catch (e) {
+    el.textContent = '🕐 최신 배포 시간 확인 불가';
+    console.warn('[배포 시간 조회 실패]:', e);
+  }
+}
+loadLastDeployTime('goldie_farm.html', 'deploy-time-info');
+
+// ── 🔐 실제 Firebase 로그인 (기존 "5900" 비교는 화면만 가리는 자물쇠였고
+//     데이터베이스 접근 자체는 막지 못했다. 이제 진짜 계정으로 로그인해야
+//     보안 규칙이 관리자와 외부인을 구분할 수 있다.) ──
+// 관리자 화면 로그인 전용 고정 계정 (실제 메일함이 아니어도 됨, Firebase에만 등록)
+const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
+
+// 🗓️ 당일 로그인 유지: 창을 닫아도 그날 안에는 다시 로그인하지 않아도 됨.
+// goldi_admin.html과 같은 localStorage 키('goldie_login_date')를 공유하므로,
+// 한쪽 페이지에서 로그인하면 그날은 두 페이지 모두 로그인 화면을 건너뛴다.
+// 자정(UTC 기준 날짜 문자열)이 지나면 다음 접속 때 자동으로 다시 로그인 화면이 뜬다.
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
+function todayDateStr(){ return new Date().toISOString().slice(0,10); }
+function markLoginToday(){ try { localStorage.setItem('goldie_login_date', todayDateStr()); } catch(_) {} }
+function clearLoginMark(){ try { localStorage.removeItem('goldie_login_date'); } catch(_) {} }
+function isLoginMarkValidToday(){
+  try { return localStorage.getItem('goldie_login_date') === todayDateStr(); } catch(_) { return false; }
+}
+
+window.attemptLogin = async function() {
+  const pwInput = document.getElementById('login-password');
+  const pw = pwInput ? pwInput.value.trim() : '';
+  const err = document.getElementById('login-error');
+  const btn = document.querySelector('#login-overlay button');
+  if (err) err.style.display = 'none';
+  if (!pw) return;
+  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+  try {
+    // ⚠️ onAuthStateChanged가 이 await 완료보다 먼저(또는 동시에) 발동할 수 있어서,
+    // 날짜 마킹을 로그인 성공 이후에 하면 방금 로그인한 사용자가 즉시 재로그아웃되는
+    // 경합이 생길 수 있다. 실패해도 무해하므로 시도 직전에 먼저 찍는다.
+    markLoginToday();
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
+    // 화면 전환은 onAuthStateChanged가 처리
+  } catch (e) {
+    console.warn('[관리자 로그인 실패]:', e.code || e.message);
+    if (err) { err.textContent = '⚠️ 비밀번호가 일치하지 않습니다.'; err.style.display = 'block'; }
+    if (pwInput) { pwInput.value = ''; pwInput.focus(); }
+    const overlay = document.getElementById('login-overlay');
+    const card = overlay ? overlay.querySelector('.card') : null;
+    if (card) {
+      card.style.animation = 'none';
+      setTimeout(() => { card.style.animation = 'shake 0.4s ease'; }, 10);
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '인증하기'; }
+  }
+};
+
+window.adminSignOut = async function() {
+  clearLoginMark();
+  try { await signOut(auth); } catch(e) {}
+};
+
+onAuthStateChanged(auth, (user) => {
+  const overlay = document.getElementById('login-overlay');
+  const main = document.getElementById('main-content');
+  const loader = document.getElementById('loading-screen');
+
+  if (user && !isLoginMarkValidToday()) {
+    // 날짜가 바뀌었는데 세션만 남아있는 경우 → 재로그인 요구
+    clearLoginMark();
+    signOut(auth).catch(()=>{});
+    return;
+  }
+
+  if (user) {
+    document.documentElement.classList.add('authenticated');
+    if (overlay) overlay.style.display = 'none';
+    if (main) { main.style.display = 'block'; main.style.opacity = '1'; }
+
+    maybeStartListeners();
+
+    let attempts = 0;
+    (function tryRenderOnLogin() {
+      attempts++;
+      if (typeof window.renderDogs === 'function') {
+        try { window.renderDogs(); } catch(e){}
+        try {
+          const pupTab = document.getElementById('tab-puppies');
+          if (pupTab && !pupTab.classList.contains('hidden') && typeof window.renderPuppies === 'function') {
+            window.renderPuppies();
+          }
+        } catch(e){}
+      } else if (attempts < 30) {
+        setTimeout(tryRenderOnLogin, 100);
+      }
+    })();
+  } else {
+    document.documentElement.classList.remove('authenticated');
+    if (overlay) overlay.style.display = 'flex';
+    if (main) { main.style.display = 'none'; }
+    if (loader) { loader.style.display = 'none'; loader.classList.remove('active'); }
+  }
+});
+
 
 
 
