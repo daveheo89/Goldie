@@ -565,7 +565,9 @@ async function init(){
     let contract=null;
     if(contractsSnap.exists()){
       const contracts=contractsSnap.val();
-      contract=Object.values(contracts).find(c=>c.dogid===dogid);
+      // 파기(cancelled)된 계약은 "이미 완료된 계약"으로 취급하지 않는다.
+      // (분양 파기 후 재분양 시, 예전 구매자 정보가 새 손님에게 노출되는 사고를 방지)
+      contract=Object.values(contracts).find(c=>c.dogid===dogid && !c.cancelled);
     }
     
     const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
@@ -573,7 +575,7 @@ async function init(){
     let lsDup=false;
     try{
       const ls=JSON.parse(localStorage.getItem('goldi_contracts')||'{}');
-      lsDup=Object.values(ls).some(c=>c.dogid===dogid);
+      lsDup=Object.values(ls).some(c=>c.dogid===dogid && !c.cancelled);
     }catch(e){}
 
     if(contract || fbStatus==='분양 완료' || lsDup){
