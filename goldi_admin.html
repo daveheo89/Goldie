@@ -994,6 +994,7 @@ window.stampContractPdf = async (id) => {
 };
 
 window.contractStatus = c => {
+  if (c.cancelled) return { label: '⚫ 파기됨', color: '#7f8c8d' };
   const depositPaid = c.deposit_paid !== false; // 필드 없는 기존 계약은 완납으로 간주(계약금은 계약시 받는게 기본)
   const balancePaid = !!c.balance_paid;
   if (balancePaid) return { label: '🟢 완납', color: '#27AE60' };
@@ -1016,7 +1017,7 @@ window.renderContractAnalytics = () => {
   const el = document.getElementById('dbAnalytics');
   if (!el) return;
   const rawAll = Object.entries(window._contracts || {});
-  const all = rawAll.filter(([, c]) => !window.isGhostContract(c)); // 정보 누락 계약은 전부 집계에서 제외
+  const all = rawAll.filter(([, c]) => !window.isGhostContract(c) && !c.cancelled); // 정보 누락/파기 계약은 전부 집계에서 제외
 
   const base = window._dbTabDate;
   const ym = base.toISOString().slice(0, 7);
@@ -1110,7 +1111,7 @@ window.renderDbCalendar = () => {
   const month = window._dbTabDate.getMonth();
   titleEl.textContent = `${year}년 ${month + 1}월`;
 
-  const validContracts = Object.entries(window._contracts || {}).filter(([, c]) => !window.isGhostContract(c));
+  const validContracts = Object.entries(window._contracts || {}).filter(([, c]) => !window.isGhostContract(c) && !c.cancelled);
 
   const signEvents = validContracts
     .filter(([, c]) => c.contract_date)
@@ -1200,7 +1201,7 @@ window.renderDB=()=>{
     }).map(([id,c])=>{
       const st = window.contractStatus(c);
       return `
-    <tr>
+    <tr${c.cancelled ? ' style="opacity:.55;"' : ''}>
       <td>${fmt(c.contract_date)}</td>
       <td><strong>${c.dogname||'—'}</strong></td>
       <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
@@ -1214,14 +1215,16 @@ window.renderDB=()=>{
 window.exportCSV = () => {
   const rows = Object.values(window._contracts || {}).filter(c=>!window.isGhostContract(c));
   if (!rows.length) { alert('내보낼 계약 데이터가 없습니다.'); return; }
-  const headers = ['계약일','강아지','성별','구매자','연락처','주소','분양가','계약금','계약금완납','잔금납부일','잔금완납','완납일'];
+  const headers = ['계약일','강아지','성별','구매자','연락처','주소','분양가','계약금','계약금완납','잔금납부일','잔금완납','완납일','파기여부','파기일','파기사유','계약금처리'];
   const lines = [headers.join(',')];
   rows.sort((a,b)=>(a.contract_date||'').localeCompare(b.contract_date||'')).forEach(c=>{
     const st = window.contractStatus(c);
+    const dispositionText = { forfeit: '몰수', refund: '전액환불', partial: `부분환불(${c.deposit_refund_amount||0})` }[c.deposit_disposition] || '';
     const vals = [
       c.contract_date||'', c.dogname||'', genderTxt(c.sex)||'', c.buyer_name||'', c.buyer_phone||'',
       (c.buyer_addr||'').replace(/,/g,' '), c.price||0, c.deposit||0,
-      c.deposit_paid!==false ? 'Y' : 'N', c.balance_date||'', c.balance_paid ? 'Y' : 'N', c.balance_paid_date||''
+      c.deposit_paid!==false ? 'Y' : 'N', c.balance_date||'', c.balance_paid ? 'Y' : 'N', c.balance_paid_date||'',
+      c.cancelled ? 'Y' : 'N', c.cancelled_at||'', c.cancel_reason||'', dispositionText
     ];
     lines.push(vals.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
   });
@@ -1271,18 +1274,144 @@ window.showDetail=id=>{
     ['잔금 완납', balancePaid ? `✅ 완납 (${fmt(c.balance_paid_date)||'—'})` : '❌ 미납'],
     ['계약일',fmt(c.contract_date)],['결제방법',c.payment],['이체자',c.transfer_name],['메모',c.memo]
   ].filter(([,v])=>v&&v!=='—'&&v!=='undefined'&&v!=='null');
-  const btns = `
+
+  if (c.cancelled) {
+    const dispositionText = { forfeit: '계약금 전액 몰수', refund: '계약금 전액 환불', partial: `부분 환불 (${c.deposit_refund_amount?numFmt(c.deposit_refund_amount):0}원)` }[c.deposit_disposition] || '—';
+    rows.push(['⚫ 파기일', fmt(c.cancelled_at)]);
+    if (c.cancel_reason) rows.push(['파기 사유', c.cancel_reason]);
+    rows.push(['계약금 처리', dispositionText]);
+  }
+
+  const btns = c.cancelled ? `
+    <div class="btn-row" style="margin-top:14px; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-br btn-sm" onclick="toggleContractPdf('${id}')">📄 계약서 PDF 보기</button>
+      <button class="btn btn-gray btn-sm" onclick="startEditContract('${id}')">✏️ 정보 수정</button>
+      <button class="btn btn-sm" style="background:#27AE60; color:#fff;" onclick="restoreContract('${id}')">♻️ 파기 복구</button>
+    </div>
+    <div id="pdfPreviewWrap" data-open="0"></div>
+  ` : `
     <div class="btn-row" style="margin-top:14px; gap:8px; flex-wrap:wrap;">
       <button class="btn btn-sm ${depositPaid?'btn-gray':'btn-gold'}" onclick="toggleDepositPaid('${id}')">${depositPaid?'계약금 미납으로 변경':'💰 계약금 완납 처리'}</button>
       <button class="btn btn-sm ${balancePaid?'btn-gray':'btn-gold'}" onclick="toggleBalancePaid('${id}')">${balancePaid?'잔금 미납으로 변경':'💰 잔금 완납 처리'}</button>
       <button class="btn btn-br btn-sm" onclick="toggleContractPdf('${id}')">📄 계약서 PDF 보기</button>
       <button class="btn btn-gray btn-sm" onclick="startEditContract('${id}')">✏️ 정보 수정</button>
+      <button class="btn btn-sm" style="background:#E74C3C; color:#fff;" onclick="startCancelContract('${id}')">🗑️ 분양 파기</button>
     </div>
     <div id="pdfPreviewWrap" data-open="0"></div>
   `;
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
     <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + btns;
   document.getElementById('detailModal').classList.add('open');
+};
+
+// 🗑️ 분양 파기 — 사유/계약금 처리 방식을 입력받는 폼으로 전환
+window.startCancelContract = id => {
+  const c = window._contracts[id]; if (!c) return;
+  const html = `
+    <div class="stitle" style="margin-top:0; color:#E74C3C;">🗑️ 분양 파기 — ${c.buyer_name || ''} 님 (${c.dogname || ''})</div>
+    <div style="font-size:12px; color:var(--gray); margin-bottom:12px; line-height:1.5;">
+      파기하면 "${c.dogname||''}"는 다시 <strong>분양 전</strong> 상태로 돌아가며, 이 계약은 삭제되지 않고 "파기됨" 이력으로 남습니다.
+    </div>
+    <div class="ffield" style="margin-bottom:10px;">
+      <label>파기 사유 (선택)</label>
+      <textarea id="cancel_reason" style="border:1.5px solid var(--gray-l); border-radius:7px; padding:10px; width:100%; height:50px; font-family:inherit;" placeholder="예: 구매자 변심, 잔금 미납 등"></textarea>
+    </div>
+    <div class="ffield" style="margin-bottom:10px;">
+      <label>계약금 처리</label>
+      <div class="status-sel">
+        <button type="button" class="status-opt cancel-disp-opt active" data-v="forfeit" onclick="selectCancelDisposition('forfeit')">몰수</button>
+        <button type="button" class="status-opt cancel-disp-opt" data-v="refund" onclick="selectCancelDisposition('refund')">전액 환불</button>
+        <button type="button" class="status-opt cancel-disp-opt" data-v="partial" onclick="selectCancelDisposition('partial')">부분 환불</button>
+      </div>
+    </div>
+    <div class="ffield" id="cancel_partial_wrap" style="margin-bottom:14px; display:none;">
+      <label>환불 금액 (원)</label>
+      <input type="number" id="cancel_refund_amount" placeholder="예: 100000">
+    </div>
+    <div class="btn-row" style="gap:8px;">
+      <button class="btn btn-gray" onclick="showDetail('${id}')">돌아가기</button>
+      <button class="btn" style="background:#E74C3C; color:#fff;" onclick="confirmCancelContract('${id}')">🗑️ 파기 확정</button>
+    </div>
+  `;
+  document.getElementById('modalBody').innerHTML = html;
+  window._cancelDisposition = 'forfeit';
+};
+
+window.selectCancelDisposition = v => {
+  window._cancelDisposition = v;
+  document.querySelectorAll('.cancel-disp-opt').forEach(el => el.classList.toggle('active', el.dataset.v === v));
+  const wrap = document.getElementById('cancel_partial_wrap');
+  if (wrap) wrap.style.display = v === 'partial' ? 'block' : 'none';
+};
+
+window.confirmCancelContract = async id => {
+  const c = window._contracts[id]; if (!c) return;
+  const reason = document.getElementById('cancel_reason')?.value.trim() || '';
+  const disposition = window._cancelDisposition || 'forfeit';
+  let refundAmount = 0;
+  if (disposition === 'refund') refundAmount = Number(c.deposit) || 0;
+  if (disposition === 'partial') {
+    refundAmount = Number(document.getElementById('cancel_refund_amount')?.value) || 0;
+    if (refundAmount <= 0) { toast('환불 금액을 입력해주세요.'); return; }
+  }
+
+  const dispositionText = { forfeit: '계약금 전액 몰수', refund: '계약금 전액 환불', partial: `계약금 중 ${numFmt(refundAmount)}원 환불` }[disposition];
+  if (!confirm(`정말로 이 분양 계약을 파기하시겠습니까?\n\n- 강아지: ${c.dogname||''}\n- 구매자: ${c.buyer_name||''}\n- 계약금 처리: ${dispositionText}\n\n파기 후 "${c.dogname||''}"는 다시 분양 전 상태가 됩니다.`)) return;
+
+  const cancelData = {
+    cancelled: true,
+    cancelled_at: new Date().toISOString().slice(0,10),
+    cancel_reason: reason,
+    deposit_disposition: disposition,
+    deposit_refund_amount: refundAmount
+  };
+
+  try {
+    await update(ref(db, `contracts/${id}`), cancelData);
+    if (c.litter && c.puppy) {
+      await update(ref(db, `litters/${c.litter}/puppies/${c.puppy}`), { status: '분양 전' });
+    }
+    Object.assign(window._contracts[id], cancelData);
+    toast('🗑️ 분양이 파기 처리되었습니다.');
+    showDetail(id);
+  } catch (e) {
+    alert('파기 처리 실패: ' + e.message);
+  }
+};
+
+// ♻️ 파기 복구 — 계약을 다시 유효 상태로 되돌림. 단, 같은 강아지에 이미 다른 진행중 계약이 있으면 강아지 상태는 건드리지 않음
+window.restoreContract = async id => {
+  const c = window._contracts[id]; if (!c) return;
+  if (!confirm(`파기를 취소하고 이 계약을 다시 "분양 완료" 상태로 되돌리시겠습니까?`)) return;
+
+  const otherActive = Object.entries(window._contracts).find(([oid, oc]) =>
+    oid !== id && !oc.cancelled && oc.litter === c.litter && oc.puppy === c.puppy
+  );
+
+  const restoreData = {
+    cancelled: false,
+    cancelled_at: '',
+    cancel_reason: '',
+    deposit_disposition: '',
+    deposit_refund_amount: 0
+  };
+
+  try {
+    await update(ref(db, `contracts/${id}`), restoreData);
+    Object.assign(window._contracts[id], restoreData);
+
+    if (otherActive) {
+      toast('⚠️ 계약은 복구됐지만, 같은 강아지에 이미 다른 진행중인 계약이 있어 강아지 상태는 바꾸지 않았습니다.');
+    } else if (c.litter && c.puppy) {
+      await update(ref(db, `litters/${c.litter}/puppies/${c.puppy}`), { status: '분양 완료' });
+      toast('♻️ 계약이 복구되고 강아지 상태도 "분양 완료"로 되돌아갔습니다.');
+    } else {
+      toast('♻️ 계약이 복구되었습니다.');
+    }
+    showDetail(id);
+  } catch (e) {
+    alert('복구 실패: ' + e.message);
+  }
 };
 
 // ✏️ 계약 정보 직접 수정 (분양가/계약금/잔금납부일/결제방법/이체자/메모 등 오타·누락 보정용)
@@ -1595,7 +1724,7 @@ window.renderCalendarEvents = function() {
 
   // 3. Existing Contracts Balance Dates (/contracts) - Skip if overlap with Delivery
   Object.entries(window._contracts).forEach(([id, c]) => {
-    if (!c || !c.balance_date) return;
+    if (!c || !c.balance_date || c.cancelled) return;
     if (deliveryContractsSet.has(id)) return; // Skip if delivery exists for contractId
     if (c.buyer_name && deliveryCustomerDateSet.has(`${c.balance_date}_${c.buyer_name}`)) return;
 
