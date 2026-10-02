@@ -3659,6 +3659,28 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
     </div>
   </div>
 
+  <!-- 번식 기록 → 출산 완료 처리 모달 (새끼 탭 출산 기록 자동 생성) -->
+  <div class="modal-overlay" id="birth-complete-modal" onclick="handleBirthCompleteOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="bcm-title">🍼 출산 완료 처리</h2>
+        <button class="modal-close" onclick="closeBirthCompleteModal()">✕</button>
+      </div>
+      <div class="form-group"><label>모견 × 부견</label><div id="bcm-parents" style="font-size:14px; font-weight:700; color:#334155;"></div></div>
+      <div class="form-group"><label>출산일 (실제 출산일)</label><input type="date" id="bcm-date"></div>
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;"><label>♂ 수컷 마릿수</label><input type="number" id="bcm-male" min="0" max="20" value="0" oninput="updateBirthTotal()"></div>
+        <div class="form-group" style="flex:1;"><label>♀ 암컷 마릿수</label><input type="number" id="bcm-female" min="0" max="20" value="0" oninput="updateBirthTotal()"></div>
+      </div>
+      <div id="bcm-total" style="font-size:13px; font-weight:800; color:#334155; margin:-2px 0 10px;"></div>
+      <div id="bcm-note" style="font-size:11px; color:#64748B; line-height:1.5; margin-bottom:12px;"></div>
+      <div class="modal-actions" style="display:flex; gap:8px;">
+        <button class="btn btn-cancel" onclick="closeBirthCompleteModal()">취소</button>
+        <button class="btn" onclick="confirmBirthComplete()" style="flex:1;" id="bcm-save-btn">✅ 출산 완료 저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 새끼 정보 수정 모달 -->
   <div class="modal-overlay" id="puppy-modal" onclick="handlePuppyModalOverlay(event)">
     <div class="modal">
@@ -7123,7 +7145,11 @@ function renderBreeding(){
 
 
 
-    const soon=dl>=0&&dl<=14;
+    const bornLt=findBornLitter(b);
+
+
+
+    const soon=!bornLt&&dl>=0&&dl<=14;
 
 
 
@@ -7163,7 +7189,7 @@ function renderBreeding(){
 
 
 
-          <div class="bc-days">${dl<0?'출산완료':`D-${dl}`}</div>
+          <div class="bc-days">${bornLt?'🍼 출산완료':(dl<0?'출산 확인 필요':`D-${dl}`)}</div>
 
 
 
@@ -7268,13 +7294,30 @@ function renderBreeding(){
 
 
 
-          <div class="bd-info-cell"><div class="lbl">D-Day</div><div class="val">${dl<0?'출산완료':`D-${dl}`}</div></div>
+          <div class="bd-info-cell"><div class="lbl">D-Day</div><div class="val">${bornLt?'🍼 출산완료':(dl<0?'출산 확인 필요':`D-${dl}`)}</div></div>
 
 
 
         </div>
 
 
+
+        <div class="bd-photos-section">
+          <div class="bd-photos-title">🍼 출산 현황</div>
+          ${bornLt ? (() => {
+            const pv = Object.values(bornLt.puppies || {});
+            const mc = pv.filter(p => p && p.sex === 'male').length;
+            const fc = pv.filter(p => p && p.sex === 'female').length;
+            const uc = pv.length - mc - fc;
+            return `<div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:4px;">출산일 ${fmtDate(bornLt.birthA)} · 총 ${pv.length}마리 (♂ ${mc} / ♀ ${fc}${uc ? ` / 미정 ${uc}` : ''})</div>
+            <div style="font-size:11px; color:#64748B; margin-bottom:10px;">💉 백신 ${fmtDate(bornLt.vax1)} · ${fmtDate(bornLt.vax2)} · ${fmtDate(bornLt.vax3)} &nbsp;|&nbsp; 🪱 구충 ${fmtDate(bornLt.deworm1)} · ${fmtDate(bornLt.deworm2)} · ${fmtDate(bornLt.deworm3)}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn-outline btn-sm" style="width:auto; margin:0;" onclick="event.stopPropagation(); goToLitterFromPedigree('${bornLt._key}')">새끼 탭에서 보기</button>
+              <button class="btn-outline btn-sm" style="width:auto; margin:0;" onclick="event.stopPropagation(); openBirthCompleteModal('${b._key}')">✏️ 출산일 수정</button>
+            </div>`;
+          })() : `<div style="font-size:12px; color:#64748B; margin-bottom:10px;">출산일과 수컷·암컷 마릿수를 입력하면 새끼 탭에 자동 등록되고, 백신·구충 일정이 함께 잡혀요.</div>
+            <button class="btn btn-sm" style="width:auto; margin:0;" onclick="event.stopPropagation(); openBirthCompleteModal('${b._key}')">🍼 출산 완료 처리</button>`}
+        </div>
 
         <div class="bd-photos-section">
 
@@ -7920,6 +7963,131 @@ function renderPuppies(){
     list.appendChild(card);
   });
 }
+
+// ── 번식 기록 → 출산 완료 처리 ─────────────────────────────────────────
+// 출산 완료를 누르면 새끼 탭(litters)에 출산 기록을 자동 생성한다.
+// 백신/구충 일정 공식은 기존 saveLitter()와 동일하다 (새로 만든 로직 아님):
+//   백신 1·2·3차 = 출산일A + 25/35/45일, 구충 1·2·3차 = (출산일B 있으면 B, 없으면 A) + 25/40/55일
+// 구글 캘린더는 앱스크립트(syncGoldieCalendarV2)가 litters의 birthA/femaleCode/count를 읽어 4시간마다 반영한다.
+function calcLitterSchedule(birthA, birthB){
+  const dBase = birthB || birthA;
+  return {
+    vax1:addDays(birthA,25), vax2:addDays(birthA,35), vax3:addDays(birthA,45),
+    deworm1:addDays(dBase,25), deworm2:addDays(dBase,40), deworm3:addDays(dBase,55)
+  };
+}
+// 번식 기록에 연결된 출산 기록(litter). 새끼 탭에서 삭제됐으면 null → 다시 출산 완료 처리 가능
+function findBornLitter(b){
+  if(!b||!b.bornLitterKey) return null;
+  return litters.find(l=>l._key===b.bornLitterKey)||null;
+}
+let _birthCompleteKey=null;
+let _birthCompleteBusy=false;
+window.updateBirthTotal=function(){
+  const m=parseInt(document.getElementById('bcm-male').value)||0;
+  const f=parseInt(document.getElementById('bcm-female').value)||0;
+  document.getElementById('bcm-total').textContent=`총 ${m+f}마리 (♂ ${m} + ♀ ${f})`;
+};
+window.openBirthCompleteModal=function(bKey){
+  const b=breedingRecords.find(x=>x._key===bKey);
+  if(!b){showToast('교배 기록을 찾을 수 없어요');return;}
+  _birthCompleteKey=bKey;
+  const born=findBornLitter(b);
+  const mName=b.femaleCode?getMotherInfo(b.femaleCode).name:'?';
+  const sName=b.maleCode?getSireInfo(b.maleCode).name:'?';
+  document.getElementById('bcm-parents').textContent=`${mName} × ${sName}`;
+  const dateEl=document.getElementById('bcm-date');
+  const mEl=document.getElementById('bcm-male');
+  const fEl=document.getElementById('bcm-female');
+  const noteEl=document.getElementById('bcm-note');
+  const saveBtn=document.getElementById('bcm-save-btn');
+  if(born){
+    const pv=Object.values(born.puppies||{});
+    document.getElementById('bcm-title').textContent='🍼 출산일 수정';
+    dateEl.value=born.birthA||'';
+    mEl.value=pv.filter(p=>p&&p.sex==='male').length;
+    fEl.value=pv.filter(p=>p&&p.sex==='female').length;
+    mEl.disabled=true; fEl.disabled=true;
+    noteEl.textContent='마릿수·성별은 새끼 탭의 출산 기록 수정에서 바꿀 수 있어요. 여기서는 출산일만 수정되고, 백신·구충 일정이 새 출산일 기준으로 다시 계산돼요.';
+    saveBtn.textContent='✅ 출산일 저장';
+  } else {
+    const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+    document.getElementById('bcm-title').textContent='🍼 출산 완료 처리';
+    dateEl.value=(b.dueDate&&b.dueDate<=today)?b.dueDate:today;
+    mEl.value=0; fEl.value=0;
+    mEl.disabled=false; fEl.disabled=false;
+    noteEl.textContent='저장하면 새끼 탭에 출산 기록과 새끼 카드가 자동으로 만들어지고, 백신·구충 일정이 함께 잡혀요. 새끼 이름·털색 등은 새끼 탭에서 수정하세요.';
+    saveBtn.textContent='✅ 출산 완료 저장';
+  }
+  window.updateBirthTotal();
+  document.getElementById('birth-complete-modal').classList.add('open');
+};
+window.closeBirthCompleteModal=function(){
+  document.getElementById('birth-complete-modal').classList.remove('open');
+  _birthCompleteKey=null;
+};
+window.handleBirthCompleteOverlay=function(e){
+  if(e.target===document.getElementById('birth-complete-modal')) window.closeBirthCompleteModal();
+};
+window.confirmBirthComplete=async function(){
+  if(_birthCompleteBusy) return;
+  const b=breedingRecords.find(x=>x._key===_birthCompleteKey);
+  if(!b){showToast('교배 기록을 찾을 수 없어요');return;}
+  const date=document.getElementById('bcm-date').value;
+  if(!date){showToast('출산일을 선택해주세요');return;}
+  const born=findBornLitter(b);
+  let male=0, female=0;
+  if(!born){
+    male=parseInt(document.getElementById('bcm-male').value);
+    female=parseInt(document.getElementById('bcm-female').value);
+    if(isNaN(male)||isNaN(female)||male<0||female<0){showToast('수컷·암컷 마릿수를 0 이상 숫자로 입력해주세요');return;}
+    if(male+female<1){showToast('수컷·암컷 마릿수를 합쳐 1마리 이상 입력해주세요');return;}
+    if(male+female>20){showToast('마릿수는 합쳐서 최대 20마리까지 가능해요');return;}
+  }
+  const saveBtn=document.getElementById('bcm-save-btn');
+  const saveBtnText=saveBtn.textContent;
+  _birthCompleteBusy=true;
+  saveBtn.disabled=true; saveBtn.textContent='저장 중...';
+  try{
+    if(born){
+      // 출산일 수정: 연결된 출산 기록의 출산일과 방역 일정만 다시 계산 (새끼/계약 데이터는 건드리지 않음)
+      await fbUpdate(`litters/${born._key}`,{birthA:date,...calcLitterSchedule(date,born.birthB||null)});
+      await fbUpdate(`breeding/${b._key}`,{birthDate:date});
+      showToast('✅ 출산일이 수정되고 백신·구충 일정이 다시 계산됐어요!');
+    } else {
+      // 중복 방지: 같은 모견 + 같은 출산일의 출산 기록이 이미 있으면 새로 만들지 않고 연결만 한다
+      const dup=litters.find(l=>l.femaleCode===b.femaleCode&&l.birthA===date);
+      if(dup){
+        if(!confirm('같은 모견·출산일로 등록된 출산 기록이 이미 있어요.\n새로 만들지 않고 그 기록에 연결할까요?')) return;
+        await fbUpdate(`breeding/${b._key}`,{bornLitterKey:dup._key,birthDate:date});
+        showToast('✅ 기존 출산 기록에 연결했어요!');
+      } else {
+        const total=male+female;
+        const puppies={};
+        for(let i=0;i<total;i++){
+          puppies[`p${i+1}`]={name:`새끼${i+1}`,sex:i<male?'male':'female',photo:null};
+        }
+        const litter={
+          femaleCode:b.femaleCode, maleCode:b.maleCode,
+          birthA:date, birthB:null, count:total,
+          ...calcLitterSchedule(date,null),
+          puppies,
+          breedingKey:b._key
+        };
+        const litterKey=await fbPush('litters',litter);
+        await fbUpdate(`breeding/${b._key}`,{bornLitterKey:litterKey,birthDate:date,bornMale:male,bornFemale:female});
+        showToast(`✅ 출산 완료! 새끼 ${total}마리(♂${male}/♀${female})가 새끼 탭에 등록됐어요.`);
+      }
+    }
+    window.closeBirthCompleteModal();
+    renderBreeding();
+  }catch(e){
+    console.error('출산 완료 처리 실패:',e);
+  }finally{
+    _birthCompleteBusy=false;
+    saveBtn.disabled=false; saveBtn.textContent=saveBtnText;
+  }
+};
 
 // 혈통 탭 출산 이력에서 "새끼 탭에서 보기" 클릭 시 해당 출산 카드로 이동 + 펼침 + 하이라이트
 window.goToLitterFromPedigree = function(litterKey) {
