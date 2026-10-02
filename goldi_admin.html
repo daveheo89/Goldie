@@ -3100,5 +3100,116 @@ window.markCreditUsed = async function(creditId) {
 };
 </script>
 </div><!-- /adminWrap -->
+<script>
+// ── 📱 화면 상태 저장/복원 ────────────────────────────────────────────
+// 스마트폰에서 다른 앱을 쓰다 돌아오면 브라우저가 백그라운드 페이지를 종료했다가 새로 로드해서
+// 항상 첫 화면(계약서 발송 탭)으로 돌아갔다. 나갈 때 보던 "화면 위치"(탭/스크롤/달력의 달)만 기기에
+// 저장해 두고, 30분 안에 돌아오면 그 자리로 복원한다. 고객 정보/입력 중이던 글자는 저장하지 않는다.
+(function setupUiStateRestore(){
+  var KEY = 'goldie_ui_state_admin_v1';
+  var MAX_AGE_MS = 30 * 60 * 1000;
+  var TABS = ['send','db','calendar','credits','crm'];
+  function ym(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+  function parseYm(s){
+    var m = /^(\d{4})-(\d{2})$/.exec(String(s||''));
+    if (!m || +m[1] < 2000 || +m[1] > 2100 || +m[2] < 1 || +m[2] > 12) return null;   // 이상한 값은 무시(현재 달 유지)
+    return new Date(+m[1], +m[2]-1, 15);
+  }
+  function isDate(d){ return !!d && typeof d.getFullYear === 'function' && !isNaN(d.getTime()); }
+  function loggedIn(){ var w = document.getElementById('adminWrap'); return !!w && w.style.display === 'block'; }
+  var canSave = false;
+
+  function activeTab(){
+    var p = document.querySelector('.tab-panel.active');
+    var id = p && p.id ? p.id.replace(/^tab-/, '') : 'send';
+    return TABS.indexOf(id) >= 0 ? id : 'send';
+  }
+  function snapshot(){
+    var s = { v:1, t:Date.now(), tab:activeTab(), y:Math.max(0, Math.round(window.scrollY || 0)) };
+    if (isDate(window._dbTabDate)) s.dm = ym(window._dbTabDate);
+    if (isDate(window._currentCalDate)) s.cm = ym(window._currentCalDate);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(window._selectedCalDateStr || '')) s.cd = window._selectedCalDateStr;
+    if (typeof window._calFilter === 'string') s.cf = window._calFilter;
+    return s;
+  }
+  function save(){
+    if (!canSave || !loggedIn()) return;
+    try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch(e) {}
+  }
+  var saveTimer = null;
+  function saveSoon(ms){ clearTimeout(saveTimer); saveTimer = setTimeout(save, ms); }
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') save(); });
+  window.addEventListener('pagehide', save);
+  window.addEventListener('scroll', function(){ saveSoon(400); }, { passive:true });
+  document.addEventListener('click', function(){ saveSoon(350); }, true);
+  setInterval(function(){ if (document.visibilityState === 'visible') save(); }, 5000);
+
+  function load(){
+    try {
+      if (location.search || location.hash) return null;
+      var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!s || s.v !== 1 || typeof s.t !== 'number') return null;
+      var age = Date.now() - s.t;
+      if (age > MAX_AGE_MS || age < -60000) return null;
+      if (TABS.indexOf(s.tab) < 0) return null;
+      return s;
+    } catch(e) { return null; }
+  }
+
+  var userTouched = false;
+  var USER_EVENTS = ['touchstart','mousedown','wheel','keydown'];
+  function onUser(){ userTouched = true; }
+  USER_EVENTS.forEach(function(ev){ document.addEventListener(ev, onUser, { passive:true, capture:true }); });
+
+  var s = load();
+  if (!s) {
+    var w = setInterval(function(){ if (loggedIn()) { canSave = true; clearInterval(w); } }, 300);
+    return;
+  }
+
+  var f = {}, ticks = 0, shownTicks = 0, timer = null;
+  function finish(){
+    clearInterval(timer);
+    USER_EVENTS.forEach(function(ev){ document.removeEventListener(ev, onUser, true); });
+    canSave = true;
+  }
+  function tabButton(name){
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+      if ((btns[i].getAttribute('onclick') || '').indexOf("'" + name + "'") >= 0) return btns[i];
+    }
+    return null;
+  }
+  function safe(fn){ try { if (typeof fn === 'function') fn(); } catch(e) { console.warn('[화면 복원: 달력 다시 그리기 실패]', e); } }
+  // 탭을 바꿔도 달력은 예전 달 그대로라서, 저장해 둔 달로 다시 그려 준다 (한 곳이 실패해도 나머지는 계속)
+  function renderMonths(tab){
+    if (tab === 'db') { safe(window.renderContractAnalytics); safe(window.renderDbCalendar); }
+    if (tab === 'calendar') { safe(window.renderMonthlyGridCalendar); }
+  }
+  function restoreStep(){
+    if (!f.tab) {
+      f.tab = true;
+      var dm = parseYm(s.dm); if (dm) window._dbTabDate = dm;
+      var cm = parseYm(s.cm); if (cm) window._currentCalDate = cm;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s.cd || '')) window._selectedCalDateStr = s.cd;
+      if (s.cf && typeof window.filterCalCategory === 'function' && document.getElementById('cal-filter-' + s.cf)) window.filterCalCategory(s.cf);
+      if (s.tab !== 'send') { var b = tabButton(s.tab); if (b) b.click(); }
+      renderMonths(s.tab);
+    } else if (activeTab() !== s.tab && s.tab !== 'send') {
+      var b2 = tabButton(s.tab); if (b2) b2.click();               // 초기화 중 첫 탭으로 되돌아갔으면 다시 맞춤
+    }
+    if (ticks % 4 === 0) renderMonths(s.tab);                      // 데이터가 늦게 도착해도 선택한 달로 그려지도록
+  }
+  timer = setInterval(function(){
+    ticks++;
+    if (userTouched || ticks > 60) { finish(); return; }
+    if (!loggedIn()) return;
+    try { restoreStep(); } catch(e) { console.warn('[화면 복원 실패]', e); finish(); return; }
+    shownTicks++;
+    if (shownTicks >= 2) window.scrollTo(0, s.y || 0);
+    if (shownTicks >= 14) finish();
+  }, 250);
+})();
+</script>
 </body>
 </html>
