@@ -305,7 +305,6 @@ window.addEventListener('DOMContentLoaded', function(){
     </div>
 
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
-      <button class="btn btn-green btn-sm" onclick="exportMonthGCalICS()" style="background:#4285F4; color:#fff;">📅 이번 달 [예약&배송] 구글 캘린더 일괄 자동 동기화</button>
       <button class="btn btn-gold btn-sm" onclick="openAddEventModal()">+ 일정 등록</button>
     </div>
   </div>
@@ -2078,12 +2077,10 @@ window.renderSelectedDayEvents = function(dateStr) {
       isGCalSyncable = false;
     }
 
-    const gcalDateStr = s.time ? `${s.date}${s.time.replace(':', '')}` : s.date;
-    const gcalUrl = window.buildGCalUrl(s.title, s.details || '', s.location || '', gcalDateStr);
 
     let gcalBtn = '';
     if (isGCalSyncable) {
-      gcalBtn = `<a href="${gcalUrl}" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none;">📅 Google 캘린더에 추가</a>`;
+      gcalBtn = '';   // 구글 캘린더에는 앱스크립트가 자동으로 반영한다 (수동 추가 링크는 중복 일정을 만들어서 제거)
     } else {
       gcalBtn = `<span style="font-size:11px; color:var(--gray);">🔒 방역/치료 독립 카테고리 (내부 전용)</span>`;
     }
