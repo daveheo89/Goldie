@@ -14888,6 +14888,137 @@ window.addPuppyMedia = async function(e, litterKey, puppyId, mediaType) {
 
 
 
+// ── 📱 화면 상태 저장/복원 ────────────────────────────────────────────
+// 스마트폰에서 다른 앱을 쓰다 돌아오면 브라우저가 백그라운드 페이지를 종료했다가 새로 로드해서
+// 항상 첫 화면으로 돌아갔다. 나갈 때 보던 "화면 위치"(탭/스크롤/펼친 항목)만 기기에 저장해 두고,
+// 30분 안에 돌아오면 그 자리로 복원한다.
+// - 저장 내용은 화면 위치 정보뿐이다 (고객 정보/사진/입력 중이던 글자는 저장하지 않음).
+// - 오래 지났거나(30분 초과) 저장 정보가 이상하면 평소처럼 첫 화면으로 시작한다.
+// - 복원 중 사용자가 화면을 터치/스크롤하면 즉시 복원을 멈춘다.
+(function setupUiStateRestore(){
+  const KEY = 'goldie_ui_state_farm_v1';
+  const MAX_AGE_MS = 30 * 60 * 1000;
+  const TABS = ['today','dogs','kennels','breeding','puppies','delivery','treatment','pedigree'];
+  const ym = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const parseYm = s => {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(s||''));
+    if (!m || +m[1] < 2000 || +m[1] > 2100 || +m[2] < 1 || +m[2] > 12) return null;   // 이상한 값은 무시(현재 달 유지)
+    return new Date(+m[1], +m[2]-1, 1);
+  };
+  const loggedIn = () => document.documentElement.classList.contains('authenticated');
+  let canSave = false;   // 복원이 끝나기 전에는 저장하지 않는다 (첫 화면 상태가 저장된 값을 덮어쓰는 것 방지)
+
+  // ── 저장 ──
+  function snapshot(){
+    const tab = TABS.indexOf(window.currentTab) >= 0 ? window.currentTab : 'today';
+    const s = { v:1, t:Date.now(), tab, y:Math.max(0, Math.round(window.scrollY || 0)) };
+    if (openBreedingIdx) s.br = openBreedingIdx;
+    const open = [];
+    document.querySelectorAll('#litter-list .litter-card').forEach(c => {
+      const b = c.querySelector('.litter-body');
+      if (b && c.id && b.style.display !== 'none') open.push(c.id.replace(/^litter-card-/, ''));
+    });
+    s.lt = open;
+    const ov = document.getElementById('puppy-detail-overlay');
+    if (ov && ov.classList.contains('open') && pdLitterKey && pdPuppyId) s.pd = [pdLitterKey, pdPuppyId];
+    if (tab === 'pedigree' && window._pedigreeSelectedKey) s.pg = window._pedigreeSelectedKey;
+    s.dm = ym(currentCalendarDate);
+    s.rm = ym(__routineMedCalDate);
+    const rc = document.getElementById('treat-cat-routinemed-content');
+    s.tc = (rc && rc.style.display === 'block') ? 'routinemed' : 'treatment';
+    return s;
+  }
+  function save(){
+    if (!canSave || !loggedIn()) return;
+    try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch(e) {}
+  }
+  let saveTimer = null;
+  const saveSoon = ms => { clearTimeout(saveTimer); saveTimer = setTimeout(save, ms); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+  window.addEventListener('pagehide', save);
+  window.addEventListener('scroll', () => saveSoon(400), { passive:true });
+  document.addEventListener('click', () => saveSoon(350), true);
+  setInterval(() => { if (document.visibilityState === 'visible') save(); }, 5000);
+
+  // ── 복원 ──
+  function load(){
+    try {
+      if (location.search || location.hash) return null;            // 링크로 직접 들어온 경우는 건드리지 않음
+      const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!s || s.v !== 1 || typeof s.t !== 'number') return null;
+      const age = Date.now() - s.t;
+      if (age > MAX_AGE_MS || age < -60000) return null;
+      if (TABS.indexOf(s.tab) < 0) return null;
+      return s;
+    } catch(e) { return null; }
+  }
+
+  let userTouched = false;
+  const USER_EVENTS = ['touchstart','mousedown','wheel','keydown'];
+  const onUser = () => { userTouched = true; };
+  USER_EVENTS.forEach(ev => document.addEventListener(ev, onUser, { passive:true, capture:true }));
+
+  const s = load();
+  if (!s) {
+    const w = setInterval(() => { if (loggedIn()) { canSave = true; clearInterval(w); } }, 300);
+    return;
+  }
+
+  const f = {};            // 한 번만 해야 하는 복원 단계 표시
+  let ticks = 0, loaderGoneTicks = 0, timer = null;
+  function finish(){
+    clearInterval(timer);
+    USER_EVENTS.forEach(ev => document.removeEventListener(ev, onUser, true));
+    canSave = true;
+  }
+  function restoreStep(){
+    if (!f.tab) {
+      f.tab = true;
+      const rm = parseYm(s.rm); if (rm) __routineMedCalDate = rm;
+      const dm = parseYm(s.dm); if (dm) currentCalendarDate = dm;
+      window.showTab(s.tab);
+    } else if (window.currentTab !== s.tab) {
+      window.showTab(s.tab);                                        // 초기화 중 다른 코드가 첫 화면으로 되돌렸으면 다시 맞춤
+    }
+    if (s.tab === 'breeding' && s.br && !f.br && breedingRecords.some(b => b._key === s.br)) {
+      f.br = true; openBreedingIdx = s.br; window.renderBreeding();
+    }
+    if (s.tab === 'puppies') {
+      const open = new Set(s.lt || []);
+      document.querySelectorAll('#litter-list .litter-card').forEach(c => {
+        const b = c.querySelector('.litter-body'); if (!b || !c.id) return;
+        const isOpen = open.has(c.id.replace(/^litter-card-/, ''));
+        b.style.display = isOpen ? 'block' : 'none';
+        const ic = c.querySelector('.litter-toggle-icon'); if (ic) ic.textContent = isOpen ? '▼' : '▶';
+      });
+      if (s.pd && !f.pd) {
+        const lt = litters.find(x => x._key === s.pd[0]);
+        if (lt && lt.puppies && lt.puppies[s.pd[1]]) { f.pd = true; window.openPuppyDetail(s.pd[0], s.pd[1]); }
+      }
+    }
+    if (s.tab === 'pedigree' && s.pg && !f.pg && window._pedigreeExpanded && allDogs(true).some(d => d._key === s.pg)) {
+      f.pg = true; window.selectPedigreeDog(s.pg);
+    }
+    if (s.tab === 'treatment' && s.tc === 'routinemed' && !f.tc) {
+      f.tc = true; window.switchTreatCategory('routinemed');
+    }
+  }
+  timer = setInterval(() => {
+    ticks++;
+    if (userTouched || ticks > 60) { finish(); return; }            // 사용자가 만졌거나 15초가 지나면 종료
+    if (!loggedIn()) return;
+    try { restoreStep(); } catch(e) { console.warn('[화면 복원 실패]', e); finish(); return; }
+    // 로딩 화면이 사라진 뒤 스크롤을 맞춘다 (로딩이 끝나는 순간 맨 위로 올리는 기존 동작을 덮어쓰기 위해 반복)
+    const loader = document.getElementById('loading-screen');
+    const gone = !loader || getComputedStyle(loader).display === 'none';
+    if (gone) {
+      loaderGoneTicks++;
+      window.scrollTo(0, s.y || 0);
+      if (loaderGoneTicks >= 10) finish();
+    }
+  }, 250);
+})();
+
 window.init = init;
 init();
 
