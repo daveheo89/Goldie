@@ -1864,6 +1864,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 
 }
+  .delivery-chip.weaning-chip-cal { background: #E0F7FA; color: #00838F; border-left-color: #26C6DA; }
 
 .delivery-chip.rmed-chip-cal {
   background: #FFF3E0;
@@ -10241,6 +10242,19 @@ window.renderDeliveryCalendar = function() {
 
 
 
+      // 🥣 이유식 시작일 = 출산일(A) + 21일 (생후 3주). 이 일정은 실제 출산일(A) 기준이다.
+      if (dateToStr(addDaysDate(lt.birthA, WEANING_START_OFFSET)) === dayDateStr) {
+        const weanChip = document.createElement('div');
+        weanChip.className = 'delivery-chip weaning-chip-cal';
+        weanChip.textContent = `🥣 이유식 시작 (${parentLabel})`;
+        weanChip.title = '생후 3주 — 퍼피 사료를 물/분유에 불려 묽은 죽으로, 하루 1회부터 시작';
+        weanChip.onclick = (e) => {
+          e.stopPropagation();
+          showTab('puppies');
+        };
+        chipsContainer.appendChild(weanChip);
+      }
+
       // 🪱 구충제 & 메트로니다졸 14일 교대 릴레이 (D+30~D+43) — 실제 투약 기준(B안).
       // 계약서에 적히는 deworm1/2/3(25/40/55일, A안)과는 별개의 운영용 일정이다.
       const dwBase = getDewormRelayBaseDate(lt);
@@ -11154,6 +11168,7 @@ function dateToStr(d) {
 // 🐛 구충제 & 메트로니다졸 14일 교대 릴레이 (GOLDIE_HEALTH_QUARANTINE_SPEC.md 기준)
 // D+30,32,34...42(짝수) = 구충제 / D+31,33,35...43(홀수) = 메트로니다졸
 const DEWORM_RELAY_START_OFFSET = 30;
+const WEANING_START_OFFSET = 21;   // 🥣 이유식 시작 = 출산일(A) + 21일 (생후 3주). 건강 일정은 항상 실제 출산일(A) 기준
 const DEWORM_RELAY_DAYS = 14;
 function getDewormRelayInfo(dayOffset) {
   const i = dayOffset - DEWORM_RELAY_START_OFFSET;
