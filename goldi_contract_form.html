@@ -208,7 +208,7 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
         <div class="ffield"><label>이름</label><input id="f_dogname" readonly></div>
         <div class="ffield"><label>성별</label><input id="f_gender" readonly></div>
         <div class="ffield"><label>출생일</label><input id="f_birth" readonly></div>
-        <div class="ffield"><label>모견 코드</label><input id="f_mother" readonly></div>
+        <div class="ffield"><label>모견</label><input id="f_mother" readonly></div>
         <div class="ffield" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 4px;">
           <div class="ffield" style="gap:4px"><label>구충 1차 (생후 25일)</label><input id="f_dw1" readonly></div>
           <div class="ffield" style="gap:4px"><label>구충 2차 (생후 40일)</label><input id="f_dw2" readonly></div>
@@ -373,6 +373,8 @@ let G = {
   deworm3:   P.get('deworm3')||'',
   femaleCode:P.get('femaleCode')||'',
   maleCode:  P.get('maleCode')||'',
+  femaleName:P.get('femaleName')||'',
+  maleName:  P.get('maleName')||'',
   price:     P.get('price')||'',
   saledate:  P.get('saledate')||'',
   memo:      P.get('memo')||'',
@@ -397,6 +399,8 @@ if (!G.litter || !G.puppy) {
         deworm3:   P2.get('deworm3')||G.deworm3,
         femaleCode:P2.get('femaleCode')||G.femaleCode,
         maleCode:  P2.get('maleCode')||G.maleCode,
+        femaleName:P2.get('femaleName')||G.femaleName,
+        maleName:  P2.get('maleName')||G.maleName,
         price:     P2.get('price')||G.price,
         saledate:  P2.get('saledate')||G.saledate,
         memo:      P2.get('memo')||G.memo,
@@ -478,6 +482,42 @@ window.goStep=n=>{
   }
 };
 
+// ── 모견/부견 이름 표시 (계약서에는 코드가 아니라 이름이 나온다) ──────────────────
+// "4262/다미"(번호/이름) 형식은 이름 부분만, "1852"처럼 번호만 있으면 개체 목록에서 코드를 찾아 이름을 쓴다.
+// 관리자가 링크에 이름(femaleName/maleName)을 실어 보낸 경우에는 그 이름을 그대로 쓴다.
+function parentNameQuick(raw){
+  const s=String(raw==null?'':raw).trim();
+  if(!s) return '';
+  if(s.includes('/')){ const parts=s.split('/'); return parts[parts.length-1].trim(); }
+  return s;
+}
+async function resolveParentNamesAsync(){
+  const jobs=[['female','females','femaleCode','femaleName'],['male','males','maleCode','maleName']];
+  for(const [kind,node,kc,kn] of jobs){
+    try{
+      const code=String(G[kc]||'').trim();
+      if(!code){ continue; }
+      if(G[kn]&&String(G[kn]).trim()){ G[kn]=String(G[kn]).trim(); continue; }      // 링크에 이름이 이미 있음
+      let name=parentNameQuick(code);
+      if(!code.includes('/')){                                                         // 번호만 있는 경우 → 개체 목록에서 찾기
+        try{
+          const snap=await get(ref(db,node));
+          if(snap.exists()){
+            const all=snap.val();
+            for(const k of Object.keys(all)){
+              const d=all[k];
+              if(d&&String(d.code==null?'':d.code).trim()===code){ name=(d.name&&String(d.name).trim())||parentNameQuick(d.code)||code; break; }
+            }
+          }
+        }catch(e){ console.warn('[개체 이름 조회 실패]',e); }
+      }
+      G[kn]=name;
+    }catch(e){ console.warn('[이름 확인 실패]',e); }
+  }
+  const el=document.getElementById('f_mother');
+  if(el) el.value=G.femaleName||parentNameQuick(G.femaleCode)||'—';
+}
+
 // ── 초기화
 async function init(){
   if(!G.litter||!G.puppy){
@@ -535,7 +575,8 @@ async function init(){
   document.getElementById('f_dogname').value = G.dogname;
   document.getElementById('f_gender').value  = genderKo(G.sex);
   document.getElementById('f_birth').value   = fmt(G.birthB);
-  document.getElementById('f_mother').value  = G.femaleCode||'—';
+  document.getElementById('f_mother').value  = G.femaleName||(String(G.femaleCode||'').includes('/')?parentNameQuick(G.femaleCode):(G.femaleCode?'확인 중…':''))||'—';
+  resolveParentNamesAsync();
   document.getElementById('f_dw1').value     = fmt(calcDeworm1);
   document.getElementById('f_dw2').value     = fmt(calcDeworm2);
   document.getElementById('f_dw3').value     = fmt(calcDeworm3);
@@ -587,6 +628,8 @@ async function init(){
         G.birthB = contract.birthB || G.birthB;
         G.femaleCode = contract.femaleCode || G.femaleCode;
         G.maleCode = contract.maleCode || G.maleCode;
+        G.femaleName = contract.femaleName || G.femaleName;
+        G.maleName = contract.maleName || G.maleName;
         G.price = contract.price || G.price;
         G.saledate = contract.saledate || G.saledate;
         G.memo = contract.special_memo || G.memo;
@@ -1006,6 +1049,8 @@ window.submitContract=async()=>{
     birthB: G.birthB,
     femaleCode:G.femaleCode,
     maleCode:  G.maleCode,
+    femaleName:G.femaleName||parentNameQuick(G.femaleCode),
+    maleName:  G.maleName||parentNameQuick(G.maleCode),
     deworm1:   calcDeworm1,
     deworm2:   calcDeworm2,
     deworm3:   calcDeworm3,
