@@ -615,8 +615,48 @@ function startMainDataListeners() {
     console.error('[contracts 구독 오류]:', error);
     if (typeof toast === 'function') toast('⚠️ 계약 데이터 연결 오류: ' + (error.code || error.message));
   });
+  // 모견/부견 이름 표시용 개체 목록 (코드 → 이름)
+  onValue(ref(db,'females'),snap=>{ window._females = snap.val() || {}; rerenderParentLabels(); },
+    error => { console.warn('[females 구독 오류]:', error); });
+  onValue(ref(db,'males'),snap=>{ window._males = snap.val() || {}; rerenderParentLabels(); },
+    error => { console.warn('[males 구독 오류]:', error); });
 }
 window.startMainDataListeners = startMainDataListeners;
+
+// ── 모견/부견 표시 이름 (개체 탭 외에는 코드가 아니라 이름으로 통일) ──────────────
+// litters/contracts 에 저장된 femaleCode/maleCode 는 "4262/다미", "4210 / 해리"(번호/이름) 또는 "1852"(번호만),
+// "늑구"(코드인데 실제 이름은 "원주") 처럼 제각각이다. 그래서
+//  ① 계약서에 저장해 둔 이름(snapshot)이 있으면 그것, ② 등록된 개체와 코드가 같으면 그 개체의 이름,
+//  ③ "번호/이름" 형식이면 이름 부분, ④ 그 외에는 값 그대로 보여준다. (저장된 데이터는 바꾸지 않는다)
+function parentNameFromString(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (s.includes('/')) { const parts = s.split('/'); return parts[parts.length - 1].trim(); }
+  return s;
+}
+function parentName(raw, kind, snapshot, emptyText) {
+  const empty = (emptyText === undefined) ? '—' : emptyText;
+  if (snapshot && String(snapshot).trim()) return String(snapshot).trim();
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return empty;
+  const dict = (kind === 'male') ? (window._males || {}) : (window._females || {});
+  for (const k in dict) {
+    const d = dict[k];
+    if (d && String(d.code == null ? '' : d.code).trim() === s) {
+      return (d.name && String(d.name).trim()) || parentNameFromString(d.code) || s;
+    }
+  }
+  return parentNameFromString(s) || s;
+}
+// 개체 목록(이름)이 늦게 도착해도 화면의 이름이 바뀌도록 다시 그린다
+function rerenderParentLabels() {
+  try {
+    if (window._litters) {
+      if (typeof renderPuppyGroups === 'function') renderPuppyGroups();
+      if (typeof renderManageList === 'function') renderManageList();
+    }
+  } catch (e) { console.warn('[이름 표시 갱신 실패]', e); }
+}
 
 // ── TAB1: 새끼 선택
 function renderPuppyGroups(){
@@ -640,7 +680,7 @@ function renderPuppyGroups(){
       </div>`;
     }).join('');
     return `<div class="litter-group">
-      <div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
+      <div class="litter-label">♀ ${parentName(l.femaleCode,'female')} × ♂ ${parentName(l.maleCode,'male')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span></div>
       <div class="puppy-list">${items}</div>
     </div>`;
   }).join('');
@@ -660,7 +700,7 @@ window.selectPuppy=(lid,pid)=>{
     <div class="chip"><span class="chip-k">이름</span><span class="chip-v">${p.name||pid}</span></div>
     <div class="chip"><span class="chip-k">성별</span><span class="chip-v">${genderTxt(p.sex)}</span></div>
     <div class="chip"><span class="chip-k">출생일(birthB)</span><span class="chip-v">${fmt(l.birthB)}</span></div>
-    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${l.femaleCode||'—'}</span></div>
+    <div class="chip"><span class="chip-k">모견</span><span class="chip-v">${parentName(l.femaleCode,'female')}</span></div>
     <div class="chip"><span class="chip-k">구충1차</span><span class="chip-v">${fmt(l.deworm1)}</span></div>
     <div class="chip"><span class="chip-k">구충2차</span><span class="chip-v">${fmt(l.deworm2)}</span></div>`;
   document.getElementById('s_saledate').value=new Date().toISOString().slice(0,10);
@@ -829,6 +869,8 @@ window.generateLink=()=>{
     deworm2:l.deworm2||'',
     femaleCode:l.femaleCode||'',
     maleCode:l.maleCode||'',
+    femaleName:parentName(l.femaleCode,'female','',''),
+    maleName:parentName(l.maleCode,'male','',''),
     price, saledate, memo
   };
   // 🐾 골디 앰버서더 방문 기록 매칭 시: 이미 낸 예약금 + 다마리 할인 여부를 계약서 폼으로 전달
@@ -916,7 +958,7 @@ function renderManageList(){
   sorted.forEach(([lid,l])=>{
     const puppies=l.puppies||{};
     if(!Object.keys(puppies).length) return;
-    html+=`<div class="litter-group"><div class="litter-label">♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span><button class="btn btn-gold btn-sm" onclick="openEditLitter('${lid}')">✏️ 수정</button></div>
+    html+=`<div class="litter-group"><div class="litter-label">♀ ${parentName(l.femaleCode,'female')} × ♂ ${parentName(l.maleCode,'male')} <span style="color:var(--gold-l);font-size:11px">${fmt(l.birthB)}</span><button class="btn btn-gold btn-sm" onclick="openEditLitter('${lid}')">✏️ 수정</button></div>
     <table class="tbl"><thead><tr><th>이름</th><th>성별</th><th>상태 변경</th></tr></thead><tbody>`;
     Object.entries(puppies).forEach(([pid,p])=>{
       const st=p.status||'분양 전';
@@ -975,7 +1017,7 @@ window.openEditLitter=(lid)=>{
     <button class="btn btn-gray" onclick="closeEditModal()">취소</button>
     <button class="btn btn-gold" onclick="saveLitterEdit('${lid}')">💾 저장</button>
   </div>`;
-  document.getElementById('editModalTitle').textContent=`그룹 수정 — ♀ ${l.femaleCode||'—'} × ♂ ${l.maleCode||'—'}`;
+  document.getElementById('editModalTitle').textContent=`그룹 수정 — ♀ ${parentName(l.femaleCode,'female')} × ♂ ${parentName(l.maleCode,'male')}`;
   document.getElementById('editModalBody').innerHTML=html;
   document.getElementById('editModal').classList.add('open');
 };
@@ -1434,7 +1476,7 @@ window.showDetail=id=>{
   const c=window._contracts[id];if(!c)return;
   const depositPaid = c.deposit_paid !== false;
   const balancePaid = !!c.balance_paid;
-  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',c.femaleCode],
+  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',parentName(c.femaleCode,'female',c.femaleName)],
     ['구매자',c.buyer_name],['연락처',c.buyer_phone],['주소',c.buyer_addr],
     ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
     ['계약금 완납', depositPaid ? `✅ 완납 (${fmt(c.deposit_paid_date)||'—'})` : '❌ 미납'],
@@ -2426,7 +2468,7 @@ window.renderEditPuppyChecklist = function(selectedPuppies) {
     if (!items) return '';
     return `
       <div style="margin-bottom:10px;">
-        <div style="font-size:11px; font-weight:700; color:var(--gold-l); margin-bottom:6px;">♀ ${l.femaleCode || '—'} × ♂ ${l.maleCode || '—'} (${fmt(l.birthB)})</div>
+        <div style="font-size:11px; font-weight:700; color:var(--gold-l); margin-bottom:6px;">♀ ${parentName(l.femaleCode,'female')} × ♂ ${parentName(l.maleCode,'male')} (${fmt(l.birthB)})</div>
         <div style="display:flex; flex-wrap:wrap;">${items}</div>
       </div>
     `;
@@ -2676,7 +2718,7 @@ window.renderCalPuppyChecklist = function() {
     if (!items) return '';
     return `
       <div style="margin-bottom:10px;">
-        <div style="font-size:11px; font-weight:700; color:var(--gold-l); margin-bottom:6px;">♀ ${l.femaleCode || '—'} × ♂ ${l.maleCode || '—'} (${fmt(l.birthB)})</div>
+        <div style="font-size:11px; font-weight:700; color:var(--gold-l); margin-bottom:6px;">♀ ${parentName(l.femaleCode,'female')} × ♂ ${parentName(l.maleCode,'male')} (${fmt(l.birthB)})</div>
         <div style="display:flex; flex-wrap:wrap;">${items}</div>
       </div>
     `;
@@ -2721,7 +2763,7 @@ window.onCalTypeChange = function() {
   const options = Object.entries(contracts)
     .filter(([, c]) => c && c.buyer_name)
     .sort(([, a], [, b]) => (b.created_at || '').localeCompare(a.created_at || ''))
-    .map(([id, c]) => `<option value="${id}">${c.buyer_name} 님 (${c.femaleCode || ''}×${c.maleCode || ''})</option>`)
+    .map(([id, c]) => `<option value="${id}">${c.buyer_name} 님 (${parentName(c.femaleCode,'female',c.femaleName,'')}×${parentName(c.maleCode,'male',c.maleName,'')})</option>`)
     .join('');
   sel.innerHTML = '<option value="">-- 계약 선택 (직접 입력하려면 비워두세요) --</option>' + options;
 };
@@ -2733,7 +2775,7 @@ window.onCalContractSelect = function() {
   const c = (window._contracts || {})[contractId];
   if (!c) return;
 
-  const dogLabel = `${c.femaleCode || ''}×${c.maleCode || ''}`;
+  const dogLabel = `${parentName(c.femaleCode,'female',c.femaleName,'')}×${parentName(c.maleCode,'male',c.maleName,'')}`;
   document.getElementById('cal_title').value = `🚚 [배송] ${c.buyer_name || ''} 님 (${dogLabel})`;
   if (c.balance_date) document.getElementById('cal_date').value = c.balance_date;
   document.getElementById('cal_location').value = [c.buyer_addr || '', c.buyer_addr_detail || ''].filter(Boolean).join(' ');
