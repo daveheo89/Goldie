@@ -338,6 +338,38 @@ header{background:var(--br);padding:14px 20px;display:flex;align-items:center;ga
     </div>
   </div>
 
+
+  <!-- 🔒 본인확인 게이트: 계약 기록이 있는 강아지의 링크를 다시 열었을 때 -->
+  <div class="step-panel" id="stepVerify">
+    <div class="card" style="text-align:center; padding:44px 24px;">
+      <div style="font-size:40px; margin-bottom:10px;">🔒</div>
+      <div style="font-size:18px; font-weight:800; color:var(--br); margin-bottom:10px;">본인 확인이 필요합니다</div>
+      <p style="font-size:13px; color:var(--gray); line-height:1.7; margin-bottom:22px;">
+        이미 계약이 완료된 강아지입니다.<br>
+        계약 시 등록하신 연락처를 입력하시면<br>
+        계약서 사본과 가이드북을 다시 확인하실 수 있습니다.
+      </p>
+      <input type="tel" id="verify_phone" placeholder="예: 010-1234-5678" onkeydown="if(event.key==='Enter')submitVerifyPhone()" style="max-width:280px; width:100%; padding:12px 14px; border:1.5px solid var(--gray-l); border-radius:8px; font-size:14px; text-align:center; box-sizing:border-box;">
+      <div id="verifyError" style="color:#E74C3C; font-size:12px; margin-top:10px; display:none;"></div>
+      <div style="margin-top:20px;">
+        <button class="btn btn-gold" onclick="submitVerifyPhone()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🚫 접근 차단: 대조할 연락처가 없는 예외 데이터 -->
+  <div class="step-panel" id="stepBlocked">
+    <div class="card" style="text-align:center; padding:44px 24px;">
+      <div style="font-size:40px; margin-bottom:10px;">🚫</div>
+      <div style="font-size:18px; font-weight:800; color:var(--br); margin-bottom:10px;">접근할 수 없는 링크입니다</div>
+      <p style="font-size:13px; color:var(--gray); line-height:1.7;">
+        정상적으로 확인되지 않는 링크입니다.<br>
+        문의사항은 골디쉼터로 직접 연락해주세요.<br>
+        010-6508-5901
+      </p>
+    </div>
+  </div>
+
 </div><!-- /container -->
 
 <div class="toast" id="toast"></div>
@@ -518,6 +550,93 @@ async function resolveParentNamesAsync(){
   if(el) el.value=G.femaleName||parentNameQuick(G.femaleCode)||'—';
 }
 
+function normalizePhoneDigits(v){ return String(v==null?'':v).replace(/[^0-9]/g,''); }
+
+function showOnlyPanel(id){
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  const panel=document.getElementById(id);
+  if(panel) panel.classList.add('active');
+  const stepBar=document.querySelector('.step-bar');
+  if(stepBar) stepBar.style.display='none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+// 🔒 본인확인 화면
+window.showVerifyGate=()=>{
+  showOnlyPanel('stepVerify');
+  const el=document.getElementById('verify_phone');
+  if(el) el.focus();
+};
+// 🚫 접근 차단 화면
+window.showAccessBlocked=()=>showOnlyPanel('stepBlocked');
+
+// 본인확인 통과 후에만 호출: 계약 정보를 화면에 채우고 완료 화면 표시
+function revealCompletedContract(contract){
+  G.dogname = contract.dogname || G.dogname;
+  G.sex = contract.sex || G.sex;
+  G.birthB = contract.birthB || G.birthB;
+  G.femaleCode = contract.femaleCode || G.femaleCode;
+  G.maleCode = contract.maleCode || G.maleCode;
+  G.femaleName = contract.femaleName || G.femaleName;
+  G.maleName = contract.maleName || G.maleName;
+  G.price = contract.price || G.price;
+  G.saledate = contract.saledate || G.saledate;
+  G.memo = contract.special_memo || G.memo;
+
+  document.getElementById('b_name').value = contract.buyer_name || '';
+  document.getElementById('b_phone').value = contract.buyer_phone || '';
+  document.getElementById('b_addr').value = contract.buyer_addr || '';
+  document.getElementById('b_addr_detail').value = contract.buyer_addr_detail || '';
+  if(document.getElementById('b_payment')) document.getElementById('b_payment').value = contract.payment || '';
+  if(document.getElementById('b_transfer')) document.getElementById('b_transfer').value = contract.transfer_name || '';
+  if(document.getElementById('b_deposit')) document.getElementById('b_deposit').value = contract.deposit || 0;
+  if(document.getElementById('b_balance_date')) document.getElementById('b_balance_date').value = contract.balance_date || '';
+
+  // 완료된 계약건 프리뷰 생성 (검증 우회 플래그 true 전달)
+  window.goStep2(true);
+
+  // 서명 이미지 삽입
+  const signImg=document.getElementById('cv_sign_img');
+  if(signImg && contract.signature){
+    signImg.innerHTML=`<img src="${contract.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;
+  }
+  const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
+  if (cvMemoSignImg && contract.signature_memo) {
+    cvMemoSignImg.innerHTML = `<img src="${contract.signature_memo}" style="max-height:40px; border-radius:3px;">`;
+    cvMemoSignImg.style.border = 'none';
+    cvMemoSignImg.style.background = 'transparent';
+  }
+
+  document.getElementById('complete-title').textContent = '이미 분양 완료된 강아지입니다!';
+  document.getElementById('complete-sub').innerHTML = `
+    이미 분양 계약 및 서명이 완료되었습니다.<br>
+    아래 버튼을 통해 서명이 완료된 계약서를 다운로드하고<br>
+    가이드북도 함께 확인하실 수 있습니다. 🐾
+  `;
+  window.goStep(4);
+}
+
+// 연락처 확인 제출
+window._verifyFails=0;
+window.submitVerifyPhone=()=>{
+  const contract=window._pendingVerifyContract;
+  const errorEl=document.getElementById('verifyError');
+  const inputEl=document.getElementById('verify_phone');
+  const showErr=m=>{ errorEl.textContent=m; errorEl.style.display='block'; };
+  if(!contract){ showErr('확인할 수 없는 상태입니다. 페이지를 새로고침해주세요.'); return; }
+  if(window._verifyFails>=5){ showErr('확인 시도 횟수를 초과했습니다. 골디쉼터(010-6508-5901)로 문의해주세요.'); return; }
+  const input=normalizePhoneDigits(inputEl?inputEl.value:'');
+  if(!input){ showErr('연락처를 입력해주세요.'); return; }
+  const actual=normalizePhoneDigits(contract.buyer_phone);
+  if(!actual || input!==actual){
+    window._verifyFails++;
+    showErr('입력하신 연락처가 계약 정보와 일치하지 않습니다. 다시 확인해주세요.');
+    return;
+  }
+  errorEl.style.display='none';
+  window._pendingVerifyContract=null;
+  revealCompletedContract(contract);
+};
+
 // ── 초기화
 async function init(){
   if(!G.litter||!G.puppy){
@@ -621,53 +740,15 @@ async function init(){
 
     if(contract || fbStatus==='분양 완료' || lsDup){
       window._alreadyCompleted=true;
-      
-      if(contract){
-        G.dogname = contract.dogname || G.dogname;
-        G.sex = contract.sex || G.sex;
-        G.birthB = contract.birthB || G.birthB;
-        G.femaleCode = contract.femaleCode || G.femaleCode;
-        G.maleCode = contract.maleCode || G.maleCode;
-        G.femaleName = contract.femaleName || G.femaleName;
-        G.maleName = contract.maleName || G.maleName;
-        G.price = contract.price || G.price;
-        G.saledate = contract.saledate || G.saledate;
-        G.memo = contract.special_memo || G.memo;
-        
-        document.getElementById('b_name').value = contract.buyer_name || '';
-        document.getElementById('b_phone').value = contract.buyer_phone || '';
-        document.getElementById('b_addr').value = contract.buyer_addr || '';
-        document.getElementById('b_addr_detail').value = contract.buyer_addr_detail || '';
-        if(document.getElementById('b_payment')) document.getElementById('b_payment').value = contract.payment || '';
-        if(document.getElementById('b_transfer')) document.getElementById('b_transfer').value = contract.transfer_name || '';
-        if(document.getElementById('b_deposit')) document.getElementById('b_deposit').value = contract.deposit || 0;
-        if(document.getElementById('b_balance_date')) document.getElementById('b_balance_date').value = contract.balance_date || '';
-        
-        // 완료된 계약건 프리뷰 생성 (검증 우회 플래그 true 전달)
-        window.goStep2(true);
-        
-        // 서명 이미지 삽입
-        const signImg=document.getElementById('cv_sign_img');
-        if(signImg && contract.signature){
-          signImg.innerHTML=`<img src="${contract.signature}" style="max-width:200px;border:1px solid #eee;border-radius:4px">`;
-        }
-        const cvMemoSignImg = document.getElementById('cv_memo_sign_img');
-        if (cvMemoSignImg && contract.signature_memo) {
-          cvMemoSignImg.innerHTML = `<img src="${contract.signature_memo}" style="max-height:40px; border-radius:3px;">`;
-          cvMemoSignImg.style.border = 'none';
-          cvMemoSignImg.style.background = 'transparent';
-        }
+      // 🔒 계약자 본인 확인 전에는 어떤 개인정보도 화면에 채우지 않는다.
+      //    - 연락처가 등록된 계약: 본인확인 화면
+      //    - 대조할 연락처가 없는 예외(레거시 등): 접근 차단
+      if(contract && normalizePhoneDigits(contract.buyer_phone)){
+        window._pendingVerifyContract=contract;
+        window.showVerifyGate();
       } else {
-        window.goStep2(true);
+        window.showAccessBlocked();
       }
-      
-      document.getElementById('complete-title').textContent = '이미 분양 완료된 강아지입니다!';
-      document.getElementById('complete-sub').innerHTML = `
-        이미 분양 계약 및 서명이 완료되었습니다.<br>
-        아래 버튼을 통해 서명이 완료된 계약서를 다운로드하고<br>
-        가이드북도 함께 확인하실 수 있습니다. 🐾
-      `;
-      window.goStep(4);
       return;
     }
   }catch(e){
