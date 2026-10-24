@@ -1865,6 +1865,7 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
 
 }
   .delivery-chip.weaning-chip-cal { background: #E0F7FA; color: #00838F; border-left-color: #26C6DA; }
+  .delivery-chip.rsvopen-chip-cal { background: #E8EAF6; color: #3949AB; border-left-color: #5C6BC0; }
 
 .delivery-chip.rmed-chip-cal {
   background: #FFF3E0;
@@ -10255,6 +10256,19 @@ window.renderDeliveryCalendar = function() {
         chipsContainer.appendChild(weanChip);
       }
 
+      // 📣 예약 분양 오픈일 = 출산일(A) + 30일 (생후 30일). 출산일B는 쓰지 않는다.
+      if (dateToStr(addDaysDate(lt.birthA, RESERVATION_OPEN_OFFSET)) === dayDateStr) {
+        const rsvOpenChip = document.createElement('div');
+        rsvOpenChip.className = 'delivery-chip rsvopen-chip-cal';
+        rsvOpenChip.textContent = `📣 예약 분양 오픈 (${parentLabel})`;
+        rsvOpenChip.title = '생후 30일 — 예약 분양 오픈일';
+        rsvOpenChip.onclick = (e) => {
+          e.stopPropagation();
+          showTab('puppies');
+        };
+        chipsContainer.appendChild(rsvOpenChip);
+      }
+
       // 🪱 구충제 & 메트로니다졸 14일 교대 릴레이 (D+30~D+43) — 실제 투약 기준(B안).
       // 계약서에 적히는 deworm1/2/3(25/40/55일, A안)과는 별개의 운영용 일정이다.
       const dwBase = getDewormRelayBaseDate(lt);
@@ -11169,6 +11183,7 @@ function dateToStr(d) {
 // D+30,32,34...42(짝수) = 구충제 / D+31,33,35...43(홀수) = 메트로니다졸
 const DEWORM_RELAY_START_OFFSET = 30;
 const WEANING_START_OFFSET = 21;   // 🥣 이유식 시작 = 출산일(A) + 21일 (생후 3주). 건강 일정은 항상 실제 출산일(A) 기준
+const RESERVATION_OPEN_OFFSET = 30;   // 📣 예약 분양 오픈 = 출산일(A) + 30일 (생후 30일). 항상 출산일(A) 기준, 출산일B는 쓰지 않는다
 const DEWORM_RELAY_DAYS = 14;
 function getDewormRelayInfo(dayOffset) {
   const i = dayOffset - DEWORM_RELAY_START_OFFSET;
