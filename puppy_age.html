@@ -106,22 +106,30 @@ function cleanName(code){
   return s.includes('/') ? s.split('/').pop().trim() : s;
 }
 
-let femaleNameMap=null;
+let femaleMapPromise=null;      // 모견 목록은 한 번만 불러오고, 동시에 조회하는 배들이 같은 결과를 기다린다
+function loadFemaleMap(){
+  if(!femaleMapPromise){
+    femaleMapPromise=(async()=>{
+      const map={};
+      const keys=await rest('females?shallow=true');
+      await Promise.all(Object.keys(keys||{}).map(async k=>{
+        try{
+          const [cd,nm]=await Promise.all([rest('females/'+encodeURIComponent(k)+'/code'),rest('females/'+encodeURIComponent(k)+'/name')]);
+          if(cd!=null && nm) map[String(cd).trim()]=cleanName(nm);
+        }catch(e){}
+      }));
+      return map;
+    })();
+    femaleMapPromise.catch(()=>{ femaleMapPromise=null; });   // 실패하면 다음에 다시 시도
+  }
+  return femaleMapPromise;
+}
 async function femaleNameByCode(code){
-  const c=String(code||'').trim();
+  const c=String(code==null?'':code).trim();
   if(!c) return '';
   if(c.includes('/')) return cleanName(c);
-  if(!femaleNameMap){
-    femaleNameMap={};
-    const keys=await rest('females?shallow=true');
-    await Promise.all(Object.keys(keys||{}).map(async k=>{
-      try{
-        const [cd,nm]=await Promise.all([rest('females/'+encodeURIComponent(k)+'/code'),rest('females/'+encodeURIComponent(k)+'/name')]);
-        if(cd!=null) femaleNameMap[String(cd).trim()]=cleanName(nm||cd);
-      }catch(e){}
-    }));
-  }
-  return femaleNameMap[c]||c;
+  const map=await loadFemaleMap();
+  return map[c]||c;
 }
 
 // 사진 등 무거운 필드를 피하려고 필요한 값만 하나씩 읽는다
@@ -221,7 +229,7 @@ async function load(manual){
   btn.disabled=true;
   setStatus(manual?'새로 불러오는 중…':'최신 정보 확인 중…');
   try{
-    femaleNameMap=null; showingOlder=false;
+    femaleMapPromise=null; showingOlder=false;
     const heads=await fetchLitters();
     const recent=[], older=[];
     heads.forEach(h=>{
