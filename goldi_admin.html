@@ -359,7 +359,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const FB = {
@@ -396,7 +396,18 @@ loadLastDeployTime('goldi_admin.html', 'deploy-time-info');
 
 // ── 🔐 실제 Firebase 로그인 (goldie_farm.html과 동일 계정 사용) ──
 const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
-const SHELTER_ADDRESS = '충북 음성군 감곡면 가곡로532번길 15-17'; // 방문 예약 시 장소 칸 자동 입력용
+// 🔒 2026-10-25: 공개 저장소 코드에 주소가 그대로 노출되는 문제로, 하드코딩 대신
+//    로그인한 사람만 읽을 수 있는 DB(settings/shelterAddress)에서 불러오도록 변경.
+//    로그인 직후 loadShelterAddress()가 값을 채워준다 (그 전까지는 빈 문자열).
+let SHELTER_ADDRESS = ''; // 방문 예약 시 장소 칸 자동 입력용
+async function loadShelterAddress(){
+  try{
+    const snap = await get(ref(db, 'settings/shelterAddress'));
+    if (snap.exists()) SHELTER_ADDRESS = snap.val();
+  }catch(e){
+    console.warn('[견사 주소 조회 실패]:', e);
+  }
+}
 
 // ── 골디 앰버서더(방문형 이동분양) 설정 ──────────────────────────────
 // 양평군청 대략 좌표(참고용). 실제 운영 전 카카오맵/네이버맵에서 정확한 좌표로 재확인 권장.
@@ -512,6 +523,7 @@ onAuthStateChanged(auth, (user) => {
     if (wrap) wrap.style.display = 'block';
     if (typeof window.startAdminCalendarListeners === 'function') window.startAdminCalendarListeners();
     if (typeof window.startMainDataListeners === 'function') window.startMainDataListeners();
+    loadShelterAddress();
   } else {
     if (gate) gate.style.display = 'flex';
     if (wrap) wrap.style.display = 'none';
