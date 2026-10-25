@@ -719,11 +719,11 @@ async function init(){
     <div class="chip"><span class="chip-k">분양가</span><span class="chip-v">${numFmt(G.price)}</span></div>`;
 
   // 2. 기존 완료 계약 및 중복 계약 확인
-  // ⚠️ 2026-10-25: contracts 노드 전체를 읽던 방식은 보안 문제로 제거됨
+  // ⚠️ 2026-10-25: contracts 전체 노드를 읽던 기존 방식은 보안 문제로 제거됨
   //    (비로그인 상태에서 모든 고객의 계약 정보가 브라우저로 전송되는 문제).
-  //    이제는 공개 읽기 가능한 새끼의 status 값만으로 중복 분양 여부를 판단한다.
-  //    단, 이 방식에서는 과거 서명 계약서를 본인확인 후 다시 열람하는 기능은
-  //    더 이상 지원하지 않는다 (해당 경우 쉼터 문의로 안내).
+  //    이제는 1) 공개 읽기 가능한 새끼의 status 값으로 완료 여부만 1차 확인하고,
+  //    2) 완료 상태라면 강아지ID→계약ID 전용 색인(contractsByDog)으로
+  //       "이 강아지 하나"의 계약만 콕 집어 조회한다 (다른 고객 계약은 여전히 비공개).
   const dogid=`${G.litter}_${G.puppy}`;
   try{
     const fbSnap=await get(ref(db,`litters/${G.litter}/puppies/${G.puppy}`));
@@ -736,7 +736,24 @@ async function init(){
 
     if(fbStatus==='분양 완료' || lsDup){
       window._alreadyCompleted=true;
-      window.showAccessBlocked();
+      let contract=null;
+      try{
+        const idSnap=await get(ref(db,`contractsByDog/${dogid}`));
+        const cid=idSnap.val();
+        if(cid){
+          const cSnap=await get(ref(db,`contracts/${cid}`));
+          const c=cSnap.val();
+          if(c && !c.cancelled) contract=c;
+        }
+      }catch(e){
+        console.warn('계약 재열람 색인 조회 실패:',e);
+      }
+      if(contract && normalizePhoneDigits(contract.buyer_phone)){
+        window._pendingVerifyContract=contract;
+        window.showVerifyGate();
+      } else {
+        window.showAccessBlocked();
+      }
       return;
     }
   }catch(e){
@@ -1150,6 +1167,7 @@ window.submitContract=async()=>{
   try{
     // Firebase 저장
     await set(ref(db,`contracts/${contractId}`),data);
+    await set(ref(db,`contractsByDog/${dogid}`),contractId);
     // 분양 완료 처리
     await update(ref(db,`litters/${G.litter}/puppies/${G.puppy}`),{status:'분양 완료'});
 
