@@ -10,10 +10,10 @@
 <style>
 :root{
   --bg:#FAF7F2; --card:#fff; --br:#5C3D1E; --gold:#C8931A; --gray:#8B7E6F; --line:#E8E1D6;
-  --a:#C8931A; --b:#2E7D6B;
+  --a:#C8931A; --b:#2E7D6B; --d:#8E5BB5; --late:#D14B3A;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#1C1812; --card:#2A241B; --br:#F1E3CC; --gold:#E0AA3A; --gray:#B3A691; --line:#43392B; --a:#E0AA3A; --b:#4DB89F; }
+  :root{ --bg:#1C1812; --card:#2A241B; --br:#F1E3CC; --gold:#E0AA3A; --gray:#B3A691; --line:#43392B; --a:#E0AA3A; --b:#4DB89F; --d:#B58BDB; --late:#F0705E; }
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
@@ -46,6 +46,12 @@ header .today{font-size:12px;color:var(--gray);margin-top:3px}
 .badge .wk{font-size:12px;font-weight:700;margin-top:1px}
 .badge .dt{font-size:11px;color:var(--gray);margin-top:3px}
 .nob{font-size:11px;color:var(--gray);text-align:center;margin-top:8px}
+.sec{font-size:13px;font-weight:800;color:var(--gray);margin:6px 2px 10px;letter-spacing:.02em}
+.badge.d{border-color:var(--d)}
+.badge.d .lbl{color:var(--d)}
+.badge.late{border-color:var(--late)}
+.badge.late .lbl,.badge.late .dn{color:var(--late)}
+.range{font-size:12px;color:var(--gray);text-align:center;margin-top:9px}
 .pups{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
 .pup{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:5px 10px;display:flex;gap:5px;align-items:center}
 .pup .m{color:#3B82C4}.pup .f{color:#D9578F}
@@ -113,6 +119,8 @@ function dateUTC(str){
 function daysSince(str){ const d=dateUTC(str); return d==null?null:Math.round((todayUTC()-d)/86400000); }
 function weekText(n){ if(n<0) return ''; const w=Math.floor(n/7), d=n%7; return w+'주 '+d+'일'; }
 function fmt(str){ const d=dateUTC(str); if(d==null) return '—'; const x=new Date(d); return x.getUTCFullYear()+'.'+String(x.getUTCMonth()+1).padStart(2,'0')+'.'+String(x.getUTCDate()).padStart(2,'0'); }
+function daysBetween(a,b){ const x=dateUTC(a), y=dateUTC(b); return (x==null||y==null)?null:Math.round((x-y)/86400000); }
+function fmtShort(str){ const d=dateUTC(str); if(d==null) return '—'; const x=new Date(d); return String(x.getUTCMonth()+1).padStart(2,'0')+'.'+String(x.getUTCDate()).padStart(2,'0'); }
 function dLabel(n){ if(n==null) return '—'; if(n<0) return 'D'+n; return 'D+'+n; }
 
 // ───────── 네트워크 ─────────
@@ -159,8 +167,10 @@ async function femaleNameByCode(code){
 }
 
 // 사진 등 무거운 필드를 피하려고 필요한 값만 하나씩 읽는다
+let allLitterKeys=[];
 async function fetchHeads(){
   const keys=Object.keys(await rest('litters?shallow=true')||{});
+  allLitterKeys=keys;
   const list=(await Promise.all(keys.map(async k=>{
     try{
       const [a,b,fc]=await Promise.all([rest('litters/'+k+'/birthA'),rest('litters/'+k+'/birthB'),rest('litters/'+k+'/femaleCode')]);
@@ -186,8 +196,42 @@ async function fetchDetail(h){
   return {maleName:cleanName(mc),puppies};
 }
 
+// 출산 예정 (번식 기록): 구글 캘린더 동기화와 같은 기준 — 출산 처리된 기록은 제외
+const DUE_PAST_DAYS=30;      // 예정일이 지났는데 출산 처리가 안 된 건은 30일까지만 '지연'으로 표시
+const DUE_FUTURE_DAYS=90;    // 앞으로 90일까지 (캘린더 동기화와 동일)
+async function fetchDue(headsList){
+  const keys=Object.keys(await rest('breeding?shallow=true')||{});
+  const lite=(await Promise.all(keys.map(async k=>{
+    try{
+      const [due,born]=await Promise.all([rest('breeding/'+k+'/dueDate'),rest('breeding/'+k+'/bornLitterKey')]);
+      return {key:k,dueDate:due||'',bornLitterKey:born||''};
+    }catch(e){ return null; }
+  }))).filter(Boolean);
+  const litterSet=new Set(allLitterKeys);
+  const cand=lite.filter(b=>{
+    if(!b.dueDate) return false;
+    if(b.bornLitterKey && litterSet.has(b.bornLitterKey)) return false;   // 출산 완료 처리됨
+    const n=-daysSince(b.dueDate);                                         // 예정일까지 남은 날
+    return !isNaN(n) && n>=-DUE_PAST_DAYS && n<=DUE_FUTURE_DAYS;
+  });
+  const out=(await Promise.all(cand.map(async b=>{
+    try{
+      const base='breeding/'+b.key+'/';
+      const [fc,mc,e,l]=await Promise.all([rest(base+'femaleCode'),rest(base+'maleCode'),rest(base+'dueDateEarliest'),rest(base+'dueDateLatest')]);
+      const f=String(fc==null?'':fc).trim();
+      // 출산 처리 표시가 빠졌어도, 같은 모견의 새끼가 예정일 앞뒤 3주 안에 태어나 있으면 이미 출산한 것으로 본다
+      const already=headsList.some(h=>String(h.femaleCode||'').trim()===f && h.birthA && Math.abs(daysBetween(h.birthA,b.dueDate))<=21);
+      if(already) return null;
+      const femaleName=await femaleNameByCode(fc).catch(()=>cleanName(fc));
+      return {key:b.key,dueDate:b.dueDate,earliest:e||'',latest:l||'',femaleName,maleName:cleanName(mc)};
+    }catch(err){ return null; }
+  }))).filter(Boolean);
+  return out.sort((x,y)=>String(x.dueDate).localeCompare(String(y.dueDate)));
+}
+
 // ───────── 상태: 전체 배(heads), 선택한 배의 상세(details), 내가 고른 선택(sel) ─────────
 let heads=[];            // 모든 배의 요약 (출산일, 모견 이름)
+let dueList=[];          // 출산 예정 (번식 기록)
 let details={};          // 배 key → {maleName, puppies}  (선택된 배만 불러옴)
 let sel=null;            // {selected:[key...], known:[key...]}  ← 이 폰에 저장, 내가 바꾸기 전엔 그대로
 const SEL_KEY='goldi_puppy_age_sel_v1';
@@ -198,9 +242,9 @@ function loadSel(){
   return null;
 }
 function saveSel(){ try{ localStorage.setItem(SEL_KEY,JSON.stringify(sel)); }catch(e){} }
-function saveCache(){ try{ localStorage.setItem(CACHE_KEY2,JSON.stringify({heads,details})); }catch(e){} }
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY2,JSON.stringify({heads,details,dueList})); }catch(e){} }
 function loadCache(){
-  try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY2)||'null'); if(c&&Array.isArray(c.heads)){ heads=c.heads; details=c.details||{}; return true; } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY2)||'null'); if(c&&Array.isArray(c.heads)){ heads=c.heads; details=c.details||{}; dueList=c.dueList||[]; return true; } }catch(e){}
   return false;
 }
 
@@ -220,6 +264,28 @@ function initSelIfNeeded(){
 }
 
 // ───────── 렌더링 ─────────
+function dueCard(b){
+  const n=-daysSince(b.dueDate);                 // 남은 날 (양수=앞으로, 0=오늘, 음수=지남)
+  const late=n<0;
+  const big = n>0 ? 'D-'+n : (n===0 ? 'D-Day' : 'D+'+(-n));
+  const sub = n>0 ? weekText(n)+' 남음' : (n===0 ? '오늘이 예정일' : '예정일 '+(-n)+'일 지남');
+  const title=(b.femaleName?b.femaleName+'네':'출산 예정');
+  const parents=(b.femaleName||'모견 미지정')+' × '+(b.maleName||'부견 미지정');
+  const range=(b.earliest&&b.latest)?`<div class="range">예상 구간 ${fmtShort(b.earliest)} ~ ${fmtShort(b.latest)}</div>`:'';
+  return `<section class="litter due">
+    <div class="l-title">🍼 ${esc(title)} 출산 예정</div>
+    <div class="l-sub">${esc(parents)}</div>
+    <div class="badges">
+      <div class="badge d${late?' late':''}">
+        <div class="lbl">${late?'출산 예정일 · 지연':'출산 예정일'}</div>
+        <div class="dn">${big}</div>
+        <div class="wk">${sub}</div>
+        <div class="dt">${fmt(b.dueDate)}</div>
+      </div>
+    </div>${range}
+  </section>`;
+}
+
 function render(){
   const nw=new Date();
   document.getElementById('today').textContent=nw.getFullYear()+'.'+String(nw.getMonth()+1).padStart(2,'0')+'.'+String(nw.getDate()).padStart(2,'0')+' 기준';
@@ -257,6 +323,10 @@ function render(){
         ${pups?`<div class="pups">${pups}</div>`:''}
       </section>`;
     }).join('');
+  }
+  if(dueList.length){
+    const dues=[...dueList].sort((x,y)=>String(x.dueDate).localeCompare(String(y.dueDate)));
+    list.innerHTML='<div class="sec">🍼 출산 예정</div>'+dues.map(dueCard).join('')+(rows.length?'<div class="sec">🐾 태어난 새끼</div>':'')+list.innerHTML;
   }
   renderNotice();
   if(document.getElementById('panel').style.display==='block') renderPanel();
@@ -328,15 +398,18 @@ async function load(manual){
     initSelIfNeeded();
     // 선택된 배만 상세를 불러온다 (선택 상태는 여기서 절대 바꾸지 않음)
     const targets=heads.filter(h=>isSelected(h.key));
+    const duePromise=fetchDue(heads).catch(e=>{ console.warn('출산 예정 조회 실패',e); return null; });
     const fresh=await Promise.all(targets.map(async h=>[h.key,await fetchDetail(h)]));
     const nd={}; fresh.forEach(([k,v])=>{ nd[k]=v; });
     details=nd;
+    const due=await duePromise;
+    if(due) dueList=due;
     saveCache(); render();
     const n=new Date();
-    setStatus('업데이트 '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'));
+    setStatus('업데이트 '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+(due?'':' · 출산 예정은 불러오지 못했습니다'));
   }catch(e){
     console.warn(e);
-    setStatus(heads.length?'네트워크 오류 — 마지막으로 저장된 정보를 표시 중입니다':'불러오지 못했습니다. 연결을 확인하고 🔄를 눌러주세요.',true);
+    setStatus((heads.length||dueList.length)?'네트워크 오류 — 마지막으로 저장된 정보를 표시 중입니다':'불러오지 못했습니다. 연결을 확인하고 🔄를 눌러주세요.',true);
     render();
   }finally{ btn.disabled=false; }
 }
