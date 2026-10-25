@@ -257,6 +257,15 @@
 
     <div class="log-box" id="bp-log-box">[준비] '백필 시작하기' 버튼을 누르면 전체 교배 기록 스캔이 시작됩니다.</div>
   </div>
+
+  <div class="container" style="margin-top:20px;">
+    <h1>📍 견사 주소 저장</h1>
+    <p>Firebase 콘솔 대신 여기서 바로 settings/shelterAddress 값을 저장할 수 있습니다. 로그인된 관리자 권한으로 저장돼요.</p>
+    <input type="text" id="addr-input" placeholder="예: 충북 음성군 감곡면 가곡로532번길 15-17"
+      style="width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box; margin-bottom:12px;">
+    <button class="btn-start" onclick="saveShelterAddress()">📍 주소 저장</button>
+    <div id="addr-result" style="margin-top:12px; font-size:13px; color:#64748B;"></div>
+  </div>
   </div>
 
   <script>
@@ -385,6 +394,22 @@
       }
     }
     window.startBreedingBackfill = startBreedingBackfill;
+
+    async function saveShelterAddress() {
+      const input = document.getElementById('addr-input');
+      const resultEl = document.getElementById('addr-result');
+      const val = input.value.trim();
+      if (!val) { resultEl.textContent = '⚠️ 주소를 입력해주세요.'; resultEl.style.color = '#EF4444'; return; }
+      try {
+        await window.set(window.dbRef(window.db, 'settings/shelterAddress'), val);
+        resultEl.textContent = '✅ 저장 완료: ' + val;
+        resultEl.style.color = '#10B981';
+      } catch (err) {
+        resultEl.textContent = '❌ 저장 실패: ' + err.message;
+        resultEl.style.color = '#EF4444';
+      }
+    }
+    window.saveShelterAddress = saveShelterAddress;
   </script>
 </body>
 </html>
