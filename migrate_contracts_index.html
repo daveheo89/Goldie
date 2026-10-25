@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>골디쉼터 계약 색인(contractsByDog) 백필 도구</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brown: #6A3B18;
+      --gold: #D4AF37;
+      --border: #E8DCC8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #F1F5F9;
+      color: #334155;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border: 1px solid #CBD5E1;
+    }
+    h1 { font-size: 1.3rem; color: var(--brown); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    p { font-size: 0.9rem; color: #64748B; margin-bottom: 16px; }
+
+    .warning-card {
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      color: #991B1B;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .status-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+    .stat-val { font-weight: 800; color: #0F172A; }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 16px;
+      background: #E2E8F0;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--brown), var(--gold));
+      transition: width 0.3s ease;
+    }
+
+    .btn-start {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--brown), var(--gold));
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 900;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(106, 59, 24, 0.25);
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .btn-start:hover { transform: translateY(-2px); }
+    .btn-start:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .log-box {
+      margin-top: 20px;
+      background: #0F172A;
+      color: #38BDF8;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 12px;
+      border-radius: 10px;
+      height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    /* 로그인 게이트 */
+    #authGate {
+      max-width: 360px;
+      margin: 80px auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border: 1px solid #CBD5E1;
+      text-align: center;
+    }
+    #authGate input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 14px 0 8px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    #authGate button {
+      width: 100%;
+      padding: 12px;
+      background: var(--brown);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #authErr { color: #E74C3C; font-size: 12px; margin-top: 8px; min-height: 16px; }
+    #mainWrap { display: none; }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref as dbRef, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYR0-f6YVw_pGSlfOqPNP_UyT_VcHWntk",
+      authDomain: "goldie-shelter-d6c81.firebaseapp.com",
+      databaseURL: "https://goldie-shelter-d6c81-default-rtdb.firebaseio.com",
+      projectId: "goldie-shelter-d6c81",
+      storageBucket: "goldie-shelter-d6c81.firebasestorage.app",
+      messagingSenderId: "1071275996614",
+      appId: "1:1071275996614:web:e39eb145b23ea6e02ae947"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+    const ADMIN_EMAIL = 'admin@goldie-shelter-d6c81.firebaseapp.com';
+
+    window.db = db;
+    window.dbRef = dbRef;
+    window.get = get;
+    window.set = set;
+
+    setPersistence(auth, browserLocalPersistence).catch(()=>{});
+
+    // goldi_admin.html / goldie_farm.html과 같은 '당일 로그인 유지' 키를 공유
+    function todayDateStr(){ return new Date().toISOString().slice(0,10); }
+    function markLoginToday(){ try { localStorage.setItem('goldie_login_date', todayDateStr()); } catch(_) {} }
+    function clearLoginMark(){ try { localStorage.removeItem('goldie_login_date'); } catch(_) {} }
+    function isLoginMarkValidToday(){
+      try { return localStorage.getItem('goldie_login_date') === todayDateStr(); } catch(_) { return false; }
+    }
+
+    window.doLogin = async function() {
+      const pwInput = document.getElementById('authPw');
+      const pw = pwInput ? pwInput.value : '';
+      const errEl = document.getElementById('authErr');
+      if (errEl) errEl.textContent = '';
+      if (!pw) return;
+      try {
+        markLoginToday();
+        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
+      } catch (e) {
+        console.warn('[로그인 실패]:', e.code || e.message);
+        if (errEl) errEl.textContent = '비밀번호가 틀렸습니다.';
+        if (pwInput) { pwInput.value = ''; pwInput.focus(); }
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      const gate = document.getElementById('authGate');
+      const wrap = document.getElementById('mainWrap');
+      if (user && !isLoginMarkValidToday()) {
+        clearLoginMark();
+        signOut(auth).catch(()=>{});
+        return;
+      }
+      if (user) {
+        gate.style.display = 'none';
+        wrap.style.display = 'block';
+      } else {
+        gate.style.display = 'block';
+        wrap.style.display = 'none';
+      }
+    });
+  </script>
+</head>
+<body>
+
+  <div id="authGate">
+    <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+    <div style="font-weight:800; color:#6A3B18; margin-bottom:4px;">관리자 로그인</div>
+    <p style="margin-bottom:0;">오늘 goldi_admin에 이미 로그인하셨다면 자동으로 통과됩니다.</p>
+    <input type="password" id="authPw" placeholder="관리자 비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">로그인</button>
+    <div id="authErr"></div>
+  </div>
+
+  <div id="mainWrap">
+  <div class="container">
+    <h1>🔗 계약 색인(contractsByDog) 백필 도구</h1>
+    <p>과거에 이미 서명 완료된 계약들에는 "강아지 ID → 계약 ID" 연결고리(contractsByDog)가 없습니다. 이 도구는 기존 contracts 전체를 한 번 훑어서, 파기(cancelled)되지 않은 계약마다 이 연결고리를 만들어줍니다. 이걸 해두면 이미 분양된 손님이 계약서 링크로 다시 들어왔을 때, 본인확인 후 계약서/가이드북을 재다운로드할 수 있습니다.</p>
+
+    <div class="warning-card">
+      ⚠️ <b>1회성 도구입니다.</b> 실행은 여러 번 눌러도 안전하지만(이미 있는 연결고리는 덮어쓰기만 함), 실행 전 특별히 백업이 필요하지는 않습니다. 이 도구는 기존 계약 데이터를 읽기만 하고, 새 연결고리 외에는 아무것도 바꾸지 않습니다.
+    </div>
+
+    <div class="status-card">
+      <div class="stat-row"><span>전체 계약 건수</span><span class="stat-val" id="st-total">0</span></div>
+      <div class="stat-row"><span>연결고리 생성 대상 (파기 제외)</span><span class="stat-val" id="st-target">0</span></div>
+      <div class="stat-row"><span>생성 완료</span><span class="stat-val" id="st-done" style="color:#10B981;">0</span></div>
+      <div class="stat-row"><span>건너뜀/실패</span><span class="stat-val" id="st-fail" style="color:#EF4444;">0</span></div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+      <div style="font-size:11px; text-align:right; color:#64748B;" id="st-percent">0% 진행 중</div>
+    </div>
+
+    <button class="btn-start" id="start-btn" onclick="startBackfill()">🔗 1회성 백필 시작하기</button>
+
+    <div class="log-box" id="log-box">[준비] '백필 시작하기' 버튼을 누르면 전체 계약 스캔이 시작됩니다.</div>
+  </div>
+  </div>
+
+  <script>
+    function log(msg) {
+      const box = document.getElementById('log-box');
+      box.textContent += '\n' + msg;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function startBackfill() {
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = '🔄 스캔 및 색인 생성 진행 중...';
+      log('[시작] contracts 전체 스캔을 시작합니다...');
+
+      let doneCount = 0;
+      let failCount = 0;
+
+      try {
+        const snap = await window.get(window.dbRef(window.db, 'contracts'));
+        if (!snap.exists()) {
+          log('[종료] contracts 데이터가 없습니다.');
+          btn.textContent = '✅ 완료 (대상 없음)';
+          return;
+        }
+        const contracts = snap.val();
+        const entries = Object.entries(contracts);
+        document.getElementById('st-total').textContent = entries.length;
+
+        const targets = entries.filter(([id, c]) => c && c.dogid && !c.cancelled);
+        document.getElementById('st-target').textContent = targets.length;
+        log('[스캔 완료] 전체 ' + entries.length + '건 중 ' + targets.length + '건이 색인 생성 대상입니다 (파기된 계약 제외).');
+
+        if (targets.length === 0) {
+          log('✅ 색인을 새로 만들 계약이 없습니다.');
+          btn.textContent = '✅ 완료 (대상 없음)';
+          return;
+        }
+
+        for (let i = 0; i < targets.length; i++) {
+          const [contractId, c] = targets[i];
+          try {
+            log('[' + (i+1) + '/' + targets.length + '] ' + c.dogid + ' → ' + contractId + ' ...');
+            await window.set(window.dbRef(window.db, 'contractsByDog/' + c.dogid), contractId);
+            doneCount++;
+            document.getElementById('st-done').textContent = doneCount;
+            log('  ↳ ✅ 완료');
+          } catch (err) {
+            failCount++;
+            document.getElementById('st-fail').textContent = failCount;
+            log('  ↳ ❌ 오류 (' + c.dogid + '): ' + err.message);
+          }
+          const percent = Math.round(((i + 1) / targets.length) * 100);
+          document.getElementById('progress-bar').style.width = percent + '%';
+          document.getElementById('st-percent').textContent = percent + '% 진행 중';
+        }
+
+        log('\n🎉 [최종 완료] 생성: ' + doneCount + '건 / 실패: ' + failCount + '건');
+        btn.textContent = '🎉 백필 완료!';
+      } catch (err) {
+        log('❌ 실행 실패: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '🔄 재시도';
+      }
+    }
+  </script>
+</body>
+</html>
