@@ -237,6 +237,26 @@
 
     <div class="log-box" id="log-box">[준비] '백필 시작하기' 버튼을 누르면 전체 계약 스캔이 시작됩니다.</div>
   </div>
+
+  <div class="container" style="margin-top:20px;">
+    <h1>🍼 breedingPublic 백필 도구</h1>
+    <p>puppy_age.html(새끼 생후일수, 비로그인 공개 페이지)이 출산 예정일을 보여주려면 공개용 사본(breedingPublic)이 필요합니다. 이 도구는 기존 breeding 기록 전체를 훑어서, 날짜·부모견 코드·출산 완료 여부만 담은 공개용 사본을 만들어줍니다 (메모·사진은 옮기지 않습니다).</p>
+
+    <div class="status-card">
+      <div class="stat-row"><span>전체 교배 기록 건수</span><span class="stat-val" id="bp-total">0</span></div>
+      <div class="stat-row"><span>생성 완료</span><span class="stat-val" id="bp-done" style="color:#10B981;">0</span></div>
+      <div class="stat-row"><span>건너뜀/실패</span><span class="stat-val" id="bp-fail" style="color:#EF4444;">0</span></div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="bp-progress-bar"></div>
+      </div>
+      <div style="font-size:11px; text-align:right; color:#64748B;" id="bp-percent">0% 진행 중</div>
+    </div>
+
+    <button class="btn-start" id="bp-start-btn" onclick="startBreedingBackfill()">🍼 1회성 백필 시작하기</button>
+
+    <div class="log-box" id="bp-log-box">[준비] '백필 시작하기' 버튼을 누르면 전체 교배 기록 스캔이 시작됩니다.</div>
+  </div>
   </div>
 
   <script>
@@ -302,6 +322,69 @@
         btn.textContent = '🔄 재시도';
       }
     }
+
+    function bpLog(msg) {
+      const box = document.getElementById('bp-log-box');
+      box.textContent += '\n' + msg;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function startBreedingBackfill() {
+      const btn = document.getElementById('bp-start-btn');
+      btn.disabled = true;
+      btn.textContent = '🔄 스캔 및 사본 생성 진행 중...';
+      bpLog('[시작] breeding 전체 스캔을 시작합니다...');
+
+      let doneCount = 0;
+      let failCount = 0;
+
+      try {
+        const snap = await window.get(window.dbRef(window.db, 'breeding'));
+        if (!snap.exists()) {
+          bpLog('[종료] breeding 데이터가 없습니다.');
+          btn.textContent = '✅ 완료 (대상 없음)';
+          return;
+        }
+        const records = snap.val();
+        const entries = Object.entries(records);
+        document.getElementById('bp-total').textContent = entries.length;
+        bpLog('[스캔 완료] 전체 ' + entries.length + '건을 처리합니다.');
+
+        for (let i = 0; i < entries.length; i++) {
+          const [key, b] = entries[i];
+          try {
+            bpLog('[' + (i+1) + '/' + entries.length + '] ' + key + ' (' + (b.femaleCode||'?') + ' x ' + (b.maleCode||'?') + ') ...');
+            const pub = {
+              femaleCode: b.femaleCode || null,
+              maleCode: b.maleCode || null,
+              dueDate: b.dueDate || null,
+              dueDateEarliest: b.dueDateEarliest || null,
+              dueDateLatest: b.dueDateLatest || null
+            };
+            if (b.bornLitterKey) pub.bornLitterKey = b.bornLitterKey;
+            await window.set(window.dbRef(window.db, 'breedingPublic/' + key), pub);
+            doneCount++;
+            document.getElementById('bp-done').textContent = doneCount;
+            bpLog('  ↳ ✅ 완료');
+          } catch (err) {
+            failCount++;
+            document.getElementById('bp-fail').textContent = failCount;
+            bpLog('  ↳ ❌ 오류 (' + key + '): ' + err.message);
+          }
+          const percent = Math.round(((i + 1) / entries.length) * 100);
+          document.getElementById('bp-progress-bar').style.width = percent + '%';
+          document.getElementById('bp-percent').textContent = percent + '% 진행 중';
+        }
+
+        bpLog('\n🎉 [최종 완료] 생성: ' + doneCount + '건 / 실패: ' + failCount + '건');
+        btn.textContent = '🎉 백필 완료!';
+      } catch (err) {
+        bpLog('❌ 실행 실패: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '🔄 재시도';
+      }
+    }
+    window.startBreedingBackfill = startBreedingBackfill;
   </script>
 </body>
 </html>

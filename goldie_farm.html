@@ -7662,7 +7662,10 @@ window.registerBreeding=async function(){
 
 
 
-  await fbPush('breeding',{femaleCode:fDog.code,maleCode:mDog.code,matingDate:matingDates[0],matingDates:matingDates,avgMatingDate:calc.avgDate,dueDate:due,dueDateEarliest:calc.earliestDue,dueDateLatest:calc.latestDue,memo:''});
+  const newBreedingKey=await fbPush('breeding',{femaleCode:fDog.code,maleCode:mDog.code,matingDate:matingDates[0],matingDates:matingDates,avgMatingDate:calc.avgDate,dueDate:due,dueDateEarliest:calc.earliestDue,dueDateLatest:calc.latestDue,memo:''});
+  // 🔓 puppy_age.html(비로그인 공개 페이지)이 출산 예정일을 볼 수 있도록, 메모·사진은 빼고
+  //    날짜·부모견 코드만 담은 공개용 사본을 함께 저장 (2026-10-25)
+  await fbSet(`breedingPublic/${newBreedingKey}`,{femaleCode:fDog.code,maleCode:mDog.code,dueDate:due,dueDateEarliest:calc.earliestDue,dueDateLatest:calc.latestDue});
 
 
 
@@ -7790,6 +7793,11 @@ window.saveBreedingEdit = async function() {
     matingDate: matingDates[0], matingDates: matingDates, avgMatingDate: calc.avgDate,
     dueDate: due, dueDateEarliest: calc.earliestDue, dueDateLatest: calc.latestDue
   });
+  // 🔓 공개용 사본도 동일하게 갱신
+  await fbUpdate(`breedingPublic/${_breedingEditKey}`, {
+    femaleCode: fDog.code, maleCode: mDog.code,
+    dueDate: due, dueDateEarliest: calc.earliestDue, dueDateLatest: calc.latestDue
+  });
 
   if (femaleChanged) {
     // 모견이 바뀌었으면 이전 모견의 출산예정일 정보(이 기록에서 비롯된 것이었다면)는 정리
@@ -7806,6 +7814,7 @@ window.deleteBreedingRecord = async function() {
   if (!confirm('이 교배 기록을 삭제할까요? 삭제된 기록은 복구할 수 없습니다.')) return;
   const original = _breedingEditOriginal;
   await fbRemove(`breeding/${_breedingEditKey}`);
+  await fbRemove(`breedingPublic/${_breedingEditKey}`);
   if (original) {
     await clearFemaleBreedingFieldsIfMatches(original.femaleCode, original);
   }
@@ -8062,6 +8071,7 @@ window.confirmBirthComplete=async function(){
       if(dup){
         if(!confirm('같은 모견·출산일로 등록된 출산 기록이 이미 있어요.\n새로 만들지 않고 그 기록에 연결할까요?')) return;
         await fbUpdate(`breeding/${b._key}`,{bornLitterKey:dup._key,birthDate:date});
+        await fbUpdate(`breedingPublic/${b._key}`,{bornLitterKey:dup._key});
         showToast('✅ 기존 출산 기록에 연결했어요!');
       } else {
         const total=male+female;
@@ -8078,6 +8088,7 @@ window.confirmBirthComplete=async function(){
         };
         const litterKey=await fbPush('litters',litter);
         await fbUpdate(`breeding/${b._key}`,{bornLitterKey:litterKey,birthDate:date,bornMale:male,bornFemale:female});
+        await fbUpdate(`breedingPublic/${b._key}`,{bornLitterKey:litterKey});
         showToast(`✅ 출산 완료! 새끼 ${total}마리(♂${male}/♀${female})가 새끼 탭에 등록됐어요.`);
       }
     }

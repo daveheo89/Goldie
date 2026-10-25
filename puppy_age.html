@@ -200,10 +200,10 @@ async function fetchDetail(h){
 const DUE_PAST_DAYS=30;      // 예정일이 지났는데 출산 처리가 안 된 건은 30일까지만 '지연'으로 표시
 const DUE_FUTURE_DAYS=90;    // 앞으로 90일까지 (캘린더 동기화와 동일)
 async function fetchDue(headsList){
-  const keys=Object.keys(await rest('breeding?shallow=true')||{});
+  const keys=Object.keys(await rest('breedingPublic?shallow=true')||{});
   const lite=(await Promise.all(keys.map(async k=>{
     try{
-      const [due,born]=await Promise.all([rest('breeding/'+k+'/dueDate'),rest('breeding/'+k+'/bornLitterKey')]);
+      const [due,born]=await Promise.all([rest('breedingPublic/'+k+'/dueDate'),rest('breedingPublic/'+k+'/bornLitterKey')]);
       return {key:k,dueDate:due||'',bornLitterKey:born||''};
     }catch(e){ return null; }
   }))).filter(Boolean);
@@ -216,7 +216,7 @@ async function fetchDue(headsList){
   });
   const out=(await Promise.all(cand.map(async b=>{
     try{
-      const base='breeding/'+b.key+'/';
+      const base='breedingPublic/'+b.key+'/';
       const [fc,mc,e,l]=await Promise.all([rest(base+'femaleCode'),rest(base+'maleCode'),rest(base+'dueDateEarliest'),rest(base+'dueDateLatest')]);
       const f=String(fc==null?'':fc).trim();
       // 출산 처리 표시가 빠졌어도, 같은 모견의 새끼가 예정일 앞뒤 3주 안에 태어나 있으면 이미 출산한 것으로 본다
