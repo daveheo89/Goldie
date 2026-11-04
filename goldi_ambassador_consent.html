@@ -417,7 +417,16 @@ async function init(){
   document.getElementById('infoCard').style.display='block';
   document.getElementById('toStep2Btn').style.display='inline-flex';
   const puppies = Array.isArray(S.puppies) ? S.puppies : [];
-  const puppyNames = puppies.map(p=>p.name).filter(Boolean).join(', ') || '—';
+  // 새끼 이름 대신 모견 이름만 "해리네 아이들" 형태로 표시 (이름에 "○○네 " 접두어가 있는 경우)
+  const momList=[], otherList=[];
+  puppies.forEach(p=>{
+    if(!p||!p.name) return;
+    const n=String(p.name);
+    if(n.includes('네 ')){ const m=n.split('네 ')[0].trim()+'네'; if(!momList.includes(m)) momList.push(m); }
+    else if(!otherList.includes(n)) otherList.push(n);
+  });
+  const nameParts=[]; if(momList.length) nameParts.push(momList.join(', ')+' 아이들');
+  const puppyNames = nameParts.concat(otherList).join(', ') || '—';
 
   document.getElementById('visitInfo').innerHTML = `
     <div class="chip"><span class="chip-k">방문자</span><span class="chip-v">${esc(S.buyer_name||'—')}</span></div>
