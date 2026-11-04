@@ -426,7 +426,7 @@ async function init(){
     else if(!otherList.includes(n)) otherList.push(n);
   });
   const nameParts=[]; if(momList.length) nameParts.push(momList.join(', ')+' 아이들');
-  const puppyNames = nameParts.concat(otherList).join(', ') || '—';
+  const puppyNames = (S.momLabel && String(S.momLabel).trim()) || nameParts.concat(otherList).join(', ') || '—';
 
   document.getElementById('visitInfo').innerHTML = `
     <div class="chip"><span class="chip-k">방문자</span><span class="chip-v">${esc(S.buyer_name||'—')}</span></div>
