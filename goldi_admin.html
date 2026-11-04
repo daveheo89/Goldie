@@ -2120,7 +2120,7 @@ window.renderSelectedDayEvents = function(dateStr) {
       catBadge = `<span class="badge" style="background:#E8F8EF; color:#27AE60; border:1px solid #A8DDB9;">🟢 골디 앰버서더</span> <span class="badge" style="background:#F4F4F4; color:#555; border:1px solid #ddd; margin-left:4px;">${resultLabel}</span>${consentBadge}${depositBadge}`;
       const puppyList = s.puppies || hv.puppies || [];
       const puppyLine = (Array.isArray(puppyList) && puppyList.length)
-        ? `🐾 비교하실 아이들: ${puppyList.map(p => p.name).filter(Boolean).join(', ')} · `
+        ? `🐾 비교하실 아이들: ${puppiesToMomLabel(puppyList)} · `
         : '';
       hvDetailHtml = `<div style="font-size:12px; color:var(--gray); margin-bottom:4px;">
         ${puppyLine}💰 예약금 ${hv.hvFee ? Number(hv.hvFee).toLocaleString() + '원' : '-'} · ⏱ 편도 약 ${hv.hvMinutes || '-'}분 · 🐕 방문지 반려동물: ${hv.hvPetAtLocation === 'yes' ? '있음(대체장소)' : '없음'}${hv.hvMultiCount > 1 ? ` · 👬 다마리(${hv.hvMultiCount}마리, 2번째부터 10%할인)` : ''}
@@ -2289,7 +2289,7 @@ ${consentUrl.href}
     } else {
       // ② 서명 + 입금 확인 후: 방문 확정문자
       const puppyList = event.puppies || hv.puppies || [];
-      const puppyNames = (Array.isArray(puppyList) && puppyList.length) ? puppyList.map(p => p.name).filter(Boolean).join(', ') : '추후 안내';
+      const puppyNames = (Array.isArray(puppyList) && puppyList.length) ? puppiesToMomLabel(puppyList) : '추후 안내';
       shareTitle = '[골디쉼터] 🐶 골디 앰버서더 방문이 확정되었습니다';
       kakaoMsg = `${shareTitle}
 
@@ -2328,7 +2328,7 @@ ${tmapLink}
     const noteLine = rawMemo ? `\n📝 안내사항: ${rawMemo}\n` : '';
     const puppyList = event.puppies || raw.puppies || [];
     const puppyLine = (Array.isArray(puppyList) && puppyList.length)
-      ? `\n🐾 보러 오실 아이: ${puppyList.map(p => p.name).filter(Boolean).join(', ')}\n`
+      ? `\n🐾 보러 오실 아이: ${puppiesToMomLabel(puppyList)}\n`
       : '';
     kakaoMsg = `${shareTitle}
 
@@ -2706,6 +2706,30 @@ function cleanMomDisplayName(raw) {
   }
   return s;
 }
+// 손님에게 보내는 안내(카톡/문자)용: 새끼 이름 대신 모견 이름만 "해리네 아이들" 형태로 표시한다.
+// 1순위: 저장된 lid로 litters의 모견(femaleCode) 이름, 2순위: 저장된 이름의 "○○네 " 앞부분. 둘 다 없으면 이름 그대로.
+function puppiesToMomLabel(list) {
+  if (!Array.isArray(list) || !list.length) return '';
+  const moms = [];
+  const others = [];
+  list.forEach(p => {
+    if (!p) return;
+    let mom = '';
+    const l = (window._litters || {})[p.lid];
+    if (l) {
+      const m = cleanMomDisplayName(l.femaleCode);
+      if (m && m !== '—') mom = m + '네';
+    }
+    if (!mom && p.name && String(p.name).includes('네 ')) {
+      mom = String(p.name).split('네 ')[0].trim() + '네';
+    }
+    if (mom) { if (!moms.includes(mom)) moms.push(mom); }
+    else if (p.name && !others.includes(p.name)) others.push(p.name);
+  });
+  const parts = [];
+  if (moms.length) parts.push(moms.join(', ') + ' 아이들');
+  return parts.concat(others).join(', ');
+}
 function litterPuppyDisplayName(l, p, pid) {
   const base = p.name || pid;
   const mom = cleanMomDisplayName(l.femaleCode);
@@ -3054,7 +3078,7 @@ window.renderCrmTab = function() {
     const phone = s.buyer_phone || s.visitorPhone || s.phone || '';
     const cust = getCustomer(name, phone);
     if (!cust) return;
-    const puppyNames = (Array.isArray(s.puppies) ? s.puppies : []).map(p => p && p.name).filter(Boolean).join(', ');
+    const puppyNames = puppiesToMomLabel(s.puppies);
     cust.visits.push({
       date: s.date || '',
       result: s.hvResult || '예정',
