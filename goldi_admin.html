@@ -1591,7 +1591,7 @@ window.showDetail=id=>{
   const c=window._contracts[id];if(!c)return;
   const depositPaid = c.deposit_paid !== false;
   const balancePaid = !!c.balance_paid;
-  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['모견',parentName(c.femaleCode,'female',c.femaleName)],
+  const rows=[['강아지',c.dogname],['성별',genderTxt(c.sex)],['출생일',fmt(c.birthB)],['부모',(()=>{const f=parentName(c.femaleCode,'female',c.femaleName,''),m=parentName(c.maleCode,'male',c.maleName,'');return (f||m)?`♀ ${esc(f||'—')} × ♂ ${esc(m||'—')}`:'';})()],
     ['구매자',c.buyer_name],['연락처',c.buyer_phone],['주소',c.buyer_addr],
     ['분양가',c.price?numFmt(c.price):'—'],['계약금',c.deposit?numFmt(c.deposit):'—'],
     ['계약금 완납', depositPaid ? `✅ 완납 (${fmt(c.deposit_paid_date)||'—'})` : '❌ 미납'],
