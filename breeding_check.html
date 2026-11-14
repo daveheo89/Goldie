@@ -83,11 +83,24 @@ main { max-width:600px; margin:0 auto; padding:14px; padding-bottom:60px; }
 .change-btn:active { background:var(--cream); }
 
 .status-summary { display:flex; gap:8px; margin-bottom:14px; }
-.status-pill { flex:1; text-align:center; padding:8px 4px; border-radius:10px; font-size:11px; font-weight:800; }
+.status-pill { flex:1 1 20%; text-align:center; padding:8px 4px; border-radius:10px; font-size:11px; font-weight:800; }
 .status-pill .n { font-size:18px; display:block; }
 .status-pill.red { background:var(--red-bg); color:var(--red); }
 .status-pill.yellow { background:var(--yellow-bg); color:var(--yellow); }
 .status-pill.green { background:var(--green-bg); color:var(--green); }
+.status-pill.gray { background:#F1ECE2; color:#8B6A3A; }
+.status-summary { flex-wrap:wrap; }
+.sire-item.gS { background:#FFF6DC; border-color:#E8C766; }
+.sire-item.gA { background:var(--green-bg); border-color:var(--green-border); }
+.sire-item.gB { background:#F3F6F9; border-color:#D5DEE8; }
+.sire-item.gC { background:#FBEDEA; border-color:#E6A99F; }
+.sire-item.gN { background:#fff; border-color:var(--border); }
+.sire-item.gS .badge { background:var(--gold); color:#fff; }
+.sire-item.gA .badge { background:var(--green); color:#fff; }
+.sire-item.gB .badge { background:#64748B; color:#fff; }
+.sire-item.gC .badge { background:var(--red); color:#fff; }
+.sire-item.gN .badge { background:#B8A27A; color:#fff; }
+.sire-item .warn { font-size:11px; color:var(--yellow); font-weight:700; margin-top:4px; }
 
 .sire-list { display:flex; flex-direction:column; gap:8px; }
 .sire-item { border-radius:12px; padding:11px 13px; border:1.5px solid; }
@@ -337,34 +350,50 @@ function renderDamSelect() {
   `;
 }
 
+// 모견을 누르면 브라우저 기록에 한 단계를 쌓아서, 뒤로가기를 누르면 페이지가 닫히지 않고 전체 모견 목록으로 돌아온다.
 window.selectDam = function(key) {
   selectedDamKey = key;
+  try { history.pushState({ dam: key }, ''); } catch (e) {}
   renderApp();
   window.scrollTo(0, 0);
 };
 
 window.changeDam = function() {
+  if (history.state && history.state.dam) { history.back(); return; }   // popstate 핸들러가 목록으로 되돌림
   selectedDamKey = null;
   renderApp();
   window.scrollTo(0, 0);
 };
 
+try { history.replaceState({ list: true }, ''); } catch (e) {}
+window.addEventListener('popstate', () => {
+  selectedDamKey = null;
+  renderApp();
+  window.scrollTo(0, 0);
+});
+
 function renderResults(dogsByKey) {
   const dam = dogsByKey[selectedDamKey];
   const sires = allDogs().filter(d => d.sex === 'male').sort(koSort);
 
-  const banned = [], caution = [], ok = [];
+  // 근친(자동) 또는 수동 금지 조합은 등급과 상관없이 무조건 "금지".
+  // 나머지는 한 목록에 모아 이전 교배 등급(S/A/B/C, 같은 조합의 최신 출산 기록)과 함께 보여준다.
+  const GRADE_RANK = { S: 0, A: 1, B: 2, N: 3, C: 4 };   // N = 미교배(등급 없음), C = 비추천(맨 아래)
+  const banned = [], cand = [];
   sires.forEach(sire => {
     const r = checkBreedingAllowed(sire._key, selectedDamKey, 3);
     let reasonText = r.reason;
     if (!reasonText && r.common && r.common.length) {
       reasonText = '공통 조상: ' + r.common.map(c => dogLabel(dogsByKey[c.key])).join(', ');
     }
-    const item = { dog: sire, reasonText };
-    if (r.status === 'red') banned.push(item);
-    else if (r.status === 'yellow') caution.push(item);
-    else ok.push(item);
+    if (r.status === 'red') { banned.push({ dog: sire, reasonText }); return; }
+    const pg = dam.pairGrades && dam.pairGrades[sire._key];
+    const g = pg && GRADE_RANK[pg.grade] !== undefined && pg.grade !== 'N' ? pg.grade : 'N';
+    cand.push({ dog: sire, grade: g, pg: pg || null, unknown: r.status === 'yellow' });
   });
+  cand.sort((x, y) => (GRADE_RANK[x.grade] - GRADE_RANK[y.grade]) || koSort(x.dog, y.dog));
+  const nC = cand.filter(c => c.grade === 'C').length;
+  const nUnknown = cand.filter(c => c.unknown).length;
 
   function renderSireItem(item, statusClass, badgeText) {
     return `
@@ -378,16 +407,29 @@ function renderResults(dogsByKey) {
     `;
   }
 
+  function renderCandItem(c) {
+    const badge = c.grade === 'N' ? '미교배' : (c.grade === 'C' ? 'C · 비추천' : c.grade + '급');
+    const info = c.pg
+      ? `최근 교배 ${esc(c.pg.date || '')}${c.pg.memo ? ' · ' + esc(c.pg.memo) : ''}`
+      : '이 조합은 교배 이력 없음';
+    return `
+      <div class="sire-item g${c.grade}">
+        <div class="row1">
+          <div class="code">${esc(c.dog.code)}${c.dog.name ? ` <span class="name">(${esc(c.dog.name)})</span>` : ''}</div>
+          <div class="badge">${badge}</div>
+        </div>
+        <div class="reason">${info}</div>
+        ${c.unknown ? '<div class="warn">⚠️ 계보 정보 부족 — 근친 여부 판정 불가</div>' : ''}
+      </div>
+    `;
+  }
+
   const bannedHtml = banned.length
     ? `<div class="sire-list">${banned.map(i => renderSireItem(i, 'red', '🚫 금지')).join('')}</div>`
     : `<div class="empty">🎉 교배 금지된 부견이 없습니다.</div>`;
 
-  const cautionHtml = caution.length
-    ? `<div class="sire-list">${caution.map(i => renderSireItem(i, 'yellow', '⚠️ 판정불가')).join('')}</div>`
-    : `<div class="empty">해당 없음</div>`;
-
-  const okHtml = ok.length
-    ? `<div class="sire-list">${ok.map(i => renderSireItem(i, 'green', '✅ 가능')).join('')}</div>`
+  const candHtml = cand.length
+    ? `<div class="sire-list">${cand.map(renderCandItem).join('')}</div>`
     : `<div class="empty">해당 없음</div>`;
 
   mainEl.innerHTML = `
@@ -402,22 +444,16 @@ function renderResults(dogsByKey) {
 
     <div class="status-summary">
       <div class="status-pill red"><span class="n">${banned.length}</span>금지</div>
-      <div class="status-pill yellow"><span class="n">${caution.length}</span>판정불가</div>
-      <div class="status-pill green"><span class="n">${ok.length}</span>가능</div>
+      <div class="status-pill gray"><span class="n">${nUnknown}</span>판정불가</div>
+      <div class="status-pill yellow"><span class="n">${nC}</span>비추천(C)</div>
+      <div class="status-pill green"><span class="n">${cand.length - nC}</span>후보</div>
     </div>
 
-    <div class="section-title">🚫 교배 금지 부견</div>
+    <div class="section-title">🚫 교배 금지 부견 (근친 · 수동 금지)</div>
     ${bannedHtml}
 
-    <details class="collapsible">
-      <summary><span class="arrow">▶</span> ⚠️ 판정 불가 (정보 부족) — ${caution.length}두</summary>
-      ${cautionHtml}
-    </details>
-
-    <details class="collapsible">
-      <summary><span class="arrow">▶</span> ✅ 교배 가능 — ${ok.length}두</summary>
-      ${okHtml}
-    </details>
+    <div class="section-title">🏅 교배 후보 — 이전 교배 등급 순 (S → A → B → 미교배 → C 비추천)</div>
+    ${candHtml}
   `;
 }
 
