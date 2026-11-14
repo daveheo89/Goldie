@@ -3648,8 +3648,8 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
         <h2 id="litter-modal-title">출산 기록 추가</h2>
         <button class="modal-close" onclick="closeLitterModal()">✕</button>
       </div>
-      <div class="form-group"><label>모견</label><select id="lm-female"></select></div>
-      <div class="form-group"><label>부견</label><select id="lm-male"></select></div>
+      <div class="form-group"><label>모견</label><select id="lm-female" onchange="window.litterParentsTouched=true"></select></div>
+      <div class="form-group"><label>부견</label><select id="lm-male" onchange="window.litterParentsTouched=true"></select></div>
       <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
       <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
       <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
@@ -7901,10 +7901,14 @@ function renderPuppies(){
   list.innerHTML = '';
 
   const lmFemale = document.getElementById('lm-female');
+  const _prevLmF = lmFemale ? lmFemale.value : '';
   if (lmFemale) lmFemale.innerHTML = (females || []).map(f => `<option value="${f._key}">${esc(kennelDogDisplayName(f))}</option>`).join('');
+  if (lmFemale && _prevLmF && (females || []).some(f => f._key === _prevLmF)) lmFemale.value = _prevLmF;   // 목록이 갱신돼도 선택값 유지 (수정 창을 열어둔 사이 첫 번째 개체로 초기화되던 문제)
 
   const lmMale = document.getElementById('lm-male');
+  const _prevLmM = lmMale ? lmMale.value : '';
   if (lmMale) lmMale.innerHTML = (males || []).map(m => `<option value="${m._key}">${esc(kennelDogDisplayName(m))}</option>`).join('');
+  if (lmMale && _prevLmM && (males || []).some(m => m._key === _prevLmM)) lmMale.value = _prevLmM;
 
   const targetLitters = (window.litters && window.litters.length) ? window.litters : (litters || []);
   if (!targetLitters.length) {
@@ -8193,6 +8197,7 @@ window.openAddLitter=function(){
 
 
 
+window.litterParentsTouched=false;   // 수정 창에서 모견/부견을 사용자가 직접 바꿨는지 (안 바꿨으면 저장 때 기존 모견/부견 유지)
 window.openEditLitterModal=function(litterKey){
 
 
@@ -8262,6 +8267,7 @@ window.openEditLitterModal=function(litterKey){
 
 
   document.getElementById('lm-count').value = lt.count || 1;
+  window.litterParentsTouched=false;
   document.getElementById('lm-grade').value = lt.grade || '';
   document.getElementById('lm-grade-memo').value = lt.gradeMemo || '';
 
@@ -8320,11 +8326,14 @@ window.saveLitter=async function(){
 
 
 
-  const fKey=document.getElementById('lm-female').value;
+  const _ltOrig=(litterModalMode==='edit')?litters.find(l=>l._key===litterEditKey):null;
+  const _origF=_ltOrig&&!window.litterParentsTouched?females.find(f=>f.code===_ltOrig.femaleCode):null;
+  const _origM=_ltOrig&&!window.litterParentsTouched?males.find(m=>m.code===_ltOrig.maleCode):null;
+  const fKey=_origF?_origF._key:document.getElementById('lm-female').value;
 
 
 
-  const mKey=document.getElementById('lm-male').value;
+  const mKey=_origM?_origM._key:document.getElementById('lm-male').value;
 
 
 
