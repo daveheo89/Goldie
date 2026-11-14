@@ -392,7 +392,9 @@ function renderResults(dogsByKey) {
     cand.push({ dog: sire, grade: g, pg: pg || null, unknown: r.status === 'yellow' });
   });
   cand.sort((x, y) => (GRADE_RANK[x.grade] - GRADE_RANK[y.grade]) || koSort(x.dog, y.dog));
-  const nC = cand.filter(c => c.grade === 'C').length;
+  const good = cand.filter(c => c.grade !== 'C');      // S → A → B → 미교배 순 (위에서 정렬됨)
+  const bad = cand.filter(c => c.grade === 'C');       // C = 비추천
+  const nC = bad.length;
   const nUnknown = cand.filter(c => c.unknown).length;
 
   function renderSireItem(item, statusClass, badgeText) {
@@ -428,9 +430,12 @@ function renderResults(dogsByKey) {
     ? `<div class="sire-list">${banned.map(i => renderSireItem(i, 'red', '🚫 금지')).join('')}</div>`
     : `<div class="empty">🎉 교배 금지된 부견이 없습니다.</div>`;
 
-  const candHtml = cand.length
-    ? `<div class="sire-list">${cand.map(renderCandItem).join('')}</div>`
-    : `<div class="empty">해당 없음</div>`;
+  const goodHtml = good.length
+    ? `<div class="sire-list">${good.map(renderCandItem).join('')}</div>`
+    : `<div class="empty">교배 후보가 없습니다.</div>`;
+  const badHtml = bad.length
+    ? `<div class="sire-list">${bad.map(renderCandItem).join('')}</div>`
+    : `<div class="empty">비추천(C급) 조합이 없습니다.</div>`;
 
   mainEl.innerHTML = `
     <div class="result-header">
@@ -443,17 +448,20 @@ function renderResults(dogsByKey) {
     </div>
 
     <div class="status-summary">
+      <div class="status-pill green"><span class="n">${good.length}</span>후보</div>
+      <div class="status-pill yellow"><span class="n">${nC}</span>비추천(C)</div>
       <div class="status-pill red"><span class="n">${banned.length}</span>금지</div>
       <div class="status-pill gray"><span class="n">${nUnknown}</span>판정불가</div>
-      <div class="status-pill yellow"><span class="n">${nC}</span>비추천(C)</div>
-      <div class="status-pill green"><span class="n">${cand.length - nC}</span>후보</div>
     </div>
+
+    <div class="section-title">✅ 교배 후보 — 이전 교배 등급 순 (S → A → B → 미교배)</div>
+    ${goodHtml}
+
+    <div class="section-title">⚠️ 비추천 (C급 — 이전 교배 결과가 안 좋았던 조합)</div>
+    ${badHtml}
 
     <div class="section-title">🚫 교배 금지 부견 (근친 · 수동 금지)</div>
     ${bannedHtml}
-
-    <div class="section-title">🏅 교배 후보 — 이전 교배 등급 순 (S → A → B → 미교배 → C 비추천)</div>
-    ${candHtml}
   `;
 }
 
