@@ -630,6 +630,7 @@ function startMainDataListeners() {
     window._contracts = { ...ls, ...fb };
     try { localStorage.setItem('goldi_cache_contracts', JSON.stringify(window._contracts)); } catch(e){}
     renderDB();
+    migrateContractMemos();
   }, error => {
     console.error('[contracts 구독 오류]:', error);
     if (typeof toast === 'function') toast('⚠️ 계약 데이터 연결 오류: ' + (error.code || error.message));
@@ -639,6 +640,8 @@ function startMainDataListeners() {
     error => { console.warn('[females 구독 오류]:', error); });
   onValue(ref(db,'males'),snap=>{ window._males = snap.val() || {}; rerenderParentLabels(); },
     error => { console.warn('[males 구독 오류]:', error); });
+  onValue(ref(db,'contractMemos'),snap=>{ window._contractMemos = snap.val() || {}; window.__contractMemosLoaded = true; renderDB(); migrateContractMemos(); },
+    error => { console.warn('[contractMemos 구독 오류 — Firebase 규칙에 contractMemos 추가 필요]:', error); });
   onValue(ref(db,'guardianMemos'),snap=>{ window._guardianMemos = snap.val() || {}; if (typeof window.renderGuardianMemos === 'function') window.renderGuardianMemos(); },
     error => { console.warn('[guardianMemos 구독 오류 — Firebase 규칙에 guardianMemos 추가 필요]:', error); });
 }
@@ -1419,10 +1422,10 @@ window.renderDB=()=>{
   window.renderContractAnalytics();
   window.renderDbCalendar();
   const kw=(document.getElementById('dbSearch')?.value||'').toLowerCase();
-  const list=Object.entries(window._contracts).filter(([,c])=>{
+  const list=Object.entries(window._contracts).filter(([cid,c])=>{
     if(!kw) return true;
     return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw)
-      ||(c.buyer_addr||'').toLowerCase().includes(kw)||(c.guardian_memo||'').toLowerCase().includes(kw);
+      ||(c.buyer_addr||'').toLowerCase().includes(kw)||memoOf(cid,c).toLowerCase().includes(kw);
   }).filter(([,c])=>!window.isGhostContract(c));
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
@@ -1437,7 +1440,7 @@ window.renderDB=()=>{
     <tr${c.cancelled ? ' style="opacity:.55;"' : ''}>
       <td>${fmt(c.contract_date)}</td>
       <td><strong>${c.dogname||'—'}</strong></td>
-      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span>${c.guardian_memo?`<br><span style="font-size:11px;color:#B7791F;font-weight:700;">📝 ${esc(c.guardian_memo)}</span>`:''}</td>
+      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span>${memoOf(id,c)?`<br><span style="font-size:11px;color:#B7791F;font-weight:700;">📝 ${esc(memoOf(id,c))}</span>`:''}</td>
       <td>${c.price?numFmt(c.price):'—'}</td>
       <td><span style="font-size:12px; font-weight:700; color:${st.color};">${st.label}</span></td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
@@ -1497,11 +1500,33 @@ window.toggleBalancePaid = async (id) => {
 
 // ── 📝 보호자 메모 (계약 1건에 붙는 자유 입력 한 줄 / 계약서 없는 분양용 별도 목록) ──
 const escAttr = s => esc(s).replace(/"/g,'&quot;');
+window._contractMemos = {};
+// 계약별 보호자 메모 문구 (contractMemos 우선, 아직 옮기기 전의 contracts.guardian_memo는 임시 폴백)
+function memoOf(id, c) { return String(((window._contractMemos || {})[id] || {}).text || (c && c.guardian_memo) || ''); }
+// 예전에 contracts/<ID>/guardian_memo 에 저장된 메모를 어드민 전용 contractMemos 로 옮기고 원래 자리를 지운다 (한 번만 실행)
+let __memoMigrating = false;
+async function migrateContractMemos() {
+  if (__memoMigrating || !window.__contractMemosLoaded) return;   // contractMemos 를 아직 못 읽었으면 기존 메모를 덮어쓸 수 있어 대기
+  const targets = Object.entries(window._contracts || {}).filter(([, c]) => c && c.guardian_memo);
+  if (!targets.length) return;
+  __memoMigrating = true;
+  try {
+    for (const [id, c] of targets) {
+      const text = String(c.guardian_memo).trim();
+      if (text && !((window._contractMemos || {})[id] || {}).text) await update(ref(db, `contractMemos/${id}`), { text, updated: new Date().toISOString().slice(0, 10) });
+      await update(ref(db, `contracts/${id}`), { guardian_memo: null });
+      delete c.guardian_memo;
+    }
+    renderDB();
+  } catch (e) { console.warn('[보호자 메모 이전 실패]:', e); }
+  __memoMigrating = false;
+}
+window.migrateContractMemos = migrateContractMemos;
 function gmBlock(id, c) {
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--gray-l);">
     <div style="font-size:12px;font-weight:800;color:var(--gray);margin-bottom:6px;">📝 보호자 메모</div>
     <div style="display:flex;gap:6px;">
-      <input type="text" id="gm_input" value="${escAttr(c.guardian_memo||'')}" placeholder="예: 군포 빵이 26년 9월 7일 분양 300만원" style="flex:1;">
+      <input type="text" id="gm_input" value="${escAttr(memoOf(id,c))}" placeholder="예: 군포 빵이 26년 9월 7일 분양 300만원" style="flex:1;">
       <button class="btn btn-gold btn-sm" onclick="saveGuardianMemo('${id}')">저장</button>
     </div>
   </div>`;
@@ -1509,8 +1534,13 @@ function gmBlock(id, c) {
 window.saveGuardianMemo = async id => {
   const v = (document.getElementById('gm_input')?.value || '').trim();
   try {
-    await update(ref(db, `contracts/${id}`), { guardian_memo: v || null });
-    if (window._contracts[id]) window._contracts[id].guardian_memo = v || undefined;
+    // 계약서 링크(고객용)는 contracts/<ID>를 읽을 수 있으므로, 내부 메모는 어드민 전용 경로(contractMemos)에 따로 저장한다.
+    if (v) { await update(ref(db, `contractMemos/${id}`), { text: v, updated: new Date().toISOString().slice(0, 10) }); window._contractMemos[id] = { text: v }; }
+    else { await fbRemove(ref(db, `contractMemos/${id}`)); delete window._contractMemos[id]; }
+    if (window._contracts[id] && window._contracts[id].guardian_memo !== undefined) {   // 예전에 contracts 안에 저장된 메모가 남아 있으면 같이 정리
+      await update(ref(db, `contracts/${id}`), { guardian_memo: null });
+      delete window._contracts[id].guardian_memo;
+    }
     toast(v ? '📝 보호자 메모를 저장했어요.' : '📝 보호자 메모를 지웠어요.');
     renderDB();
   } catch (e) { toast('⚠️ 메모 저장 실패: ' + (e.code || e.message)); }
