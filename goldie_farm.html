@@ -3653,6 +3653,10 @@ header p{color:rgba(255,255,255,.75);font-size:.78rem;margin-top:2px;}
       <div class="form-group"><label>출산일 A (실제 출산일)</label><input type="date" id="lm-birth-a"></div>
       <div class="form-group"><label>출산일 B (선택)</label><input type="date" id="lm-birth-b"></div>
       <div class="form-group"><label>강아지 수</label><input type="number" id="lm-count" min="1" max="20" value="1"></div>
+      <div class="form-group"><label>🏅 새끼 등급 (이 모견×부견 조합의 결과)</label>
+        <select id="lm-grade"><option value="">미평가</option><option value="S">S (아주 좋음)</option><option value="A">A (좋음)</option><option value="B">B (보통)</option><option value="C">C (비추천 — 교배 확인 페이지에 비추천으로 표시)</option></select>
+        <input type="text" id="lm-grade-memo" placeholder="등급 메모 (선택)" style="margin-top:6px;">
+      </div>
       <div class="modal-actions" style="display:flex; gap:8px;">
         <button class="btn btn-danger" id="lm-delete-btn" onclick="deleteLitter()" style="display:none; flex:1;">🗑️ 삭제</button>
         <button class="btn btn-cancel" onclick="closeLitterModal()">취소</button>
@@ -7958,7 +7962,7 @@ function renderPuppies(){
         <div class="litter-title-wrap">
           <span class="litter-toggle-icon">${isFirst ? '▼' : '▶'}</span>
           <strong>${lt.femaleCode ? esc(getMotherInfo(lt.femaleCode).name) : '모견 미지정'} × ${lt.maleCode ? esc(getSireInfo(lt.maleCode).name) : '부견 미지정'}</strong>
-          <span class="litter-count">(${puppyEntries.length}마리)</span>
+          <span class="litter-count">(${puppyEntries.length}마리)</span>${lt.grade?`<span style="font-size:0.7rem;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:4px;color:#fff;background:${lt.grade==='C'?'#C0392B':lt.grade==='S'?'#C8860A':lt.grade==='A'?'#2E7D4F':'#64748B'};">${lt.grade}${lt.grade==='C'?' 비추천':'급'}</span>`:''}
         </div>
         <div class="litter-dates">
           <span>출산A: ${fmtDate(lt.birthA)}</span>
@@ -8172,6 +8176,8 @@ window.openAddLitter=function(){
 
 
   document.getElementById('lm-count').value=1;
+  document.getElementById('lm-grade').value='';
+  document.getElementById('lm-grade-memo').value='';
 
 
 
@@ -8256,6 +8262,8 @@ window.openEditLitterModal=function(litterKey){
 
 
   document.getElementById('lm-count').value = lt.count || 1;
+  document.getElementById('lm-grade').value = lt.grade || '';
+  document.getElementById('lm-grade-memo').value = lt.gradeMemo || '';
 
 
 
@@ -8287,6 +8295,27 @@ window.closeLitterModal=function(){document.getElementById('litter-modal').class
 
 
 
+// ── 조합 등급: 같은 모견×부견 조합의 출산 기록 중 "등급이 있는 가장 최근(출산일A 기준)" 기록의 등급을
+//    모견 레코드(females/<모견key>/pairGrades/<부견key>)에 복사해 둔다. 로그인 없는 교배 확인 페이지가
+//    litters 전체(큰 데이터)를 받지 않고도 이 값만 읽어서 표시하기 위함. (bannedPartners와 같은 방식)
+// override: {key, data} = 방금 저장한 기록의 새 내용으로 대체 / {key, remove:true} = 방금 삭제한 기록 제외
+async function syncPairGrade(femaleCode, maleCode, override){
+  const fDog=females.find(f=>f.code===femaleCode);
+  const mDog=males.find(m=>m.code===maleCode);
+  if(!fDog||!mDog) return;
+  let list=litters.filter(l=>!(override&&l._key===override.key));
+  if(override&&!override.remove) list.push({...override.data,_key:override.key});
+  const graded=list.filter(l=>l.femaleCode===femaleCode&&l.maleCode===maleCode&&l.grade&&l.birthA)
+    .sort((a,b)=>String(b.birthA).localeCompare(String(a.birthA)));
+  const path=`females/${fDog._key}/pairGrades/${mDog._key}`;
+  if(graded.length){
+    const g=graded[0];
+    await fbSet(path,{grade:g.grade,date:g.birthA,memo:g.gradeMemo||null,litterKey:g._key});
+  } else if(fDog.pairGrades&&fDog.pairGrades[mDog._key]){
+    await fbRemove(path);
+  }
+}
+
 window.saveLitter=async function(){
 
 
@@ -8308,6 +8337,8 @@ window.saveLitter=async function(){
 
 
   const count=parseInt(document.getElementById('lm-count').value)||1;
+  const gradeVal=document.getElementById('lm-grade').value||null;
+  const gradeMemoVal=(document.getElementById('lm-grade-memo').value||'').trim()||null;
 
 
 
@@ -8363,7 +8394,7 @@ window.saveLitter=async function(){
 
 
 
-        birthA, birthB, count,
+        birthA, birthB, count, grade:gradeVal, gradeMemo:gradeMemoVal,
 
 
 
@@ -8391,7 +8422,8 @@ window.saveLitter=async function(){
 
 
 
-      await fbPush('litters',litter);
+      const newLitterKey=await fbPush('litters',litter);
+      await syncPairGrade(fDog.code,mDog.code,{key:newLitterKey,data:litter});
 
 
 
@@ -8476,6 +8508,7 @@ window.saveLitter=async function(){
 
 
       const litterUpdates = {
+        grade: gradeVal, gradeMemo: gradeMemoVal,
 
 
 
@@ -8523,7 +8556,10 @@ window.saveLitter=async function(){
 
 
 
+      const oldPair={f:lt.femaleCode,m:lt.maleCode};
       await fbUpdate(`litters/${litterEditKey}`, litterUpdates);
+      await syncPairGrade(fDog.code,mDog.code,{key:litterEditKey,data:{...lt,...litterUpdates}});
+      if(oldPair.f!==fDog.code||oldPair.m!==mDog.code) await syncPairGrade(oldPair.f,oldPair.m,{key:litterEditKey,data:{...lt,...litterUpdates}});
 
 
 
@@ -8607,7 +8643,9 @@ window.deleteLitter=async function(){
 
 
 
+    const delLt=litters.find(l=>l._key===litterEditKey);
     await fbRemove(`litters/${litterEditKey}`);
+    if(delLt) await syncPairGrade(delLt.femaleCode,delLt.maleCode,{key:litterEditKey,remove:true});
 
 
 
