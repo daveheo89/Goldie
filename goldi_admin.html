@@ -278,12 +278,19 @@ window.addEventListener('DOMContentLoaded', function(){
   <div class="cal-grid" id="dbCalGrid"></div>
 
   <div class="search-row">
-    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지 이름 검색..." oninput="renderDB()">
+    <input type="text" id="dbSearch" placeholder="구매자명, 연락처, 강아지, 주소, 메모 검색..." oninput="renderDB()">
     <button class="btn btn-gray btn-sm" onclick="exportCSV()">⬇ CSV</button>
     <button class="btn btn-br btn-sm" onclick="openStampReview()">🔖 도장 검수</button>
   </div>
   <div class="stitle">계약 내역</div>
   <div id="dbList" class="loading"><div class="spinner"></div>로딩 중...</div>
+  <div class="stitle" style="margin-top:22px;">📝 보호자 메모 (계약서 없는 분양 · 자유 메모)</div>
+  <div style="font-size:11px;color:var(--gray);margin-bottom:8px;line-height:1.5;">계약서가 없는 예전 분양 보호자는 여기에 한 줄로 적어 두세요. 위 검색창에서 같이 검색됩니다. 계약서가 있는 보호자는 계약 "보기"에서 메모를 달 수 있어요.</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;">
+    <input type="text" id="gmNewText" placeholder="예: 군포 빵이 26년 9월 7일 분양 300만원" style="flex:1;" onkeydown="if(event.key==='Enter')addGuardianMemo()">
+    <button class="btn btn-gold btn-sm" onclick="addGuardianMemo()">＋ 추가</button>
+  </div>
+  <div id="guardianMemoList"></div>
 </div>
 
 <!-- TAB4: 월별 캘린더 그리드 View (Google 캘린더 전용: 예약 & 배송) -->
@@ -632,6 +639,8 @@ function startMainDataListeners() {
     error => { console.warn('[females 구독 오류]:', error); });
   onValue(ref(db,'males'),snap=>{ window._males = snap.val() || {}; rerenderParentLabels(); },
     error => { console.warn('[males 구독 오류]:', error); });
+  onValue(ref(db,'guardianMemos'),snap=>{ window._guardianMemos = snap.val() || {}; if (typeof window.renderGuardianMemos === 'function') window.renderGuardianMemos(); },
+    error => { console.warn('[guardianMemos 구독 오류 — Firebase 규칙에 guardianMemos 추가 필요]:', error); });
 }
 window.startMainDataListeners = startMainDataListeners;
 
@@ -1406,12 +1415,14 @@ window.showDbCalDay = dateStr => {
 };
 
 window.renderDB=()=>{
+  if (typeof window.renderGuardianMemos === 'function') window.renderGuardianMemos();
   window.renderContractAnalytics();
   window.renderDbCalendar();
   const kw=(document.getElementById('dbSearch')?.value||'').toLowerCase();
   const list=Object.entries(window._contracts).filter(([,c])=>{
     if(!kw) return true;
-    return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw);
+    return (c.buyer_name||'').toLowerCase().includes(kw)||(c.buyer_phone||'').includes(kw)||(c.dogname||'').toLowerCase().includes(kw)
+      ||(c.buyer_addr||'').toLowerCase().includes(kw)||(c.guardian_memo||'').toLowerCase().includes(kw);
   }).filter(([,c])=>!window.isGhostContract(c));
   const el=document.getElementById('dbList');
   if(!list.length){el.innerHTML='<div class="loading">계약 내역이 없습니다.</div>';return;}
@@ -1426,7 +1437,7 @@ window.renderDB=()=>{
     <tr${c.cancelled ? ' style="opacity:.55;"' : ''}>
       <td>${fmt(c.contract_date)}</td>
       <td><strong>${c.dogname||'—'}</strong></td>
-      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span></td>
+      <td>${c.buyer_name||'—'}<br><span style="font-size:11px;color:var(--gray)">${c.buyer_phone||''}</span>${c.guardian_memo?`<br><span style="font-size:11px;color:#B7791F;font-weight:700;">📝 ${esc(c.guardian_memo)}</span>`:''}</td>
       <td>${c.price?numFmt(c.price):'—'}</td>
       <td><span style="font-size:12px; font-weight:700; color:${st.color};">${st.label}</span></td>
       <td><button class="btn btn-gray btn-sm" onclick="showDetail('${id}')">보기</button></td>
@@ -1484,6 +1495,68 @@ window.toggleBalancePaid = async (id) => {
   closeModal();
 };
 
+// ── 📝 보호자 메모 (계약 1건에 붙는 자유 입력 한 줄 / 계약서 없는 분양용 별도 목록) ──
+const escAttr = s => esc(s).replace(/"/g,'&quot;');
+function gmBlock(id, c) {
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--gray-l);">
+    <div style="font-size:12px;font-weight:800;color:var(--gray);margin-bottom:6px;">📝 보호자 메모</div>
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="gm_input" value="${escAttr(c.guardian_memo||'')}" placeholder="예: 군포 빵이 26년 9월 7일 분양 300만원" style="flex:1;">
+      <button class="btn btn-gold btn-sm" onclick="saveGuardianMemo('${id}')">저장</button>
+    </div>
+  </div>`;
+}
+window.saveGuardianMemo = async id => {
+  const v = (document.getElementById('gm_input')?.value || '').trim();
+  try {
+    await update(ref(db, `contracts/${id}`), { guardian_memo: v || null });
+    if (window._contracts[id]) window._contracts[id].guardian_memo = v || undefined;
+    toast(v ? '📝 보호자 메모를 저장했어요.' : '📝 보호자 메모를 지웠어요.');
+    renderDB();
+  } catch (e) { toast('⚠️ 메모 저장 실패: ' + (e.code || e.message)); }
+};
+
+window._guardianMemos = {};
+window.renderGuardianMemos = () => {
+  const el = document.getElementById('guardianMemoList');
+  if (!el) return;
+  const kw = (document.getElementById('dbSearch')?.value || '').toLowerCase();
+  const list = Object.entries(window._guardianMemos || {})
+    .filter(([, m]) => m && (!kw || String(m.text || '').toLowerCase().includes(kw)))
+    .sort(([, a], [, b]) => String(b.created || '').localeCompare(String(a.created || '')));
+  if (!list.length) { el.innerHTML = `<div style="font-size:12px;color:var(--gray);padding:6px 2px;">${kw ? '검색된 메모가 없습니다.' : '등록된 메모가 없습니다.'}</div>`; return; }
+  el.innerHTML = list.map(([id, m]) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:6px;background:#fff;border:1px solid var(--gray-l);border-radius:8px;">
+      <div style="flex:1;font-size:13px;">📝 ${esc(m.text)}</div>
+      <button class="btn btn-gray btn-sm" onclick="editGuardianMemo('${id}')">✏️</button>
+      <button class="btn btn-sm" style="background:#E74C3C;color:#fff;" onclick="deleteGuardianMemo('${id}')">🗑️</button>
+    </div>`).join('');
+};
+window.addGuardianMemo = async () => {
+  const inp = document.getElementById('gmNewText');
+  const text = (inp?.value || '').trim();
+  if (!text) { toast('메모 내용을 입력해주세요.'); return; }
+  try {
+    await fbPush(ref(db, 'guardianMemos'), { text, created: new Date().toISOString().slice(0, 10) });
+    inp.value = '';
+    toast('📝 보호자 메모를 추가했어요.');
+  } catch (e) { toast('⚠️ 메모 추가 실패: ' + (e.code || e.message) + ' (Firebase 규칙에 guardianMemos 추가 필요)'); }
+};
+window.editGuardianMemo = async id => {
+  const cur = (window._guardianMemos[id] || {}).text || '';
+  const v = prompt('보호자 메모 수정', cur);
+  if (v === null) return;
+  const t = v.trim();
+  if (!t) { toast('내용이 비어 있어요. 삭제하려면 🗑️를 눌러주세요.'); return; }
+  try { await update(ref(db, `guardianMemos/${id}`), { text: t }); toast('📝 수정했어요.'); }
+  catch (e) { toast('⚠️ 수정 실패: ' + (e.code || e.message)); }
+};
+window.deleteGuardianMemo = async id => {
+  if (!confirm('이 보호자 메모를 삭제할까요?')) return;
+  try { await fbRemove(ref(db, `guardianMemos/${id}`)); toast('🗑️ 삭제했어요.'); }
+  catch (e) { toast('⚠️ 삭제 실패: ' + (e.code || e.message)); }
+};
+
 window.showDetail=id=>{
   const c=window._contracts[id];if(!c)return;
   const depositPaid = c.deposit_paid !== false;
@@ -1522,7 +1595,7 @@ window.showDetail=id=>{
     <div id="pdfPreviewWrap" data-open="0"></div>
   `;
   document.getElementById('modalBody').innerHTML=rows.map(([k,v])=>`
-    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + btns;
+    <div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('') + gmBlock(id, c) + btns;
   document.getElementById('detailModal').classList.add('open');
 };
 
